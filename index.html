@@ -872,7 +872,8 @@ function openMgrCard(empId){
         <div class="sal-field"><label>% повернень</label><input type="number" id="sal-ret-${emp.id}" placeholder="0" min="0" max="100" oninput="calcSalary(${emp.id})"></div>
         <div class="sal-field"><label>Відпрац. днів</label><input type="number" id="sal-days-${emp.id}" value="${wd}" oninput="calcSalary(${emp.id})"></div>
       </div>
-      <div id="sal-result-${emp.id}"><div style="font-size:.75rem;color:#aaa">Введи план та оборот для розрахунку</div></div>
+      <button onclick="calcSalary(${emp.id})" style="width:100%;margin-top:4px;padding:8px;background:#b84e30;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem">🧮 Розрахувати ЗП</button>
+      <div id="sal-result-${emp.id}" style="margin-top:8px"><div style="font-size:.75rem;color:#aaa">Натисни кнопку для розрахунку</div></div>
     </div>
     <div style="font-size:.7rem;color:#8a7060;margin-bottom:6px">Календар ${MONTH_UA[M]} ${Y}</div>
     <div class="mgr-month">${calHtml}</div>
