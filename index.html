@@ -172,6 +172,21 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 
 .loading{text-align:center;padding:50px;color:#4a3828;font-size:.88rem}
 
+/* SALARY CALC */
+.sal-block{background:#f0ede8;border:1px solid #d4cdc4;border-radius:10px;padding:14px;margin-bottom:14px}
+.sal-block h4{font-size:.78rem;color:#b84e30;font-weight:700;margin-bottom:10px}
+.sal-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:8px;flex-wrap:wrap}
+.sal-field{display:flex;flex-direction:column;gap:3px;flex:1;min-width:90px}
+.sal-field label{font-size:.65rem;color:#8a7060}
+.sal-field input{background:#fff;border:1px solid #c8c0b4;color:#2c2218;border-radius:6px;padding:6px 8px;font-size:.82rem;outline:none;width:100%}
+.sal-field input:focus{border-color:#b84e30}
+.sal-result{background:#fff;border:1px solid #c8c0b4;border-radius:8px;padding:10px 12px;margin-top:6px}
+.sal-result-row{display:flex;justify-content:space-between;font-size:.75rem;padding:3px 0;border-bottom:1px solid #ede8e0}
+.sal-result-row:last-child{border-bottom:none;font-weight:700;font-size:.82rem;padding-top:6px}
+.sal-result-row span:last-child{color:#b84e30}
+.sal-result-row.green span:last-child{color:#2e7d52}
+
+
 /* MANAGER CARD */
 .mgr-card-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center}
 .mgr-card-ov.open{display:flex}
@@ -544,6 +559,26 @@ async function applyStatus(v){
     openVacModal(pEmp,emp?.name||'');
     return;
   }
+  // Звільнення — заповнюємо до кінця місяця
+  if(v==='-'){
+    const emp=employees.find(e=>e.id===pEmp);
+    const empName=emp?.name||'менеджера';
+    if(!confirm(`Поставити звільнення для ${empName} з ${pDate.slice(8)}.${pDate.slice(5,7)} до кінця місяця?`)) return;
+    setSave('Збереження...',false);
+    try{
+      const days=getDays(Y,M);
+      const fromDay=days.find(d=>d.date===pDate);
+      if(!fromDay) return;
+      const toFill=days.filter(d=>d.date>=pDate);
+      for(const d of toFill){
+        await api('/api/schedule',{method:'PUT',body:JSON.stringify({employee_id:pEmp,entry_date:d.date,status:'-'})});
+        schedMap[`${pEmp}_${d.date}`]={employee_id:pEmp,entry_date:d.date,status:'-'};
+      }
+      renderTable();renderStats();
+      setSave(`Звільнення встановлено з ${pDate.slice(8)}.${pDate.slice(5,7)} (${toFill.length} днів) ✓`,true);
+    }catch(e){setSave('Помилка ✗',false);}
+    return;
+  }
   const k=`${pEmp}_${pDate}`;
   pending[k]=v;
   renderTable();renderStats();
@@ -829,6 +864,16 @@ function openMgrCard(empId){
       ${rev>0?`<div class="mgr-stat"><div class="n" style="color:#2e7d52">${fmtM(rev)} ₴</div><div class="l">Виручка</div></div>`:''}
       ${empPlan>0?`<div class="mgr-stat"><div class="n">${fmtM(empPlan)} ₴</div><div class="l">План</div></div>`:''}
     </div>
+    <div class="sal-block">
+      <h4>💰 Розрахунок ЗП — ${MONTH_UA[M]} ${Y}</h4>
+      <div class="sal-row">
+        <div class="sal-field"><label>Індивід. план (грн)</label><input type="number" id="sal-plan-${emp.id}" placeholder="260000" oninput="calcSalary(${emp.id})"></div>
+        <div class="sal-field"><label>Факт оборот (грн)</label><input type="number" id="sal-fact-${emp.id}" placeholder="0" oninput="calcSalary(${emp.id})"></div>
+        <div class="sal-field"><label>% повернень</label><input type="number" id="sal-ret-${emp.id}" placeholder="0" min="0" max="100" oninput="calcSalary(${emp.id})"></div>
+        <div class="sal-field"><label>Відпрац. днів</label><input type="number" id="sal-days-${emp.id}" value="${wd}" oninput="calcSalary(${emp.id})"></div>
+      </div>
+      <div id="sal-result-${emp.id}"><div style="font-size:.75rem;color:#aaa">Введи план та оборот для розрахунку</div></div>
+    </div>
     <div style="font-size:.7rem;color:#8a7060;margin-bottom:6px">Календар ${MONTH_UA[M]} ${Y}</div>
     <div class="mgr-month">${calHtml}</div>
     <div style="display:flex;gap:8px;margin-top:4px">
@@ -904,6 +949,54 @@ async function saveLate(){
 }
 
 
+
+
+// ══ SALARY CALCULATOR ═════════════════════════════════
+function calcSalary(empId){
+  const plan = parseFloat(document.getElementById('sal-plan-'+empId).value)||0;
+  const fact = parseFloat(document.getElementById('sal-fact-'+empId).value)||0;
+  const ret  = parseFloat(document.getElementById('sal-ret-'+empId).value)||0;
+  const days = parseInt(document.getElementById('sal-days-'+empId).value)||0;
+  const res  = document.getElementById('sal-result-'+empId);
+  if(!plan||!fact){ res.innerHTML='<div style="font-size:.75rem;color:#aaa">Введи план та оборот</div>'; return; }
+
+  // 1. Повернення
+  const retNorm = 6;
+  const retExcess = Math.max(0, ret - retNorm);
+  const retCorrection = fact * retExcess / 100;
+  const cleanBase = fact - retCorrection;
+
+  // 2. % виконання
+  const pct = Math.round(cleanBase / plan * 100);
+
+  // 3. Ставка та бонус %
+  let rate=0, bonusPct=0, rateLabel='';
+  if(days < 15 && pct < 80){
+    rate=8000; bonusPct=4; rateLabel='Неповний місяць (<15 днів + <80%)';
+  } else if(pct < 70){
+    rate=13000; bonusPct=4; rateLabel='Зона ризику (<70%)';
+  } else if(pct < 80){
+    rate=13000; bonusPct=4.5; rateLabel='Базова страховка (70–79%)';
+  } else if(pct < 100){
+    rate=15000; bonusPct=5; rateLabel='Стабільна зона (80–99%)';
+  } else if(pct < 110){
+    rate=15000; bonusPct=6; rateLabel='План виконано (100–110%)';
+  } else {
+    rate=15000; bonusPct=7; rateLabel='Топ-перформер (110%+) 🏆';
+  }
+
+  const bonus = Math.round(cleanBase * bonusPct / 100);
+  const total = rate + bonus;
+
+  res.innerHTML=`
+    <div class="sal-result-row"><span>Виконання плану</span><span>${pct}% — ${rateLabel}</span></div>
+    <div class="sal-result-row"><span>Чиста база (після повернень)</span><span>${fmtM(cleanBase)} ₴</span></div>
+    ${retExcess>0?`<div class="sal-result-row"><span>Коригування повернень (${retExcess}% надлишок)</span><span style="color:#ef5350">−${fmtM(retCorrection)} ₴</span></div>`:''}
+    <div class="sal-result-row"><span>Ставка</span><span>${fmtM(rate)} ₴</span></div>
+    <div class="sal-result-row"><span>Бонус ${bonusPct}% від ${fmtM(cleanBase)} ₴</span><span>${fmtM(bonus)} ₴</span></div>
+    <div class="sal-result-row green"><span>💰 Підсумкова ЗП</span><span>${fmtM(total)} ₴</span></div>
+  `;
+}
 
 // ══ DEACTIVATE EMPLOYEE ═══════════════════════════════
 async function deactivateEmp(empId, name){
