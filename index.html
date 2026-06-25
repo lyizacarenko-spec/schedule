@@ -498,7 +498,7 @@ function renderTable(){
         const v=getStatus(emp.id,d.date);
         const h2=sh(v);if(h2>0){wd++;hrs+=h2;}
         row+=`<td class="${d.isW?'wk':''}" data-emp="${emp.id}" data-date="${d.date}"
-               onclick="openPopup(event,${emp.id},'${d.date}','${v}','${emp.name}')">
+               onclick="openPopup(event,${emp.id},'${d.date}','${v}',this)">
                <span class="chip ${sc(v)}">${sl(v)}</span></td>`;
       });
       row+=`<td class="stat-td">${wd}</td>
@@ -514,9 +514,11 @@ function renderTable(){
 
 // ══ POPUP ════════════════════════════════════════════
 let pEmp=null,pDate=null;
-function openPopup(e,empId,date,cur,name){
+function openPopup(e,empId,date,cur,nameTd){
   e.stopPropagation();
   pEmp=empId;pDate=date;
+  const emp=employees.find(x=>x.id===empId);
+  const name=emp?.name||'';
   document.getElementById('popup-title').textContent=`${name} · ${date.slice(8)}.${date.slice(5,7)}`;
   document.getElementById('popup-grid').innerHTML=STATUSES.map(s=>
     `<button class="s-btn ${s.cls} ${s.v===cur?'cur':''}" onclick="applyStatus('${s.v}')">${s.label||'—'}</button>`
