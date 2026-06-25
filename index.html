@@ -953,6 +953,10 @@ async function saveLate(){
 
 
 // ══ SALARY CALCULATOR ═════════════════════════════════
+function fmtFull(n){
+  return n.toLocaleString('uk-UA', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ₴';
+}
+
 function calcSalary(empId){
   const plan = parseFloat(document.getElementById('sal-plan-'+empId).value)||0;
   const fact = parseFloat(document.getElementById('sal-fact-'+empId).value)||0;
@@ -986,16 +990,16 @@ function calcSalary(empId){
     rate=15000; bonusPct=7; rateLabel='Топ-перформер (110%+) 🏆';
   }
 
-  const bonus = Math.round(cleanBase * bonusPct / 100);
+  const bonus = cleanBase * bonusPct / 100;
   const total = rate + bonus;
 
   res.innerHTML=`
     <div class="sal-result-row"><span>Виконання плану</span><span>${pct}% — ${rateLabel}</span></div>
-    <div class="sal-result-row"><span>Чиста база (після повернень)</span><span>${fmtM(cleanBase)} ₴</span></div>
-    ${retExcess>0?`<div class="sal-result-row"><span>Коригування повернень (${retExcess}% надлишок)</span><span style="color:#ef5350">−${fmtM(retCorrection)} ₴</span></div>`:''}
-    <div class="sal-result-row"><span>Ставка</span><span>${fmtM(rate)} ₴</span></div>
-    <div class="sal-result-row"><span>Бонус ${bonusPct}% від ${fmtM(cleanBase)} ₴</span><span>${fmtM(bonus)} ₴</span></div>
-    <div class="sal-result-row green"><span>💰 Підсумкова ЗП</span><span>${fmtM(total)} ₴</span></div>
+    <div class="sal-result-row"><span>Чиста база (після повернень)</span><span>${fmtFull(cleanBase)}</span></div>
+    ${retExcess>0?`<div class="sal-result-row"><span>Коригування повернень (${retExcess}% надлишок)</span><span style="color:#ef5350">−${fmtFull(retCorrection)}</span></div>`:''}
+    <div class="sal-result-row"><span>Ставка</span><span>${fmtFull(rate)}</span></div>
+    <div class="sal-result-row"><span>Бонус ${bonusPct}% від ${fmtFull(cleanBase)}</span><span>${fmtFull(bonus)}</span></div>
+    <div class="sal-result-row green"><span>💰 Підсумкова ЗП</span><span>${fmtFull(total)}</span></div>
   `;
 }
 
