@@ -492,7 +492,7 @@ function renderTable(){
       });
       let row=`<tr>
         <td class="name-td" onclick="openMgrCard(${emp.id})" style="cursor:pointer">${emp.name}</td>
-        <td class="level-badge"><span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span></td>`;
+        <td class="level-badge">${emp.dept_code==='rzpk'?`<span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span>`:''}</td>`;
       days.forEach(d=>{
         const v=getStatus(emp.id,d.date);
         const h2=sh(v);if(h2>0){wd++;hrs+=h2;}
