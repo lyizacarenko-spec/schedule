@@ -826,7 +826,10 @@ function openMgrCard(empId){
     </div>
     <div style="font-size:.7rem;color:#8a7060;margin-bottom:6px">Календар ${MONTH_UA[M]} ${Y}</div>
     <div class="mgr-month">${calHtml}</div>
-    <button class="btn-save" style="width:100%;margin-top:4px" onclick="closeMgrCardForce();openVacModal(${emp.id},'${emp.name}')">🌴 Поставити відпустку</button>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn-save" style="flex:1" onclick="closeMgrCardForce();openVacModal(${emp.id},'${emp.name}')">🌴 Відпустка</button>
+      <button class="btn-ghost btn" style="flex:1" onclick="openLevelModal(${emp.id},'${emp.name}','${emp.level}')">⭐ Змінити рівень</button>
+    </div>
   `;
   document.getElementById('mgr-card-ov').classList.add('open');
 }
@@ -894,6 +897,45 @@ async function saveLate(){
   }catch(e){alert('Помилка: '+e.message);}
 }
 
+
+// ══ LEVEL CHANGE ══════════════════════════════════════
+let levelEmpId=null, selectedLevel=null;
+function openLevelModal(empId,name,curLevel){
+  levelEmpId=empId;
+  selectedLevel=curLevel;
+  document.getElementById('level-emp-name').textContent=name;
+  closeMgrCardForce();
+  // highlight current
+  ['top','mid','jun'].forEach(l=>{
+    const btn=document.getElementById('lopt-'+l);
+    btn.style.border=l===curLevel?'2px solid #b84e30':'2px solid transparent';
+    btn.style.opacity=l===curLevel?'1':'0.7';
+  });
+  document.getElementById('level-modal-ov').classList.add('open');
+}
+function selLevel(level){
+  selectedLevel=level;
+  ['top','mid','jun'].forEach(l=>{
+    const btn=document.getElementById('lopt-'+l);
+    btn.style.border=l===level?'2px solid #b84e30':'2px solid transparent';
+    btn.style.opacity=l===level?'1':'0.7';
+  });
+}
+function closeLevelModal(){ document.getElementById('level-modal-ov').classList.remove('open'); }
+async function saveLevel(){
+  if(!levelEmpId||!selectedLevel) return;
+  setSave('Збереження...',false);
+  try{
+    await api('/api/employees/'+levelEmpId,{method:'PATCH',body:JSON.stringify({level:selectedLevel})});
+    // update local
+    const emp=employees.find(e=>e.id===levelEmpId);
+    if(emp) emp.level=selectedLevel;
+    closeLevelModal();
+    await loadMonthData();
+    setSave('Рівень змінено ✓',true);
+  }catch(e){alert('Помилка: '+e.message);}
+}
+
 // ══ INIT ══════════════════════════════════════════════
 (async()=>{
   try{ await loadAll(); }
@@ -940,6 +982,35 @@ async function saveLate(){
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeVacModal()">Скасувати</button>
       <button class="btn-save"   onclick="saveVacation()">Поставити відпустку</button>
+    </div>
+  </div>
+</div>
+
+<!-- LEVEL MODAL -->
+<div class="modal-ov" id="level-modal-ov">
+  <div class="modal">
+    <h3>⭐ Змінити рівень</h3>
+    <div id="level-emp-name" style="font-size:.8rem;color:#8a7060;margin-bottom:14px"></div>
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <button class="level-opt" id="lopt-top" onclick="selLevel('top')"
+        style="flex:1;padding:14px;border-radius:10px;background:#d4e4f0;color:#1a5c8a;font-weight:700;font-size:.9rem;border:2px solid transparent;transition:.15s">
+        ТОП<br><span style="font-size:.7rem;font-weight:400">260К/міс</span>
+      </button>
+      <button class="level-opt" id="lopt-mid" onclick="selLevel('mid')"
+        style="flex:1;padding:14px;border-radius:10px;background:#e4d4f0;color:#6a1a80;font-weight:700;font-size:.9rem;border:2px solid transparent;transition:.15s">
+        МІДЛ<br><span style="font-size:.7rem;font-weight:400">235К/міс</span>
+      </button>
+      <button class="level-opt" id="lopt-jun" onclick="selLevel('jun')"
+        style="flex:1;padding:14px;border-radius:10px;background:#d4edd8;color:#1a5c30;font-weight:700;font-size:.9rem;border:2px solid transparent;transition:.15s">
+        ДЖУН<br><span style="font-size:.7rem;font-weight:400">187К/міс</span>
+      </button>
+    </div>
+    <div style="font-size:.75rem;color:#8a7060;margin-bottom:14px">
+      ⚡ Зміна рівня автоматично перерахує план відділу
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeLevelModal()">Скасувати</button>
+      <button class="btn-save"   onclick="saveLevel()">Зберегти</button>
     </div>
   </div>
 </div>
