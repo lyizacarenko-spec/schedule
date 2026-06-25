@@ -478,13 +478,29 @@ function getVisEmps(){
 function renderTable(){
   const days=getDays(Y,M);
   const emps=getVisEmps();
-  // Group by team within dept
-  const groups={};
+  // Group by team within dept - fixed order
+  const TEAM_ORDER = ['РОП','Команда Чопового','Команда Шелковникової','Команда Кіндюшенко','Нові співробітники','Віддалено','Гарячі продажі','Відмови'];
+  const groupsRaw={};
   emps.forEach(e=>{
     const teamKey = e.team || e.dept_code;
-    if(!groups[teamKey]) groups[teamKey]={name:e.team||e.dept_name,code:e.dept_code,id:departments.find(d=>d.code===e.dept_code)?.id,emps:[]};
-    groups[teamKey].emps.push(e);
+    if(!groupsRaw[teamKey]) groupsRaw[teamKey]={name:e.team||e.dept_name,code:e.dept_code,id:departments.find(d=>d.code===e.dept_code)?.id,emps:[]};
+    // Sort: rop first, then senior, then by name
+    groupsRaw[teamKey].emps.push(e);
   });
+  // Sort employees within each team: rop → senior → manager, then by name
+  Object.values(groupsRaw).forEach(g=>{
+    g.emps.sort((a,b)=>{
+      const roleOrder={rop:0,senior:1,manager:2};
+      const ra=roleOrder[a.role]??2, rb=roleOrder[b.role]??2;
+      if(ra!==rb) return ra-rb;
+      return a.name.localeCompare(b.name,'uk');
+    });
+  });
+  // Order groups by TEAM_ORDER
+  const groups={};
+  TEAM_ORDER.forEach(t=>{ if(groupsRaw[t]) groups[t]=groupsRaw[t]; });
+  // Add any remaining teams not in order
+  Object.keys(groupsRaw).forEach(t=>{ if(!groups[t]) groups[t]=groupsRaw[t]; });
 
   let h=`<table><thead>
   <tr>
@@ -866,20 +882,34 @@ function openMgrCard(empId){
     </div>
     <div class="sal-block">
       <h4>💰 Розрахунок ЗП — ${MONTH_UA[M]} ${Y}</h4>
-      <div class="sal-row">
-        <div class="sal-field"><label>Індивід. план (грн)</label><input type="number" id="sal-plan-${emp.id}" placeholder="260000" oninput="calcSalary(${emp.id})"></div>
-        <div class="sal-field"><label>Факт оборот (грн)</label><input type="number" id="sal-fact-${emp.id}" placeholder="0" oninput="calcSalary(${emp.id})"></div>
-        <div class="sal-field"><label>% повернень</label><input type="number" id="sal-ret-${emp.id}" placeholder="0" min="0" max="100" oninput="calcSalary(${emp.id})"></div>
-        <div class="sal-field"><label>Відпрац. днів</label><input type="number" id="sal-days-${emp.id}" value="${wd}" oninput="calcSalary(${emp.id})"></div>
+      <div id="rop-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
+        <div style="text-align:center;padding:8px 0 12px">
+          <div style="font-size:.78rem;color:#8a7060;margin-bottom:8px">🔒 Доступ тільки для РОП</div>
+          <div style="display:flex;gap:6px;justify-content:center">
+            <input type="password" id="rop-pin-input" placeholder="PIN" maxlength="4"
+              style="width:80px;background:#ede8e0;border:1px solid #c8c0b4;border-radius:6px;padding:6px 8px;font-size:.85rem;text-align:center;outline:none"
+              onkeydown="if(event.key==='Enter')checkRopPin()">
+            <button onclick="checkRopPin()" style="background:#b84e30;color:#fff;border-radius:6px;padding:6px 12px;font-size:.8rem;font-weight:600">Увійти</button>
+          </div>
+        </div>
       </div>
-      <button onclick="calcSalary(${emp.id})" style="width:100%;margin-top:4px;padding:8px;background:#b84e30;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem">🧮 Розрахувати ЗП</button>
-      <div id="sal-result-${emp.id}" style="margin-top:8px"><div style="font-size:.75rem;color:#aaa">Натисни кнопку для розрахунку</div></div>
+      <div id="sal-unlock-block" style="${ropUnlocked?'display:block':'display:none'}">
+        <div class="sal-row">
+          <div class="sal-field"><label>Індивід. план (грн)</label><input type="number" id="sal-plan-${emp.id}" placeholder="260000"></div>
+          <div class="sal-field"><label>Факт оборот (грн)</label><input type="number" id="sal-fact-${emp.id}" placeholder="0"></div>
+          <div class="sal-field"><label>% повернень</label><input type="number" id="sal-ret-${emp.id}" placeholder="0" min="0" max="100"></div>
+          <div class="sal-field"><label>Відпрац. днів</label><input type="number" id="sal-days-${emp.id}" value="${wd}"></div>
+        </div>
+        <button onclick="calcSalary(${emp.id})" style="width:100%;margin-top:4px;padding:8px;background:#b84e30;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem">🧮 Розрахувати ЗП</button>
+        <div id="sal-result-${emp.id}" style="margin-top:8px"><div style="font-size:.75rem;color:#aaa">Натисни кнопку для розрахунку</div></div>
+      </div>
     </div>
     <div style="font-size:.7rem;color:#8a7060;margin-bottom:6px">Календар ${MONTH_UA[M]} ${Y}</div>
     <div class="mgr-month">${calHtml}</div>
-    <div style="display:flex;gap:8px;margin-top:4px">
+    <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
       <button class="btn-save" style="flex:1" onclick="closeMgrCardForce();openVacModal(${emp.id},'${emp.name}')">🌴 Відпустка</button>
       <button class="btn-ghost btn" style="flex:1" onclick="openLevelModal(${emp.id},'${emp.name}','${emp.level}')">⭐ Рівень</button>
+      <button class="btn-ghost btn" style="flex:1" onclick="openTeamModal(${emp.id},'${emp.name}','${emp.team||''}')">👥 Команда</button>
       <button class="btn-ghost btn" style="flex:0 0 auto;background:#f0d4d4;color:#b71c1c;border-color:#dca8a8" onclick="deactivateEmp(${emp.id},'${emp.name}')">🗑️</button>
     </div>
   `;
@@ -952,6 +982,22 @@ async function saveLate(){
 
 
 
+
+// ══ ROP PIN ═══════════════════════════════════════════
+let ropUnlocked = false;
+const ROP_PIN = '1011';
+
+function checkRopPin(){
+  const pin = document.getElementById('rop-pin-input')?.value;
+  if(pin === ROP_PIN){
+    ropUnlocked = true;
+    document.getElementById('rop-pin-block').style.display='none';
+    document.getElementById('sal-unlock-block').style.display='block';
+  } else {
+    alert('Невірний PIN');
+  }
+}
+
 // ══ SALARY CALCULATOR ═════════════════════════════════
 function fmtFull(n){
   return n.toLocaleString('uk-UA', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ₴';
@@ -1001,6 +1047,30 @@ function calcSalary(empId){
     <div class="sal-result-row"><span>Бонус ${bonusPct}% від ${fmtFull(cleanBase)}</span><span>${fmtFull(bonus)}</span></div>
     <div class="sal-result-row green"><span>💰 Підсумкова ЗП</span><span>${fmtFull(total)}</span></div>
   `;
+}
+
+
+// ══ TEAM CHANGE ═══════════════════════════════════════
+let teamEmpId=null;
+function openTeamModal(empId,name,curTeam){
+  teamEmpId=empId;
+  document.getElementById('team-emp-name').textContent=name;
+  document.getElementById('team-select').value=curTeam||'Нові співробітники';
+  closeMgrCardForce();
+  document.getElementById('team-modal-ov').classList.add('open');
+}
+function closeTeamModal(){ document.getElementById('team-modal-ov').classList.remove('open'); }
+async function saveTeam(){
+  const team=document.getElementById('team-select').value;
+  setSave('Збереження...',false);
+  try{
+    await api('/api/employees/'+teamEmpId,{method:'PATCH',body:JSON.stringify({team})});
+    const emp=employees.find(e=>e.id===teamEmpId);
+    if(emp) emp.team=team;
+    closeTeamModal();
+    renderAll();
+    setSave('Команду змінено ✓',true);
+  }catch(e){alert('Помилка: '+e.message);}
 }
 
 // ══ DEACTIVATE EMPLOYEE ═══════════════════════════════
@@ -1128,6 +1198,27 @@ async function saveLevel(){
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeLevelModal()">Скасувати</button>
       <button class="btn-save"   onclick="saveLevel()">Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<!-- TEAM MODAL -->
+<div class="modal-ov" id="team-modal-ov">
+  <div class="modal">
+    <h3>👥 Змінити команду</h3>
+    <div id="team-emp-name" style="font-size:.8rem;color:#8a7060;margin-bottom:14px"></div>
+    <label>Команда</label>
+    <select id="team-select" style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:7px 11px;font-size:.88rem;margin-bottom:14px;outline:none">
+      <option value="РОП">РОП</option>
+      <option value="Команда Чопового">Команда Чопового</option>
+      <option value="Команда Шелковникової">Команда Шелковникової</option>
+      <option value="Команда Кіндюшенко">Команда Кіндюшенко</option>
+      <option value="Нові співробітники">Нові співробітники</option>
+      <option value="Віддалено">Віддалено</option>
+    </select>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeTeamModal()">Скасувати</button>
+      <button class="btn-save"   onclick="saveTeam()">Зберегти</button>
     </div>
   </div>
 </div>
