@@ -417,6 +417,7 @@ function renderStats(){
   let planCards='';
   visDepts.forEach(dept=>{
     const s=statsData.find(x=>x.dept_code===dept.code)||{plan_total:0,fact_total:0,pct:0,plan_breakdown:{}};
+    // exclude rop from employee count for display
     const pct=s.pct;
     const cls=pbarCls(pct);
     const bd=s.plan_breakdown||{};
@@ -741,6 +742,7 @@ function renderDailyPlanBar(){
     if(!s||!s.plan_total) return;
     const deptEmps = employees.filter(e=>e.dept_code===dept.code);
     const workingToday = deptEmps.filter(e=>{
+      if(e.role==='rop') return false;
       const v = getStatus(e.id, today);
       return ['10-18','11-18','10-17','удаленка','відробіт'].includes(v);
     }).length;
