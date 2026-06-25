@@ -490,7 +490,7 @@ function renderTable(){
         empRevTotal+=parseFloat(revDetailMap[ek]?.amount||0);
       });
       let row=`<tr>
-        <td class="name-td">${emp.name}</td>
+        <td class="name-td" onclick="openMgrCard(${emp.id})" style="cursor:pointer">${emp.name}</td>
         <td class="level-badge"><span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span></td>`;
       days.forEach(d=>{
         const v=getStatus(emp.id,d.date);
@@ -828,7 +828,8 @@ function openMgrCard(empId){
     <div class="mgr-month">${calHtml}</div>
     <div style="display:flex;gap:8px;margin-top:4px">
       <button class="btn-save" style="flex:1" onclick="closeMgrCardForce();openVacModal(${emp.id},'${emp.name}')">🌴 Відпустка</button>
-      <button class="btn-ghost btn" style="flex:1" onclick="openLevelModal(${emp.id},'${emp.name}','${emp.level}')">⭐ Змінити рівень</button>
+      <button class="btn-ghost btn" style="flex:1" onclick="openLevelModal(${emp.id},'${emp.name}','${emp.level}')">⭐ Рівень</button>
+      <button class="btn-ghost btn" style="flex:0 0 auto;background:#f0d4d4;color:#b71c1c;border-color:#dca8a8" onclick="deactivateEmp(${emp.id},'${emp.name}')">🗑️</button>
     </div>
   `;
   document.getElementById('mgr-card-ov').classList.add('open');
@@ -897,6 +898,19 @@ async function saveLate(){
   }catch(e){alert('Помилка: '+e.message);}
 }
 
+
+
+// ══ DEACTIVATE EMPLOYEE ═══════════════════════════════
+async function deactivateEmp(empId, name){
+  if(!confirm(`Видалити ${name} зі списку?\nМенеджер буде прихований, але дані збережуться.`)) return;
+  try{
+    await api('/api/employees/'+empId,{method:'PATCH',body:JSON.stringify({is_active:false})});
+    employees = employees.filter(e=>e.id!==empId);
+    closeMgrCardForce();
+    renderAll();
+    setSave(`${name} деактивовано ✓`,true);
+  }catch(e){alert('Помилка: '+e.message);}
+}
 
 // ══ LEVEL CHANGE ══════════════════════════════════════
 let levelEmpId=null, selectedLevel=null;
