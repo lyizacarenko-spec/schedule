@@ -512,8 +512,51 @@ function renderTable(){
   days.forEach(d=>{h+=`<th class="${d.isW?'wk':''}">${d.dow}</th>`;});
   h+=`<th></th><th></th><th></th></tr></thead><tbody>`;
 
+  // Calc daily plan per level
+  const today2 = new Date().toISOString().slice(0,10);
+  const s2 = statsData.find(x=>x.dept_code===curDept);
+  const bd2 = s2?.plan_breakdown||{};
+  const workDays2 = days.filter(d=>!d.isW).length||22;
+
+  // Total dept daily summary (above ROP)
+  let deptDayHtml = '';
+  if(s2&&s2.plan_total){
+    const totalDay = Math.round(s2.plan_total/workDays2);
+    const lvlParts = ['top','mid','jun'].map(lvl=>{
+      const b=bd2[lvl]||{cnt:0,plan_per_person:0};
+      if(!b.cnt||!b.plan_per_person) return '';
+      const dayPer = Math.round(b.plan_per_person/workDays2);
+      return `<span style="margin-right:10px"><b>${LEVEL_LABEL[lvl]}:</b> ${fmtM(dayPer)} ₴/ос</span>`;
+    }).filter(Boolean).join('');
+    deptDayHtml = `<span style="margin-right:16px;font-weight:700;color:#b84e30">📊 День: ${fmtM(totalDay)} ₴</span>${lvlParts}`;
+  }
+
   Object.values(groups).forEach(g=>{
-    h+=`<tr class="group-row"><td colspan="${days.length+5}">${g.name}</td></tr>`;
+    // Per-team daily plan
+    let teamDayHtml = '';
+    if(g.name !== 'РОП' && s2 && s2.plan_total){
+      const lvlCounts={top:0,mid:0,jun:0};
+      g.emps.forEach(e=>{
+        if(e.role==='rop') return;
+        const v=getStatus(e.id,today2);
+        const working=['10-18','11-18','10-17','9:30-17:30','удаленка','відробіт'].includes(v);
+        if(working && lvlCounts[e.level]!==undefined) lvlCounts[e.level]++;
+      });
+      const parts=[];
+      ['top','mid','jun'].forEach(lvl=>{
+        const b=bd2[lvl]||{cnt:0,plan_per_person:0};
+        if(!lvlCounts[lvl]||!b.plan_per_person) return;
+        const dayPer=Math.round(b.plan_per_person/workDays2);
+        const teamTotal=Math.round(dayPer*lvlCounts[lvl]);
+        parts.push(`${LEVEL_LABEL[lvl]}: ${lvlCounts[lvl]}×${fmtM(dayPer)}=<b>${fmtM(teamTotal)}</b>`);
+      });
+      if(parts.length) teamDayHtml = ` <span style="font-weight:400;font-size:.65rem;color:#8a6050;margin-left:8px">${parts.join(' · ')}</span>`;
+    }
+
+    if(g.name==='РОП' && deptDayHtml){
+      h+=`<tr class="group-row"><td colspan="${days.length+5}" style="font-size:.68rem">${deptDayHtml}</td></tr>`;
+    }
+    h+=`<tr class="group-row"><td colspan="${days.length+5}">${g.name}${teamDayHtml}</td></tr>`;
 
     g.emps.forEach(emp=>{
       let wd=0,hrs=0;
