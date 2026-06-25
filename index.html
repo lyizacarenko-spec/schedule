@@ -459,70 +459,28 @@ function renderTable(){
   Object.values(groups).forEach(g=>{
     h+=`<tr class="group-row"><td colspan="${days.length+5}">${g.name}</td></tr>`;
 
-    // % виконання плану рядок
-    const gs=statsData.find(x=>x.dept_code===g.code);
-    if(gs){
-      const dayPct=[];
+    g.emps.forEach(emp=>{
+      let wd=0,hrs=0;
+      let empRevTotal=0;
       days.forEach(d=>{
-        // факт по відділу за цей день
-        const dk=`${g.id}_${d.date}`;
-        let dayFact=parseFloat(revDeptMap[dk]?.amount||0);
-        // або сума по менеджерах
-        if(!dayFact){
-          g.emps.forEach(e=>{
-            const ek=`${e.id}_${d.date}`;
-            dayFact+=parseFloat(revDetailMap[ek]?.amount||0);
-          });
-        }
-        // план на день = план місяця / робочі дні
-        const workDays=days.filter(x=>!x.isW).length||22;
-        const dayPlan=gs.plan_total/workDays;
-        const p=dayPlan>0?Math.min(Math.round(dayFact/dayPlan*100),200):0;
-        dayPct.push({p,fact:dayFact,isW:d.isW});
+        const ek=`${emp.id}_${d.date}`;
+        empRevTotal+=parseFloat(revDetailMap[ek]?.amount||0);
       });
-      h+=`<tr class="pct-row"><td colspan="2" style="text-align:right;padding-right:6px;font-size:.63rem;color:#4a3828">% плану</td>`;
-      dayPct.forEach(x=>{
-        if(x.isW){h+=`<td class="wk"></td>`;return;}
-        const col=x.p>=80?'#2e7d52':x.p>=50?'#ffc107':'#ef5350';
-        h+=`<td class="pct-bar-cell">
-          <div class="pct-mini"><div class="pct-mini-fill" style="width:${Math.min(x.p,100)}%;background:${col}"></div></div>
-          ${x.p>0?`<div style="font-size:.58rem;color:${col};text-align:center">${x.p}%</div>`:''}
-        </td>`;
+      let row=`<tr>
+        <td class="name-td">${emp.name}</td>
+        <td class="level-badge"><span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span></td>`;
+      days.forEach(d=>{
+        const v=getStatus(emp.id,d.date);
+        const h2=sh(v);if(h2>0){wd++;hrs+=h2;}
+        row+=`<td class="${d.isW?'wk':''}" data-emp="${emp.id}" data-date="${d.date}"
+               onclick="openPopup(event,${emp.id},'${d.date}','${v}','${emp.name}')">
+               <span class="chip ${sc(v)}">${sl(v)}</span></td>`;
       });
-      h+=`<td></td><td></td><td></td></tr>`;
-    }
-
-    teamOrder.forEach(tkey=>{
-      const team=teams[tkey];
-      if(team.name){
-        const roleLabel = team.emps[0]?.role==='rop'?'👑 РОП':
-                          team.emps[0]?.role==='senior'&&!team.name?'':
-                          `👥 ${team.name}`;
-        h+=`<tr class="team-row"><td colspan="${days.length+5}">${team.name==='РОП'||team.emps[0]?.role==='rop'?'👑 РОП':'👥 Команда: '+team.name}</td></tr>`;
-      }
-      team.emps.forEach(emp=>{
-        let wd=0,hrs=0;
-        let empRevTotal=0;
-        days.forEach(d=>{
-          const ek=`${emp.id}_${d.date}`;
-          empRevTotal+=parseFloat(revDetailMap[ek]?.amount||0);
-        });
-        let row=`<tr>
-          <td class="name-td">${emp.name}</td>
-          <td class="level-badge"><span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span></td>`;
-        days.forEach(d=>{
-          const v=getStatus(emp.id,d.date);
-          const h2=sh(v);if(h2>0){wd++;hrs+=h2;}
-          row+=`<td class="${d.isW?'wk':''}" data-emp="${emp.id}" data-date="${d.date}"
-                 onclick="openPopup(event,${emp.id},'${d.date}','${v}','${emp.name}')">
-                 <span class="chip ${sc(v)}">${sl(v)}</span></td>`;
-        });
-        row+=`<td class="stat-td">${wd}</td>
-              <td class="stat-td">${hrs}</td>
-              <td class="rev-td ${empRevTotal?'':'empty'}" onclick="openRevEmpModal(${emp.id},'${emp.name}')">${empRevTotal?fmtM(empRevTotal)+' ₴':'—'}</td>
-              </tr>`;
-        h+=row;
-      });
+      row+=`<td class="stat-td">${wd}</td>
+            <td class="stat-td">${hrs}</td>
+            <td class="rev-td ${empRevTotal?'':'empty'}" onclick="openRevEmpModal(${emp.id},'${emp.name}')">${empRevTotal?fmtM(empRevTotal)+' ₴':'—'}</td>
+            </tr>`;
+      h+=row;
     });
   });
   h+=`</tbody></table>`;
