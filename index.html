@@ -171,6 +171,29 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 .dept-btn.sel{background:#b84e30;color:#2c2218}
 
 .loading{text-align:center;padding:50px;color:#4a3828;font-size:.88rem}
+
+/* MANAGER CARD */
+.mgr-card-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center}
+.mgr-card-ov.open{display:flex}
+.mgr-card{background:#f7f2ec;border:1px solid #c8c0b4;border-radius:14px;padding:22px;min-width:340px;max-width:500px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.mgr-card h3{font-size:1rem;color:#2c2218;margin-bottom:4px}
+.mgr-card .mgr-sub{font-size:.75rem;color:#8a7060;margin-bottom:16px}
+.mgr-stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.mgr-stat{background:#ede8e0;border-radius:8px;padding:8px 12px;text-align:center}
+.mgr-stat .n{font-size:1.1rem;font-weight:700;color:#b84e30}
+.mgr-stat .l{font-size:.65rem;color:#8a7060}
+.mgr-month{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:14px}
+.mgr-day{text-align:center;font-size:.6rem;padding:3px 2px;border-radius:4px;cursor:default}
+.mgr-day.hdr{color:#8a7060;font-weight:600}
+
+/* VACATION RANGE MODAL */
+.vac-modal input[type=date]{width:100%}
+
+/* DAILY PLAN ROW */
+.daily-plan-row{background:#fff8f4;border-bottom:1px solid #e8e0d8;padding:6px 20px;font-size:.78rem;color:#7a5040;display:flex;gap:16px;flex-wrap:wrap}
+.daily-plan-item{display:flex;gap:6px;align-items:center}
+.daily-plan-item strong{color:#b84e30;font-size:.88rem}
+
 </style>
 </head>
 <body>
@@ -193,14 +216,14 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 </div>
 
 <div class="dept-tabs">
-  <button class="dept-tab active" id="tab-all"    onclick="setDept('all')">Всі</button>
-  <button class="dept-tab"        id="tab-rzpk"   onclick="setDept('rzpk')">РЗПК</button>
+  <button class="dept-tab active" id="tab-rzpk"   onclick="setDept('rzpk')">РЗПК</button>
   <button class="dept-tab"        id="tab-hot"    onclick="setDept('hot')">Гарячі продажі</button>
   <button class="dept-tab"        id="tab-refuse" onclick="setDept('refuse')">Відмови</button>
 </div>
 
 <div class="stats-row" id="stats-row"><div class="loading">Завантаження...</div></div>
 
+<div class="daily-plan-bar" id="daily-plan-bar"></div>
 <div class="table-wrap">
   <div id="table-area" class="loading">Завантаження графіка...</div>
 </div>
@@ -305,7 +328,7 @@ const MONTH_UA = ['','Січень','Лютий','Березень','Квіте�
 // ══ STATE ════════════════════════════════════════════
 let Y = new Date().getFullYear();
 let M = new Date().getMonth()+1;
-let curDept = 'all';
+let curDept = 'rzpk';
 let employees=[], departments=[], schedMap={}, revDetailMap={}, revDeptMap={}, statsData=[];
 let pending={};
 let revMode = 'dept';
@@ -362,6 +385,7 @@ function renderAll(){
   document.getElementById('month-label').textContent=`${MONTH_UA[M]} ${Y}`;
   renderStats();
   renderTable();
+  renderDailyPlanBar();
 }
 
 function fmtM(n){
@@ -431,7 +455,6 @@ function renderStats(){
 }
 
 function getVisEmps(){
-  if(curDept==='all') return employees;
   return employees.filter(e=>e.dept_code===curDept);
 }
 
@@ -507,6 +530,16 @@ function closePopupForce(){ document.getElementById('popup-ov').classList.remove
 
 async function applyStatus(v){
   closePopupForce();
+  if(v==='запізн'){
+    const emp=employees.find(e=>e.id===pEmp);
+    openLatePopup(pEmp,pDate,emp?.name||'');
+    return;
+  }
+  if(v==='відпуск'){
+    const emp=employees.find(e=>e.id===pEmp);
+    openVacModal(pEmp,emp?.name||'');
+    return;
+  }
   const k=`${pEmp}_${pDate}`;
   pending[k]=v;
   renderTable();renderStats();
@@ -697,6 +730,170 @@ function setSave(msg,ok){
   el.textContent=msg;el.className='save-dot'+(ok?' ok':'');
 }
 
+
+// ══ DAILY PLAN BAR ════════════════════════════════════
+function renderDailyPlanBar(){
+  const today = new Date().toISOString().slice(0,10);
+  const visDepts = departments.filter(d=>d.code===curDept);
+  let barHtml = '';
+  visDepts.forEach(dept=>{
+    const s = statsData.find(x=>x.dept_code===dept.code);
+    if(!s||!s.plan_total) return;
+    const deptEmps = employees.filter(e=>e.dept_code===dept.code);
+    const workingToday = deptEmps.filter(e=>{
+      const v = getStatus(e.id, today);
+      return ['10-18','11-18','10-17','удаленка','відробіт'].includes(v);
+    }).length;
+    if(!workingToday) return;
+    const days = getDays(Y,M);
+    const workDays = days.filter(d=>!d.isW).length||22;
+    const dailyPlan = Math.round(s.plan_total / workDays);
+    const perPerson = Math.round(dailyPlan / workingToday);
+    barHtml += `<div class="daily-plan-item">
+      <span style="color:#8a7060">${dept.name}:</span>
+      <strong>${fmtM(dailyPlan)} ₴/день</strong>
+      <span style="color:#aaa">•</span>
+      <span style="color:#8a7060">${workingToday} працює →</span>
+      <strong>${fmtM(perPerson)} ₴/особу</strong>
+    </div>`;
+  });
+  const bar = document.getElementById('daily-plan-bar');
+  if(bar) bar.innerHTML = barHtml ? `<div class="daily-plan-row">${barHtml}</div>` : '';
+}
+
+// ══ MANAGER CARD ══════════════════════════════════════
+function openMgrCard(empId){
+  const emp = employees.find(e=>e.id===empId);
+  if(!emp) return;
+  const days = getDays(Y,M);
+  let wd=0,hrs=0,sick=0,vac=0,late=0,rem=0,rev=0;
+  const dows=['нд','пн','вт','ср','чт','пт','сб'];
+  const LEVEL_LABEL2={top:'ТОП',mid:'Мідл',jun:'Джун'};
+
+  let calHtml='';
+  // header days
+  dows.forEach(d=>{ calHtml+=`<div class="mgr-day hdr">${d}</div>`; });
+  // empty cells before first day
+  const firstDow = new Date(Y,M-1,1).getDay();
+  for(let i=0;i<firstDow;i++) calHtml+=`<div class="mgr-day"></div>`;
+
+  days.forEach(d=>{
+    const v=getStatus(empId,d.date);
+    const h=sh(v);
+    if(h>0){wd++;hrs+=h;}
+    if(v==='больн') sick++;
+    if(v==='відпуск') vac++;
+    if(v==='запізн') late++;
+    if(v==='удаленка') rem++;
+    const ek=`${empId}_${d.date}`;
+    rev+=parseFloat(revDetailMap[ek]?.amount||0);
+    const bg = v==='10-18'||v==='11-18'||v==='10-17'?'#d4edd8':
+               v==='вих'?'#e8e4dc':
+               v==='больн'?'#f0d4d4':
+               v==='відпуск'?'#f0ecd0':
+               v==='удаленка'?'#d4e4f0':
+               v==='запізн'?'#f0e4d0':'#ede8e0';
+    const tc = v==='10-18'||v==='11-18'||v==='10-17'?'#1a5c30':
+               v==='вих'?'#6a5848':
+               v==='больн'?'#b71c1c':
+               v==='відпуск'?'#7a5c00':
+               v==='удаленка'?'#1a5c8a':
+               v==='запізн'?'#7a4000':'#4a3828';
+    calHtml+=`<div class="mgr-day" style="background:${bg};color:${tc}" title="${v||'—'}">${d.d}<br><span style="font-size:.55rem">${v?v.slice(0,3):'—'}</span></div>`;
+  });
+
+  const s = statsData.find(x=>x.dept_code===emp.dept_code);
+  const bd = s?.plan_breakdown||{};
+  const empPlan = bd[emp.level]?.plan_per_person||0;
+
+  document.getElementById('mgr-card-content').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <h3>${emp.name}</h3>
+        <div class="mgr-sub">${emp.dept_name} · ${LEVEL_LABEL2[emp.level]} · ${emp.role==='rop'?'РОП':emp.role==='senior'?'Старший менеджер':'Менеджер'}</div>
+      </div>
+      <button onclick="closeMgrCardForce()" style="background:none;color:#aaa;font-size:1.1rem;cursor:pointer">✕</button>
+    </div>
+    <div class="mgr-stats">
+      <div class="mgr-stat"><div class="n">${wd}</div><div class="l">Змін</div></div>
+      <div class="mgr-stat"><div class="n">${hrs}</div><div class="l">Годин</div></div>
+      <div class="mgr-stat"><div class="n" style="color:#ef5350">${sick}</div><div class="l">Хвороба</div></div>
+      <div class="mgr-stat"><div class="n" style="color:#ffc107">${vac}</div><div class="l">Відпустка</div></div>
+      <div class="mgr-stat"><div class="n" style="color:#ff9800">${late}</div><div class="l">Запізнень</div></div>
+      <div class="mgr-stat"><div class="n" style="color:#42a5f5">${rem}</div><div class="l">Удалено</div></div>
+      ${rev>0?`<div class="mgr-stat"><div class="n" style="color:#2e7d52">${fmtM(rev)} ₴</div><div class="l">Виручка</div></div>`:''}
+      ${empPlan>0?`<div class="mgr-stat"><div class="n">${fmtM(empPlan)} ₴</div><div class="l">План</div></div>`:''}
+    </div>
+    <div style="font-size:.7rem;color:#8a7060;margin-bottom:6px">Календар ${MONTH_UA[M]} ${Y}</div>
+    <div class="mgr-month">${calHtml}</div>
+    <button class="btn-save" style="width:100%;margin-top:4px" onclick="closeMgrCardForce();openVacModal(${emp.id},'${emp.name}')">🌴 Поставити відпустку</button>
+  `;
+  document.getElementById('mgr-card-ov').classList.add('open');
+}
+function closeMgrCard(e){ if(e&&e.target.id!=='mgr-card-ov')return; document.getElementById('mgr-card-ov').classList.remove('open'); }
+function closeMgrCardForce(){ document.getElementById('mgr-card-ov').classList.remove('open'); }
+
+// ══ VACATION RANGE ════════════════════════════════════
+let vacEmpId=null;
+function openVacModal(empId,name){
+  vacEmpId=empId;
+  document.getElementById('vac-emp-name').textContent=name;
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('vac-from').value=today;
+  document.getElementById('vac-to').value=today;
+  document.getElementById('vac-modal-ov').classList.add('open');
+}
+function closeVacModal(){ document.getElementById('vac-modal-ov').classList.remove('open'); }
+async function saveVacation(){
+  const from=document.getElementById('vac-from').value;
+  const to=document.getElementById('vac-to').value;
+  if(!from||!to||from>to){alert('Перевір дати');return;}
+  setSave('Збереження...',false);
+  try{
+    const days=getDays(Y,M);
+    const inRange=days.filter(d=>d.date>=from&&d.date<=to);
+    for(const d of inRange){
+      await api('/api/schedule',{method:'PUT',body:JSON.stringify({
+        employee_id:vacEmpId,entry_date:d.date,status:'відпуск'
+      })});
+      schedMap[`${vacEmpId}_${d.date}`]={employee_id:vacEmpId,entry_date:d.date,status:'відпуск'};
+    }
+    closeVacModal();
+    renderTable();renderStats();
+    setSave(`Відпустку встановлено (${inRange.length} днів) ✓`,true);
+  }catch(e){alert('Помилка: '+e.message);}
+}
+
+// ══ LATE POPUP (час + коментар) ══════════════════════
+let lateEmpId=null,lateDate=null;
+function openLatePopup(empId,date,name){
+  lateEmpId=empId;lateDate=date;
+  const existing=schedMap[`${empId}_${date}`];
+  const note=existing?.note||'';
+  const time=note.match(/\d{2}:\d{2}/)?.[0]||'';
+  const comment=note.replace(/прийшов о \d{2}:\d{2}\s*/,'');
+  document.getElementById('late-modal-title').textContent=`Запізнення — ${name}`;
+  document.getElementById('late-time').value=time;
+  document.getElementById('late-comment').value=comment;
+  document.getElementById('late-modal-ov').classList.add('open');
+}
+function closeLateModal(){ document.getElementById('late-modal-ov').classList.remove('open'); }
+async function saveLate(){
+  const time=document.getElementById('late-time').value;
+  const comment=document.getElementById('late-comment').value;
+  const note=(time?`прийшов о ${time} `:'')+(comment||'');
+  setSave('Збереження...',false);
+  try{
+    await api('/api/schedule',{method:'PUT',body:JSON.stringify({
+      employee_id:lateEmpId,entry_date:lateDate,status:'запізн',note
+    })});
+    schedMap[`${lateEmpId}_${lateDate}`]={employee_id:lateEmpId,entry_date:lateDate,status:'запізн',note};
+    closeLateModal();
+    renderTable();
+    setSave('Збережено ✓',true);
+  }catch(e){alert('Помилка: '+e.message);}
+}
+
 // ══ INIT ══════════════════════════════════════════════
 (async()=>{
   try{ await loadAll(); }
@@ -708,5 +905,43 @@ function setSave(msg,ok){
   }
 })();
 </script>
+
+<!-- MANAGER CARD -->
+<div class="mgr-card-ov" id="mgr-card-ov" onclick="closeMgrCard(event)">
+  <div class="mgr-card" id="mgr-card-content">
+  </div>
+</div>
+
+
+<!-- LATE MODAL -->
+<div class="modal-ov" id="late-modal-ov">
+  <div class="modal">
+    <h3 id="late-modal-title">⏰ Запізнення</h3>
+    <label>Час приходу</label>
+    <input type="time" id="late-time" placeholder="09:30">
+    <label>Коментар (необов.)</label>
+    <input type="text" id="late-comment" placeholder="причина...">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeLateModal()">Скасувати</button>
+      <button class="btn-save"   onclick="saveLate()">Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<!-- VACATION RANGE MODAL -->
+<div class="modal-ov" id="vac-modal-ov">
+  <div class="modal vac-modal">
+    <h3>🌴 Відпустка</h3>
+    <div id="vac-emp-name" style="font-size:.8rem;color:#8a7060;margin-bottom:12px"></div>
+    <label>Від</label>
+    <input type="date" id="vac-from">
+    <label>До</label>
+    <input type="date" id="vac-to">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeVacModal()">Скасувати</button>
+      <button class="btn-save"   onclick="saveVacation()">Поставити відпустку</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
