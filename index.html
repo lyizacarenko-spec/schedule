@@ -345,7 +345,7 @@ const MONTH_UA = ['','Січень','Лютий','Березень','Квіте�
 let Y = new Date().getFullYear();
 let M = new Date().getMonth()+1;
 let curDept = 'rzpk';
-let employees=[], departments=[], schedMap={}, revDetailMap={}, revDeptMap={}, statsData=[];
+let employees=[], departments=[], schedMap={}, revDetailMap={}, revDeptMap={}, statsData=[], salaryMap={};
 let pending={};
 let revMode = 'dept';
 let revDeptSel = 1;
@@ -375,12 +375,15 @@ async function loadAll(){
 
 async function loadMonthData(){
   const qs=`?year=${Y}&month=${M}`;
-  const [sched,revD,revDept,stats]=await Promise.all([
+  const [sched,revD,revDept,stats,salData]=await Promise.all([
     api('/api/schedule'+qs),
     api('/api/revenue/detail'+qs),
     api('/api/revenue/dept'+qs),
     api('/api/stats'+qs),
+    api('/api/salary'+qs),
   ]);
+  salaryMap={};
+  salData.forEach(s=>{ salaryMap[s.employee_id]=s; });
   schedMap={};
   sched.forEach(e=>{schedMap[`${e.employee_id}_${e.entry_date.slice(0,10)}`]=e;});
   revDetailMap={};
@@ -938,13 +941,18 @@ function openMgrCard(empId){
       </div>
       <div id="sal-unlock-block" style="${ropUnlocked?'display:block':'display:none'}">
         <div class="sal-row">
-          <div class="sal-field"><label>Індивід. план (грн)</label><input type="number" id="sal-plan-${emp.id}" placeholder="260000"></div>
-          <div class="sal-field"><label>Факт оборот (грн)</label><input type="number" id="sal-fact-${emp.id}" placeholder="0"></div>
-          <div class="sal-field"><label>% повернень</label><input type="number" id="sal-ret-${emp.id}" placeholder="0" min="0" max="100"></div>
-          <div class="sal-field"><label>Відпрац. днів</label><input type="number" id="sal-days-${emp.id}" value="${wd}"></div>
+          <div class="sal-field"><label>Індивід. план (грн)</label><input type="number" id="sal-plan-${emp.id}" placeholder="260000" value="${salaryMap[emp.id]?.plan_amount||''}"></div>
+          <div class="sal-field"><label>Факт оборот (грн)</label><input type="number" id="sal-fact-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.fact_amount||''}"></div>
+          <div class="sal-field"><label>% повернень</label><input type="number" id="sal-ret-${emp.id}" placeholder="0" min="0" max="100" value="${salaryMap[emp.id]?.returns_pct||''}"></div>
+          <div class="sal-field"><label>Відпрац. днів</label><input type="number" id="sal-days-${emp.id}" value="${salaryMap[emp.id]?.worked_days||wd}"></div>
         </div>
-        <button onclick="calcSalary(${emp.id})" style="width:100%;margin-top:4px;padding:8px;background:#b84e30;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem">🧮 Розрахувати ЗП</button>
-        <div id="sal-result-${emp.id}" style="margin-top:8px"><div style="font-size:.75rem;color:#aaa">Натисни кнопку для розрахунку</div></div>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <button onclick="calcSalary(${emp.id})" style="flex:1;padding:8px;background:#b84e30;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem">🧮 Розрахувати</button>
+          <button onclick="saveSalary(${emp.id})" style="flex:0 0 auto;padding:8px 14px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem">💾 Зберегти</button>
+        </div>
+        <div id="sal-result-${emp.id}" style="margin-top:8px">
+          ${salaryMap[emp.id]?.fact_amount?'<div style="font-size:.72rem;color:#8a7060">📋 Є збережені дані — натисни Розрахувати для перегляду</div>':'<div style="font-size:.75rem;color:#aaa">Введи дані та натисни Розрахувати</div>'}
+        </div>
       </div>
     </div>
     <div style="font-size:.7rem;color:#8a7060;margin-bottom:6px">Календар ${MONTH_UA[M]} ${Y}</div>
@@ -1025,6 +1033,26 @@ async function saveLate(){
 
 
 
+
+
+// ══ SAVE SALARY ════════════════════════════════════════
+async function saveSalary(empId){
+  const plan  = parseFloat(document.getElementById('sal-plan-'+empId).value)||0;
+  const fact  = parseFloat(document.getElementById('sal-fact-'+empId).value)||0;
+  const ret   = parseFloat(document.getElementById('sal-ret-'+empId).value)||0;
+  const days  = parseInt(document.getElementById('sal-days-'+empId).value)||0;
+  if(!plan||!fact){ alert('Введи план та оборот'); return; }
+  try{
+    const r = await api('/api/salary',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:Y, calc_month:M,
+      plan_amount:plan, fact_amount:fact, returns_pct:ret, worked_days:days
+    })});
+    salaryMap[empId]=r;
+    setSave('ЗП збережено ✓',true);
+    // auto-calc after save
+    calcSalary(empId);
+  }catch(e){ alert('Помилка збереження: '+e.message); }
+}
 
 // ══ ROP PIN ═══════════════════════════════════════════
 let ropUnlocked = false;
