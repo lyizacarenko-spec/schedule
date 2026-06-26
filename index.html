@@ -403,7 +403,10 @@ function getStatus(empId,date){
   const k=`${empId}_${date}`;
   if(k in pending) return pending[k];
   if(k in schedMap) return schedMap[k].status;
-  return ''; // empty = not filled yet, shows as blank
+  // New employees (level='new') show blank, others default to 10-18
+  const emp=employees.find(e=>e.id===empId);
+  if(emp&&emp.level==='new') return '';
+  return '10-18';
 }
 
 // ══ RENDER ════════════════════════════════════════════
