@@ -707,26 +707,36 @@ function openPlanModal(deptCode){
   visDepts.forEach(dept=>{
     const s=statsData.find(x=>x.dept_code===dept.code)||{plan_breakdown:{},plan_total:0};
     const bd=s.plan_breakdown||{};
-    const lvls=['top','mid','jun'];
     const total=s.plan_total||0;
+    const daysInMonth=getDays(Y,M).length;
     body+=`<div style="margin-bottom:18px">
       <div style="font-size:.78rem;color:#b84e30;font-weight:700;margin-bottom:10px">${dept.name}</div>
+
+      <div style="margin-bottom:12px">
+        <div style="font-size:.72rem;color:#8a7060;margin-bottom:4px">Загальний план відділу на місяць (грн)</div>
+        <input type="number" id="plan-dept-total-${dept.id}" value="${total||''}"
+          placeholder="наприклад 5400000"
+          style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:8px 12px;font-size:.92rem;outline:none;margin-bottom:4px"
+          oninput="updatePlanTotal('${dept.id}')">
+        <div style="font-size:.68rem;color:#aaa" id="plan-dept-day-${dept.id}">${total>0?`≈ ${fmtM(Math.round(total/daysInMonth))} ₴/день`:''}</div>
+      </div>
+
+      <div style="font-size:.72rem;color:#8a7060;margin-bottom:6px;border-top:1px solid #d4cdc4;padding-top:10px">Індивідуальний план для розрахунку ЗП (грн/особу)</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px">
-        ${lvls.map(lvl=>{
+        ${['top','mid','jun'].map(lvl=>{
           const b=bd[lvl]||{cnt:0,plan_per_person:0};
           return `<div>
-            <div style="font-size:.7rem;color:#8a7060;margin-bottom:3px">${LEVEL_LABEL[lvl]} (${b.cnt} ос.)</div>
+            <div style="font-size:.68rem;color:#8a7060;margin-bottom:3px">${LEVEL_LABEL[lvl]} (${b.cnt} ос.)</div>
             <input type="number" id="plan-${dept.id}-${lvl}" value="${b.plan_per_person||''}"
               placeholder="план/особу"
-              style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:6px 9px;font-size:.85rem;outline:none"
+              style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:5px 9px;font-size:.82rem;outline:none"
               oninput="updatePlanTotal('${dept.id}')">
-            <div style="font-size:.62rem;color:#aaa;margin-top:2px" id="plan-sub-${dept.id}-${lvl}">${b.cnt>0&&b.plan_per_person?fmtM(b.plan_per_person*b.cnt)+' ₴ разом':''}</div>
+            <div style="font-size:.6rem;color:#aaa;margin-top:2px" id="plan-sub-${dept.id}-${lvl}">${b.cnt>0&&b.plan_per_person?fmtM(b.plan_per_person*b.cnt)+' ₴':''}</div>
           </div>`;
         }).join('')}
       </div>
-      <div style="background:#ede8e0;border-radius:7px;padding:8px 12px;font-size:.78rem;color:#2c2218" id="plan-total-show-${dept.id}">
-        📊 Загальний план: <b>${total>0?fmtM(total)+' ₴':'—'}</b>
-        ${total>0?` · ${fmtM(Math.round(total/getDays(Y,M).length))} ₴/день`:''}
+      <div style="background:#ede8e0;border-radius:7px;padding:7px 12px;font-size:.72rem;color:#8a7060" id="plan-total-show-${dept.id}">
+        Сума по рівнях: <b id="plan-levels-sum-${dept.id}">${total>0?fmtM(total)+' ₴':'—'}</b>
       </div>
     </div>`;
   });
@@ -737,18 +747,23 @@ function openPlanModal(deptCode){
 function updatePlanTotal(deptId){
   const s=statsData.find(x=>x.dept_code===(departments.find(d=>d.id==deptId)?.code))||{plan_breakdown:{}};
   const bd=s.plan_breakdown||{};
-  let total=0;
+  // Update dept total preview
+  const deptTotal=parseFloat(document.getElementById(`plan-dept-total-${deptId}`)?.value)||0;
+  const dayEl=document.getElementById(`plan-dept-day-${deptId}`);
+  const dAll=getDays(Y,M);
+  if(dayEl) dayEl.textContent=deptTotal>0?`≈ ${fmtM(Math.round(deptTotal/dAll.length))} ₴/день`:'';
+  // Update levels sum
+  let lvlSum=0;
   ['top','mid','jun'].forEach(lvl=>{
     const cnt=bd[lvl]?.cnt||0;
     const val=parseFloat(document.getElementById(`plan-${deptId}-${lvl}`)?.value)||0;
     const sub=val*cnt;
-    total+=sub;
+    lvlSum+=sub;
     const subEl=document.getElementById(`plan-sub-${deptId}-${lvl}`);
-    if(subEl) subEl.textContent=cnt>0&&val?fmtM(sub)+' ₴ разом':'';
+    if(subEl) subEl.textContent=cnt>0&&val?fmtM(sub)+' ₴':'';
   });
-  const showEl=document.getElementById(`plan-total-show-${deptId}`);
-  const dAll=getDays(Y,M);
-  if(showEl) showEl.innerHTML=`📊 Загальний план: <b>${total>0?fmtM(total)+' ₴':'—'}</b>${total>0?` · ${fmtM(Math.round(total/dAll.length))} ₴/день`:''}`;
+  const sumEl=document.getElementById(`plan-levels-sum-${deptId}`);
+  if(sumEl) sumEl.textContent=lvlSum>0?fmtM(lvlSum)+' ₴':'—';
 }
 
 function closePlanModal(){ document.getElementById('plan-modal-ov').classList.remove('open'); }
@@ -758,13 +773,32 @@ async function savePlans(){
   setSave('Збереження...',false);
   try{
     for(const dept of visDepts){
+      // Save individual level plans (for salary calc)
+      let lvlSum=0;
+      const s=statsData.find(x=>x.dept_code===dept.code)||{plan_breakdown:{}};
+      const bd=s.plan_breakdown||{};
       for(const lvl of ['top','mid','jun']){
         const el=document.getElementById(`plan-${dept.id}-${lvl}`);
         if(!el) continue;
         const amt=parseFloat(el.value)||0;
+        lvlSum+=amt*(bd[lvl]?.cnt||0);
         await api('/api/plans',{method:'PUT',body:JSON.stringify({
           department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:amt
         })});
+      }
+      // If dept total is set and differs from levels sum - save dept total as override
+      const deptTotalEl=document.getElementById(`plan-dept-total-${dept.id}`);
+      const deptTotal=parseFloat(deptTotalEl?.value)||0;
+      // If dept total set but levels not filled - distribute evenly
+      if(deptTotal>0 && lvlSum===0){
+        const cnt=Object.values(bd).reduce((a,b)=>a+(b.cnt||0),0)||1;
+        const perPerson=Math.round(deptTotal/cnt);
+        for(const lvl of ['top','mid','jun']){
+          if(!(bd[lvl]?.cnt>0)) continue;
+          await api('/api/plans',{method:'PUT',body:JSON.stringify({
+            department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:perPerson
+          })});
+        }
       }
     }
     await loadMonthData();
