@@ -308,9 +308,11 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
       <option value="senior">Старший менеджер</option>
       <option value="rop">РОП</option>
     </select>
-    <label>Дата виходу (навчання/старт)</label>
+    <label>Дата початку (перший день)</label>
     <input type="date" id="ae-start-date" style="margin-bottom:4px">
-    <div style="font-size:.72rem;color:#8a7060;margin-bottom:12px">До цієї дати клітинки порожні. З цієї дати заповнюєш вручну: навч / вих / 10-18</div>
+    <label style="margin-top:4px">Кількість днів навчання</label>
+    <input type="number" id="ae-navch-days" placeholder="наприклад 5" min="0" max="31" style="margin-bottom:4px">
+    <div style="font-size:.72rem;color:#8a7060;margin-bottom:12px">До дати — прочерки. З дати — навч (стільки днів). Далі заповниш вручну.</div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeAeModal()">Скасувати</button>
       <button class="btn-save"   onclick="saveEmployee()">Додати</button>
@@ -403,8 +405,10 @@ function getStatus(empId,date){
   const k=`${empId}_${date}`;
   if(k in pending) return pending[k];
   if(k in schedMap) return schedMap[k].status;
-  // New employees (level='new') show blank, others default to 10-18
   const emp=employees.find(e=>e.id===empId);
+  // If employee has start_date and date is before it - show empty
+  if(emp&&emp.start_date&&date<emp.start_date) return '';
+  // New employees without filled status show empty
   if(emp&&emp.level==='new') return '';
   return '10-18';
 }
@@ -877,9 +881,26 @@ async function saveEmployee(){
     const d=departments.find(x=>x.id===dept);
     employees.push({...r,dept_code:d?.code,dept_name:d?.name});
 
-    // Just note the start date - no auto-fill, ROP fills manually
     if(startDate){
-      setSave(`${name} додано, виходить з ${startDate.slice(8)}.${startDate.slice(5,7)} ✓`,true);
+      const navchDays = parseInt(document.getElementById('ae-navch-days').value)||0;
+      const allDays = getDays(Y,M);
+      // Fill navch from startDate for navchDays working days
+      let filled = 0;
+      for(const d of allDays){
+        if(d.date < startDate) continue;
+        const status = filled < navchDays ? 'навч' : null;
+        if(status){
+          await api('/api/schedule',{method:'PUT',body:JSON.stringify({
+            employee_id:r.id, entry_date:d.date, status
+          })});
+          schedMap[`${r.id}_${d.date}`]={employee_id:r.id,entry_date:d.date,status};
+          filled++;
+        }
+      }
+      // Save start_date to employee
+      await api('/api/employees/'+r.id,{method:'PATCH',body:JSON.stringify({start_date:startDate})});
+      employees[employees.length-1].start_date=startDate;
+      setSave(`${name} додано з ${startDate.slice(8)}.${startDate.slice(5,7)}, навч ${navchDays} дн. ✓`,true);
     } else {
       setSave('Менеджера додано ✓',true);
     }
@@ -1159,7 +1180,7 @@ async function saveSalary(empId){
 
 // ══ ROP PIN ═══════════════════════════════════════════
 let ropUnlocked = false;
-const ROP_PIN = '1011';
+const ROP_PIN = '6773';
 
 function checkRopPin(){
   const pin = document.getElementById('rop-pin-input')?.value;
