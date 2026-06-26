@@ -86,9 +86,9 @@ input,select{font-family:inherit}
 .lc-jun{background:#251a40;color:#9c71d4}
 
 /* TABLE */
-.table-wrap{overflow-x:auto;overflow-y:visible;padding:14px 20px 40px}
-table{border-collapse:collapse;font-size:.75rem;background:#ede8e0;border-radius:10px;overflow:visible;box-shadow:0 4px 24px rgba(0,0,0,.5);min-width:700px;width:100%}
-thead th{background:#ede8e0;color:#6a5040;padding:7px 4px;text-align:center;font-weight:500;white-space:nowrap;position:sticky;top:0;z-index:2;border-bottom:1px solid #d4cdc4}
+.table-wrap{overflow:auto;max-height:calc(100vh - 200px);padding:14px 20px 40px}
+table{border-collapse:collapse;font-size:.75rem;background:#ede8e0;border-radius:10px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.5);min-width:700px;width:100%}
+thead th{background:#ede8e0;color:#6a5040;padding:7px 4px;text-align:center;font-weight:500;white-space:nowrap;position:sticky;top:0;z-index:2;border-bottom:1px solid #d4cdc4;box-shadow:0 2px 4px rgba(0,0,0,.08)}
 thead th.name-th{text-align:left;padding-left:12px;min-width:160px;position:sticky;left:0;z-index:20;background:#ede8e0}
 thead .dow-row th{font-size:.63rem;color:#383c58;padding:2px 4px;background:#ddd8d0}
 thead .dow-row th.wk{color:#b84e3066}
