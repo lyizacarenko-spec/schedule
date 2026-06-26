@@ -14,6 +14,7 @@ input,select{font-family:inherit}
 .topbar{
   background:#ede8e0;border-bottom:1px solid #d4cdc4;
   padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  position:sticky;top:0;z-index:50;
 }
 .logo{font-size:1rem;font-weight:700;color:#2c2218;white-space:nowrap}
 .logo span{color:#b84e30}
@@ -39,6 +40,7 @@ input,select{font-family:inherit}
 .dept-tabs{
   background:#ede8e0;border-bottom:2px solid #d4cdc4;
   padding:0 20px;display:flex;gap:0;overflow-x:auto;
+  position:sticky;top:54px;z-index:49;
 }
 .dept-tab{
   padding:10px 22px;font-size:.84rem;font-weight:600;
@@ -52,6 +54,7 @@ input,select{font-family:inherit}
 .stats-row{
   display:flex;gap:10px;flex-wrap:wrap;
   padding:12px 20px;background:#ede8e0;border-bottom:1px solid #d4cdc4;
+  position:sticky;top:98px;z-index:48;
 }
 .stat-card{
   background:#ede8e0;border:1px solid #d4cdc4;border-radius:8px;
@@ -86,11 +89,11 @@ input,select{font-family:inherit}
 .lc-jun{background:#251a40;color:#9c71d4}
 
 /* TABLE */
-.table-wrap{overflow:auto;height:calc(100vh - 220px);padding:14px 20px 40px;position:relative}
+.table-wrap{overflow-x:auto;padding:14px 20px 40px}
 table{border-collapse:collapse;font-size:.75rem;background:#ede8e0;border-radius:0;overflow:visible;box-shadow:0 4px 24px rgba(0,0,0,.1);min-width:700px;width:100%}
-thead th{background:#ede8e0;color:#6a5040;padding:7px 4px;text-align:center;font-weight:500;white-space:nowrap;position:sticky;top:0;z-index:12;border-bottom:1px solid #d4cdc4;box-shadow:0 2px 6px rgba(0,0,0,.12)}
-thead th.name-th{text-align:left;padding-left:12px;min-width:160px;position:sticky;left:0;top:0;z-index:25;background:#ede8e0}
-thead .dow-row th{font-size:.63rem;color:#383c58;padding:2px 4px;background:#ddd8d0;position:sticky;top:37px;z-index:12}
+thead th{background:#ede8e0;color:#6a5040;padding:7px 4px;text-align:center;font-weight:500;white-space:nowrap;position:sticky;top:204px;z-index:30;border-bottom:1px solid #d4cdc4;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+thead th.name-th{text-align:left;padding-left:12px;min-width:160px;position:sticky;left:0;top:204px;z-index:35;background:#ede8e0}
+thead .dow-row th{font-size:.63rem;color:#383c58;padding:2px 4px;background:#ddd8d0;position:sticky;top:240px;z-index:30}
 thead .dow-row th.wk{color:#b84e3066}
 tbody tr{border-bottom:1px solid #e2dbd0;transition:.07s}
 tbody tr:hover{background:#e2dbd0}
@@ -127,7 +130,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 .cs-late {background:#f0e4d0;color:#ff9800;border:1px solid #d4b890}
 .cs-extra{background:#e4d4f0;color:#ba68c8;border:1px solid #c4a8d4}
 .cs-fired{background:#e8e4e0;color:#333;border:1px solid #d0ccc8}
-.cs-empty{background:transparent;color:#2a2a3a;border:1px solid transparent}
+.cs-empty{background:#f0ede8;color:#ccc;border:1px solid #e8e4e0}.cs-before{background:#f0ede8;color:transparent;border:1px solid transparent;cursor:default}
 
 /* POPUP */
 .popup-ov{display:none;position:fixed;inset:0;z-index:100}
@@ -205,7 +208,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 .vac-modal input[type=date]{width:100%}
 
 /* DAILY PLAN ROW */
-.daily-plan-row{background:#fff8f4;border-bottom:1px solid #e8e0d8;padding:6px 20px;font-size:.78rem;color:#7a5040;display:flex;gap:16px;flex-wrap:wrap}
+.daily-plan-row{background:#fff8f4;border-bottom:1px solid #e8e0d8;padding:6px 20px;font-size:.78rem;color:#7a5040;display:flex;gap:16px;flex-wrap:wrap;position:sticky;top:168px;z-index:47}
 .daily-plan-item{display:flex;gap:6px;align-items:center}
 .daily-plan-item strong{color:#b84e30;font-size:.88rem}
 
@@ -306,6 +309,9 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
       <option value="senior">Старший менеджер</option>
       <option value="rop">РОП</option>
     </select>
+    <label>Дата виходу (навчання/старт)</label>
+    <input type="date" id="ae-start-date" style="margin-bottom:4px">
+    <div style="font-size:.72rem;color:#8a7060;margin-bottom:12px">До цієї дати — статус "навч", з цієї дати — порожньо (заповниш вручну)</div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeAeModal()">Скасувати</button>
       <button class="btn-save"   onclick="saveEmployee()">Додати</button>
@@ -513,68 +519,25 @@ function renderTable(){
   h+=`<th>Зм.</th><th>Год.</th><th>💰</th></tr>
   <tr class="dow-row"><th class="name-th"></th><th></th>`;
   days.forEach(d=>{h+=`<th class="${d.isW?'wk':''}">${d.dow}</th>`;});
-  h+=`<th></th><th></th><th></th></tr>`;
+  h+=`<th></th><th></th><th></th></tr></thead><tbody>`;
 
   // Daily plan row
   const s3 = statsData.find(x=>x.dept_code===curDept);
   if(s3 && s3.plan_total){
     const totalPlan = s3.plan_total;
-    // calc fact per day
-    let cumFact = 0;
     const deptId = departments.find(d=>d.code===curDept)?.id;
+    const today3 = new Date().toISOString().slice(0,10);
+
+    // Total calendar days (ALL days including weekends)
+    const totalDays = days.length;
+    // Simple plan per day = total / days in month
+    const simpleDayPlan = Math.round(totalPlan / totalDays);
 
     h+=`<tr style="background:#fff8f4;border-bottom:2px solid #e8d8c8">`;
-    h+=`<th class="name-th" style="background:#fff8f4;font-size:.65rem;color:#b84e30;font-weight:700;text-align:left;padding-left:12px">📊 План/день</th><th></th>`;
-
-    // For each day calculate how many work
-    days.forEach(d=>{
-      if(d.isW){ h+=`<th style="background:#f5f0ea"></th>`; return; }
-      // count working managers this day (not rop, not off/sick/vac)
-      const workingCount = emps.filter(e=>{
-        if(e.role==='rop') return false;
-        const v=getStatus(e.id,d.date);
-        return ['10-18','11-18','10-17','9:30-17:30','удаленка','відробіт','запізн'].includes(v);
-      }).length;
-
-      // day fact from revenue
-      let dayFact = 0;
-      if(deptId){
-        const dk=`${deptId}_${d.date}`;
-        dayFact = parseFloat(revDeptMap[dk]?.amount||0);
-        if(!dayFact){
-          emps.forEach(e=>{
-            const ek=`${e.id}_${d.date}`;
-            dayFact+=parseFloat(revDetailMap[ek]?.amount||0);
-          });
-        }
-      }
-      cumFact += dayFact;
-
-      // remaining plan / remaining work days from this day
-      const today = new Date().toISOString().slice(0,10);
-      const isPast = d.date < today;
-      const isToday = d.date === today;
-
-      if(isPast){
-        // show actual fact
-        const col = dayFact > 0 ? '#2e7d52' : '#ccc';
-        h+=`<th style="font-size:.6rem;color:${col};font-weight:600;padding:2px 2px;background:#fff8f4">${dayFact>0?fmtM(dayFact):'—'}</th>`;
-      } else {
-        // calculate remaining
-        const remainPlan = Math.max(0, totalPlan - cumFact + dayFact);
-        const remainDays = days.filter(rd=>!rd.isW && rd.date>=d.date).length;
-        // adjust for working count ratio vs avg
-        const avgWorking = emps.filter(e=>e.role!=='rop').length || 1;
-        const dayPlan = remainDays > 0 ? Math.round(remainPlan / remainDays * (workingCount / Math.max(avgWorking*0.8, 1))) : 0;
-        const col = isToday ? '#b84e30' : '#8a7060';
-        const fw = isToday ? '700' : '500';
-        h+=`<th style="font-size:.6rem;color:${col};font-weight:${fw};padding:2px 2px;background:${isToday?'#ffeee8':'#fff8f4'}">${workingCount>0?fmtM(dayPlan):'вих'}</th>`;
-      }
-    });
-    h+=`<th style="background:#fff8f4"></th><th style="background:#fff8f4"></th><th style="background:#fff8f4"></th></tr>`;
+    h+=`<td class="name-td" style="background:#fff8f4;font-size:.65rem;color:#b84e30;font-weight:700;cursor:default">📊 План/день</td><td style="background:#fff8f4"></td>`;
+    days.forEach(d=>{ const isT3=d.date===today3,isP3=d.date<today3; let df=0; if(deptId){const dk=`${deptId}_${d.date}`;df=parseFloat(revDeptMap[dk]?.amount||0);if(!df)emps.forEach(e=>{df+=parseFloat(revDetailMap[`${e.id}_${d.date}`]?.amount||0);});} if(isP3){const col=df>0?'#2e7d52':'#bbb';h+=`<td style="font-size:.6rem;color:${col};font-weight:600;padding:2px;text-align:center;background:#fff8f4">${df>0?fmtM(df):'—'}</td>`;}else{const col=isT3?'#b84e30':'#8a6050',fw=isT3?'700':'500',bg=isT3?'#ffeee8':'#fff8f4';h+=`<td style="font-size:.6rem;color:${col};font-weight:${fw};padding:2px;text-align:center;background:${bg}">${fmtM(simpleDayPlan)}</td>`;} });
+    h+=`<td style="background:#fff8f4"></td><td style="background:#fff8f4"></td><td style="background:#fff8f4"></td></tr>`;
   }
-
-  h+=`<tbody>`;
 
   // Calc daily plan per level
   const today2 = new Date().toISOString().slice(0,10);
@@ -881,15 +844,33 @@ async function saveEmployee(){
   const dept=parseInt(document.getElementById('ae-dept').value);
   const level=document.getElementById('ae-level').value;
   const role=document.getElementById('ae-role').value;
+  const startDate=document.getElementById('ae-start-date').value;
   if(!name){alert('Введіть ім\'я');return;}
   try{
     const r=await api('/api/employees',{method:'POST',body:JSON.stringify({name,department_id:dept,level,role})});
     const d=departments.find(x=>x.id===dept);
     employees.push({...r,dept_code:d?.code,dept_name:d?.name});
+
+    // Fill days before startDate as empty, startDate onwards as навч
+    if(startDate){
+      const days=getDays(Y,M);
+      // days before start → mark as '-before-' (just leave empty, skip)
+      // days from start → mark as 'навч'
+      const navchDays=days.filter(d=>d.date>=startDate);
+      for(const d of navchDays){
+        await api('/api/schedule',{method:'PUT',body:JSON.stringify({
+          employee_id:r.id, entry_date:d.date, status:'навч'
+        })});
+      }
+      setSave(`${name} додано, навч з ${startDate.slice(8)}.${startDate.slice(5,7)} ✓`,true);
+    } else {
+      setSave('Менеджера додано ✓',true);
+    }
+
     closeAeModal();
     document.getElementById('ae-name').value='';
+    document.getElementById('ae-start-date').value='';
     await loadMonthData();
-    setSave('Менеджера додано ✓',true);
   }catch(e){alert('Помилка: '+e.message);}
 }
 
@@ -940,7 +921,7 @@ function renderDailyPlanBar(){
     });
 
     const remainPlan = Math.max(0, s.plan_total - cumFact);
-    const remainDays = days.filter(d=>!d.isW && d.date>=today).length || 1;
+    const remainDays = days.filter(d=>d.date>=today).length || 1;
     const todayPlan = Math.round(remainPlan / remainDays);
     const perPerson = workingToday > 0 ? Math.round(todayPlan / workingToday) : 0;
     const pct = Math.round(cumFact / s.plan_total * 100);
