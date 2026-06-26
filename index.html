@@ -726,7 +726,7 @@ function openPlanModal(deptCode){
       </div>
       <div style="background:#ede8e0;border-radius:7px;padding:8px 12px;font-size:.78rem;color:#2c2218" id="plan-total-show-${dept.id}">
         📊 Загальний план: <b>${total>0?fmtM(total)+' ₴':'—'}</b>
-        ${total>0?` · ${fmtM(Math.round(total/days.length))} ₴/день`:''}
+        ${total>0?` · ${fmtM(Math.round(total/getDays(Y,M).length))} ₴/день`:''}
       </div>
     </div>`;
   });
@@ -747,8 +747,8 @@ function updatePlanTotal(deptId){
     if(subEl) subEl.textContent=cnt>0&&val?fmtM(sub)+' ₴ разом':'';
   });
   const showEl=document.getElementById(`plan-total-show-${deptId}`);
-  const d=getDays(Y,M);
-  if(showEl) showEl.innerHTML=`📊 Загальний план: <b>${total>0?fmtM(total)+' ₴':'—'}</b>${total>0?` · ${fmtM(Math.round(total/d.length))} ₴/день`:''}`;
+  const dAll=getDays(Y,M);
+  if(showEl) showEl.innerHTML=`📊 Загальний план: <b>${total>0?fmtM(total)+' ₴':'—'}</b>${total>0?` · ${fmtM(Math.round(total/dAll.length))} ₴/день`:''}`;
 }
 
 function closePlanModal(){ document.getElementById('plan-modal-ov').classList.remove('open'); }
