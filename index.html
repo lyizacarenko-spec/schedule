@@ -86,11 +86,11 @@ input,select{font-family:inherit}
 .lc-jun{background:#251a40;color:#9c71d4}
 
 /* TABLE */
-.table-wrap{overflow:auto;max-height:calc(100vh - 200px);padding:14px 20px 40px}
-table{border-collapse:collapse;font-size:.75rem;background:#ede8e0;border-radius:10px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.5);min-width:700px;width:100%}
-thead th{background:#ede8e0;color:#6a5040;padding:7px 4px;text-align:center;font-weight:500;white-space:nowrap;position:sticky;top:0;z-index:2;border-bottom:1px solid #d4cdc4;box-shadow:0 2px 4px rgba(0,0,0,.08)}
-thead th.name-th{text-align:left;padding-left:12px;min-width:160px;position:sticky;left:0;z-index:20;background:#ede8e0}
-thead .dow-row th{font-size:.63rem;color:#383c58;padding:2px 4px;background:#ddd8d0}
+.table-wrap{overflow:auto;height:calc(100vh - 220px);padding:14px 20px 40px;position:relative}
+table{border-collapse:collapse;font-size:.75rem;background:#ede8e0;border-radius:0;overflow:visible;box-shadow:0 4px 24px rgba(0,0,0,.1);min-width:700px;width:100%}
+thead th{background:#ede8e0;color:#6a5040;padding:7px 4px;text-align:center;font-weight:500;white-space:nowrap;position:sticky;top:0;z-index:12;border-bottom:1px solid #d4cdc4;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+thead th.name-th{text-align:left;padding-left:12px;min-width:160px;position:sticky;left:0;top:0;z-index:25;background:#ede8e0}
+thead .dow-row th{font-size:.63rem;color:#383c58;padding:2px 4px;background:#ddd8d0;position:sticky;top:37px;z-index:12}
 thead .dow-row th.wk{color:#b84e3066}
 tbody tr{border-bottom:1px solid #e2dbd0;transition:.07s}
 tbody tr:hover{background:#e2dbd0}
@@ -631,7 +631,7 @@ function renderTable(){
       });
       let row=`<tr>
         <td class="name-td" onclick="openMgrCard(${emp.id})" style="cursor:pointer">${emp.name}</td>
-        <td class="level-badge">${emp.dept_code==='rzpk'?`<span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span>`:''}</td>`;
+        <td class="level-badge">${emp.dept_code==='rzpk'&&emp.role!=='rop'?`<span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span>`:''}</td>`;
       days.forEach(d=>{
         const v=getStatus(emp.id,d.date);
         const h2=sh(v);if(h2>0){wd++;hrs+=h2;}
@@ -724,17 +724,15 @@ function openPlanModal(deptCode){
 
   let body='';
   visDepts.forEach(dept=>{
-    const s=statsData.find(x=>x.dept_code===dept.code)||{plan_breakdown:{}};
-    const bd=s.plan_breakdown||{};
-    body+=`<div style="margin-bottom:14px">
-      <div style="font-size:.75rem;color:#b84e30;font-weight:700;margin-bottom:8px">${dept.name}</div>
-      <div class="plan-grid">
-        ${['top','mid','jun'].map(lvl=>`
-        <div class="plan-grid-cell">
-          <label>${LEVEL_LABEL[lvl]}</label>
-          <input type="number" id="plan-${dept.id}-${lvl}" value="${bd[lvl]?.plan_per_person||0}" placeholder="0">
-          <div class="sublabel">${bd[lvl]?.cnt||0} менедж. = ${fmtM((bd[lvl]?.plan_per_person||0)*(bd[lvl]?.cnt||0))}</div>
-        </div>`).join('')}
+    const s=statsData.find(x=>x.dept_code===dept.code)||{plan_total:0};
+    const total=s.plan_total||0;
+    body+=`<div style="margin-bottom:18px">
+      <div style="font-size:.78rem;color:#b84e30;font-weight:700;margin-bottom:8px">${dept.name}</div>
+      <label style="font-size:.75rem;color:#8a7060;display:block;margin-bottom:4px">Загальний план на місяць (грн)</label>
+      <input type="number" id="plan-total-${dept.id}" value="${total||''}" placeholder="наприклад 5000000"
+        style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:8px 12px;font-size:.95rem;outline:none;margin-bottom:6px">
+      <div style="font-size:.72rem;color:#8a7060">
+        ${total>0?`Поточний план: <b>${fmtM(total)} ₴</b> · ${Math.round(total/22/1000)}K/день (22 роб.дні)`:'Введи загальну суму плану на місяць'}
       </div>
     </div>`;
   });
@@ -747,18 +745,38 @@ async function savePlans(){
   setSave('Збереження...',false);
   try{
     for(const dept of visDepts){
+      const el=document.getElementById(`plan-total-${dept.id}`);
+      if(!el) continue;
+      const total=parseFloat(el.value)||0;
+      // Get current employee counts per level
+      const s=statsData.find(x=>x.dept_code===dept.code)||{plan_breakdown:{}};
+      const bd=s.plan_breakdown||{};
+      // Distribute total proportionally across levels
+      // If no breakdown yet, save equal split or just save to top level as placeholder
+      const lvlCounts={top:bd.top?.cnt||0, mid:bd.mid?.cnt||0, jun:bd.jun?.cnt||0};
+      const totalManagers=(lvlCounts.top+lvlCounts.mid+lvlCounts.jun)||1;
+      // Save per-person plan for each level proportionally
+      // Use weights: top=1.4, mid=1.25, jun=1.0
+      const w={top:1.4,mid:1.25,jun:1.0};
+      const weightedTotal=lvlCounts.top*w.top+lvlCounts.mid*w.mid+lvlCounts.jun*w.jun||1;
+      const baseUnit=total/weightedTotal;
       for(const lvl of ['top','mid','jun']){
-        const el=document.getElementById(`plan-${dept.id}-${lvl}`);
-        if(!el)continue;
-        const amt=parseFloat(el.value)||0;
+        if(!lvlCounts[lvl]) continue;
+        const perPerson=Math.round(baseUnit*w[lvl]);
         await api('/api/plans',{method:'PUT',body:JSON.stringify({
-          department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:amt
+          department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:perPerson
+        })});
+      }
+      // If no managers yet - save to top as placeholder
+      if(!totalManagers||totalManagers===1&&!lvlCounts.top){
+        await api('/api/plans',{method:'PUT',body:JSON.stringify({
+          department_id:dept.id,plan_year:Y,plan_month:M,level:'top',plan_amount:total
         })});
       }
     }
     await loadMonthData();
     closePlanModal();
-    setSave('Плани збережено ✓',true);
+    setSave('План збережено ✓',true);
   }catch(e){ alert('Помилка: '+e.message); }
 }
 
