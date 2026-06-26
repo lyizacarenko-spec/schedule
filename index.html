@@ -14,7 +14,6 @@ input,select{font-family:inherit}
 .topbar{
   background:#ede8e0;border-bottom:1px solid #d4cdc4;
   padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  position:sticky;top:0;z-index:50;
 }
 .logo{font-size:1rem;font-weight:700;color:#2c2218;white-space:nowrap}
 .logo span{color:#b84e30}
@@ -40,7 +39,6 @@ input,select{font-family:inherit}
 .dept-tabs{
   background:#ede8e0;border-bottom:2px solid #d4cdc4;
   padding:0 20px;display:flex;gap:0;overflow-x:auto;
-  position:sticky;top:54px;z-index:49;
 }
 .dept-tab{
   padding:10px 22px;font-size:.84rem;font-weight:600;
@@ -54,7 +52,6 @@ input,select{font-family:inherit}
 .stats-row{
   display:flex;gap:10px;flex-wrap:wrap;
   padding:12px 20px;background:#ede8e0;border-bottom:1px solid #d4cdc4;
-  position:sticky;top:98px;z-index:48;
 }
 .stat-card{
   background:#ede8e0;border:1px solid #d4cdc4;border-radius:8px;
@@ -89,16 +86,16 @@ input,select{font-family:inherit}
 .lc-jun{background:#251a40;color:#9c71d4}
 
 /* TABLE */
-.table-wrap{overflow-x:auto;padding:14px 20px 40px}
+.table-wrap{overflow:auto;padding:0 20px 40px;max-height:calc(100vh - 180px)}
 table{border-collapse:collapse;font-size:.75rem;background:#ede8e0;border-radius:0;overflow:visible;box-shadow:0 4px 24px rgba(0,0,0,.1);min-width:700px;width:100%}
-thead th{background:#ede8e0;color:#6a5040;padding:7px 4px;text-align:center;font-weight:500;white-space:nowrap;position:sticky;top:204px;z-index:30;border-bottom:1px solid #d4cdc4;box-shadow:0 2px 6px rgba(0,0,0,.1)}
-thead th.name-th{text-align:left;padding-left:12px;min-width:160px;position:sticky;left:0;top:204px;z-index:35;background:#ede8e0}
-thead .dow-row th{font-size:.63rem;color:#383c58;padding:2px 4px;background:#ddd8d0;position:sticky;top:240px;z-index:30}
+thead th{background:#ede8e0;color:#6a5040;padding:7px 4px;text-align:center;font-weight:500;white-space:nowrap;position:sticky;top:0;z-index:12;border-bottom:1px solid #d4cdc4;box-shadow:0 2px 4px rgba(0,0,0,.08)}
+thead th.name-th{text-align:left;padding-left:12px;min-width:160px;position:sticky;left:0;top:0;z-index:20;background:#ede8e0}
+thead .dow-row th{font-size:.63rem;color:#383c58;padding:2px 4px;background:#ddd8d0;position:sticky;top:36px;z-index:12}
 thead .dow-row th.wk{color:#b84e3066}
 tbody tr{border-bottom:1px solid #e2dbd0;transition:.07s}
 tbody tr:hover{background:#e2dbd0}
 td{padding:4px 3px;text-align:center;vertical-align:middle;white-space:nowrap}
-td.name-td{text-align:left;padding-left:12px;font-weight:500;color:#4a3828;background:#ede8e0;position:sticky;left:0;z-index:10;border-right:1px solid #d4cdc4;cursor:pointer;min-width:160px}
+td.name-td{text-align:left;padding-left:12px;font-weight:500;color:#4a3828;background:#ede8e0;position:sticky;left:0;z-index:8;border-right:1px solid #d4cdc4;cursor:pointer;min-width:160px}
 tbody tr:hover td.name-td{background:#e2dbd0;position:sticky;left:0;z-index:10}
 td.level-badge{cursor:default;width:36px}
 .lbadge{display:inline-block;padding:1px 5px;border-radius:3px;font-size:.62rem;font-weight:700}
@@ -208,7 +205,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 .vac-modal input[type=date]{width:100%}
 
 /* DAILY PLAN ROW */
-.daily-plan-row{background:#fff8f4;border-bottom:1px solid #e8e0d8;padding:6px 20px;font-size:.78rem;color:#7a5040;display:flex;gap:16px;flex-wrap:wrap;position:sticky;top:168px;z-index:47}
+.daily-plan-row{background:#fff8f4;border-bottom:1px solid #e8e0d8;padding:6px 20px;font-size:.78rem;color:#7a5040;display:flex;gap:16px;flex-wrap:wrap}
 .daily-plan-item{display:flex;gap:6px;align-items:center}
 .daily-plan-item strong{color:#b84e30;font-size:.88rem}
 
