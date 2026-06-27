@@ -410,6 +410,8 @@ function getStatus(empId,date){
   if(emp&&emp.start_date&&date<emp.start_date) return '';
   // New employees without filled status show empty
   if(emp&&emp.level==='new') return '';
+  // Відмови department default shift
+  if(emp&&emp.dept_code==='refuse') return '9:30-17:30';
   return '10-18';
 }
 
