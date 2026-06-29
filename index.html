@@ -231,6 +231,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     <button class="btn btn-green"  onclick="openRevModal()">💰 Виручка</button>
     <button class="btn btn-ghost"  onclick="openPlanModal()">📊 Плани</button>
     <button class="btn btn-orange" onclick="openAddEmpModal()">＋ Менеджер</button>
+    <button class="btn btn-ghost" onclick="openExportModal()" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e">📊 Експорт ЗП</button>
   </div>
   <div class="topbar-right">
     <div class="save-dot" id="save-dot">—</div>
@@ -1372,6 +1373,40 @@ function calcSalary(empId){
 
 
 
+
+// ══ GOOGLE SHEETS EXPORT ══════════════════════════════
+function openExportModal(){
+  const MONTHS=['','Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+  document.getElementById('export-sheet-name').value=`ЗП ${MONTHS[M]} ${Y}`;
+  document.getElementById('export-dept').value=curDept==='all'?'':curDept;
+  document.getElementById('export-status').textContent='';
+  document.getElementById('export-modal-ov').classList.add('open');
+}
+function closeExportModal(){ document.getElementById('export-modal-ov').classList.remove('open'); }
+async function doExport(){
+  const sheetName=document.getElementById('export-sheet-name').value.trim();
+  const dept=document.getElementById('export-dept').value;
+  const statusEl=document.getElementById('export-status');
+  statusEl.textContent='Експортуємо...';
+  statusEl.style.color='#8a7060';
+  try{
+    const r=await api('/api/export/salary',{
+      method:'POST',
+      body:JSON.stringify({year:Y,month:M,dept:dept||undefined,sheet_name:sheetName})
+    });
+    if(r.ok){
+      statusEl.textContent='✅ '+r.message;
+      statusEl.style.color='#2e7d52';
+    } else {
+      statusEl.textContent='⚠️ '+r.message;
+      statusEl.style.color='#b84e30';
+    }
+  }catch(e){
+    statusEl.textContent='❌ Помилка: '+e.message;
+    statusEl.style.color='#ef5350';
+  }
+}
+
 // ══ CUSTOM RANGE ══════════════════════════════════════
 let customRangeEmpId=null;
 function openCustomRangeModal(empId,name){
@@ -1594,6 +1629,28 @@ async function saveLevel(){
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeCustomRangeModal()">Скасувати</button>
       <button class="btn-save" onclick="saveCustomRange()">Поставити</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-ov" id="export-modal-ov">
+  <div class="modal">
+    <h3>📊 Експорт ЗП в Google Sheets</h3>
+    <div style="font-size:.78rem;color:#8a7060;margin-bottom:14px">Дані будуть записані у нову вкладку таблиці бухгалтера</div>
+    <label>Назва вкладки в таблиці</label>
+    <input type="text" id="export-sheet-name" placeholder="ЗП Липень 2026">
+    <label>Відділ</label>
+    <select id="export-dept" style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:7px 11px;font-size:.88rem;margin-bottom:12px;outline:none">
+      <option value="">Всі відділи</option>
+      <option value="rzpk">РЗПК</option>
+      <option value="hot">Гарячі продажі</option>
+      <option value="refuse">Відмови</option>
+    </select>
+    <div id="export-status" style="font-size:.78rem;color:#8a7060;min-height:20px;margin-bottom:8px"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeExportModal()">Скасувати</button>
+      <button class="btn-save" onclick="doExport()" style="background:#2e7d52">📤 Експортувати</button>
     </div>
   </div>
 </div>
