@@ -1375,10 +1375,21 @@ function calcSalary(empId){
 
 
 // ══ GOOGLE SHEETS EXPORT ══════════════════════════════
+function updateExportSheetName(){
+  const MONTHS=['','Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+  const DEPT_NAMES={'rzpk':'РЗПК','hot':'Гарячі','refuse':'Відмови',''  :'Всі'};
+  const deptKey=document.getElementById('export-dept').value;
+  const deptLabel=DEPT_NAMES[deptKey]||'';
+  document.getElementById('export-sheet-name').value=`ЗП ${deptLabel ? deptLabel+' ' : ''}${MONTHS[M]} ${Y}`.trim();
+}
+
 function openExportModal(){
   const MONTHS=['','Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
-  document.getElementById('export-sheet-name').value=`ЗП ${MONTHS[M]} ${Y}`;
-  document.getElementById('export-dept').value=curDept==='all'?'':curDept;
+  const DEPT_NAMES={'rzpk':'РЗПК','hot':'Гарячі','refuse':'Відмови',''  :'Всі'};
+  const deptKey=curDept==='all'?'':curDept;
+  const deptLabel=DEPT_NAMES[deptKey]||'';
+  document.getElementById('export-sheet-name').value=`ЗП ${deptLabel ? deptLabel+' ' : ''}${MONTHS[M]} ${Y}`.trim();
+  document.getElementById('export-dept').value=deptKey;
   document.getElementById('export-status').textContent='';
   document.getElementById('export-modal-ov').classList.add('open');
 }
@@ -1641,7 +1652,7 @@ async function saveLevel(){
     <label>Назва вкладки в таблиці</label>
     <input type="text" id="export-sheet-name" placeholder="ЗП Липень 2026">
     <label>Відділ</label>
-    <select id="export-dept" style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:7px 11px;font-size:.88rem;margin-bottom:12px;outline:none">
+    <select id="export-dept" onchange="updateExportSheetName()" style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:7px 11px;font-size:.88rem;margin-bottom:12px;outline:none">
       <option value="">Всі відділи</option>
       <option value="rzpk">РЗПК</option>
       <option value="hot">Гарячі продажі</option>
