@@ -1125,6 +1125,18 @@ function openMgrCard(empId){
         </div>
       </div>
       <div id="sal-unlock-block" style="${ropUnlocked?'display:block':'display:none'}">
+        ${emp.dept_code==='refuse'?`
+        <div class="sal-row">
+          <div class="sal-field"><label>Кількість замовлень</label><input type="number" id="sal-plan-${emp.id}" placeholder="90+" value="${salaryMap[emp.id]?.plan_amount||''}"></div>
+          <div class="sal-field"><label>Сума замовлень (грн)</label><input type="number" id="sal-fact-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.fact_amount||''}"></div>
+          <div class="sal-field"><label>% повернень</label><input type="number" id="sal-ret-${emp.id}" placeholder="0" min="0" max="100" value="${salaryMap[emp.id]?.returns_pct||''}"></div>
+          <div class="sal-field"><label>Відпрац. днів</label><input type="number" id="sal-days-${emp.id}" value="${salaryMap[emp.id]?.worked_days||wd}"></div>
+        </div>
+        <div class="sal-row" style="margin-top:4px">
+          <div class="sal-field"><label>Дзвінків за місяць</label><input type="number" id="sal-calls-${emp.id}" placeholder="1600" value="${salaryMap[emp.id]?.calls||''}"></div>
+          <div class="sal-field"><label>Штраф (грн)</label><input type="number" id="sal-penalty-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.penalty||''}"></div>
+          <div class="sal-field"><label>Примітка</label><input type="text" id="sal-note-${emp.id}" placeholder="" value="${salaryMap[emp.id]?.note||''}"></div>
+        </div>`:`
         <div class="sal-row">
           <div class="sal-field"><label>Індивід. план (грн)</label><input type="number" id="sal-plan-${emp.id}" placeholder="260000" value="${salaryMap[emp.id]?.plan_amount||''}"></div>
           <div class="sal-field"><label>Факт оборот (грн)</label><input type="number" id="sal-fact-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.fact_amount||''}"></div>
@@ -1135,7 +1147,7 @@ function openMgrCard(empId){
           <div class="sal-field"><label>Доплата старш. мен. (грн)</label><input type="number" id="sal-bonus-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.senior_bonus||''}"></div>
           <div class="sal-field"><label>Штраф (грн)</label><input type="number" id="sal-penalty-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.penalty||''}"></div>
           <div class="sal-field"><label>Примітка</label><input type="text" id="sal-note-${emp.id}" placeholder="" value="${salaryMap[emp.id]?.note||''}"></div>
-        </div>
+        </div>`}
         <div style="display:flex;gap:6px;margin-top:4px">
           <button onclick="calcSalary(${emp.id})" style="flex:1;padding:8px;background:#b84e30;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem">🧮 Розрахувати</button>
           <button onclick="saveSalary(${emp.id})" style="flex:0 0 auto;padding:8px 14px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem">💾 Зберегти</button>
@@ -1149,6 +1161,7 @@ function openMgrCard(empId){
     <div class="mgr-month">${calHtml}</div>
     <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
       <button class="btn-save" style="flex:1" onclick="closeMgrCardForce();openVacModal(${emp.id},'${emp.name}')">🌴 Відпустка</button>
+      <button class="btn-ghost btn" style="flex:1" onclick="openCustomRangeModal(${emp.id},'${emp.name}')">✏️ Свій графік</button>
       <button class="btn-ghost btn" style="flex:1" onclick="openLevelModal(${emp.id},'${emp.name}','${emp.level}')">⭐ Рівень</button>
       <button class="btn-ghost btn" style="flex:1" onclick="openTeamModal(${emp.id},'${emp.name}','${emp.team||''}')">👥 Команда</button>
       <button class="btn-ghost btn" style="flex:0 0 auto;background:#f0d4d4;color:#b71c1c;border-color:#dca8a8" onclick="deactivateEmp(${emp.id},'${emp.name}')">🗑️</button>
@@ -1269,61 +1282,130 @@ function fmtFull(n){
 }
 
 function calcSalary(empId){
-  const plan = parseFloat(document.getElementById('sal-plan-'+empId).value)||0;
+  const emp = employees.find(e=>e.id===empId);
+  const isRefuse = emp?.dept_code==='refuse';
   const fact = parseFloat(document.getElementById('sal-fact-'+empId).value)||0;
   const ret  = parseFloat(document.getElementById('sal-ret-'+empId).value)||0;
   const days = parseInt(document.getElementById('sal-days-'+empId).value)||0;
   const res  = document.getElementById('sal-result-'+empId);
-  if(!plan||!fact){ res.innerHTML='<div style="font-size:.75rem;color:#aaa">Введи план та оборот</div>'; return; }
+  const seniorBonus = parseFloat(document.getElementById('sal-bonus-'+empId)?.value)||0;
+  const penalty = parseFloat(document.getElementById('sal-penalty-'+empId)?.value)||0;
 
-  // 1. Повернення
+  if(!fact){ res.innerHTML='<div style="font-size:.75rem;color:#aaa">Введи суму замовлень / оборот</div>'; return; }
+
+  // Повернення (спільне для всіх)
   const retNorm = 6;
   const retExcess = Math.max(0, ret - retNorm);
   const retCorrection = fact * retExcess / 100;
   const cleanBase = fact - retCorrection;
 
-  // 2. % виконання
-  const pct = Math.round(cleanBase / plan * 100);
+  let rate=0, bonusPct=0, rateLabel='', overtimeRate=400;
+  let rows='';
 
-  // 3. Ставка та бонус %
-  let rate=0, bonusPct=0, rateLabel='';
-  if(days < 15 && pct < 80){
-    rate=8000; bonusPct=4; rateLabel='Неповний місяць (<15 днів + <80%)';
-  } else if(pct < 70){
-    rate=13000; bonusPct=4; rateLabel='Зона ризику (<70%)';
-  } else if(pct < 80){
-    rate=13000; bonusPct=4.5; rateLabel='Базова страховка (70–79%)';
-  } else if(pct < 100){
-    rate=15000; bonusPct=5; rateLabel='Стабільна зона (80–99%)';
-  } else if(pct < 110){
-    rate=15000; bonusPct=6; rateLabel='План виконано (100–110%)';
+  if(isRefuse){
+    // ══ ВІДМОВИ: по кількості замовлень ══
+    const orders = parseFloat(document.getElementById('sal-plan-'+empId).value)||0;
+    const calls  = parseFloat(document.getElementById('sal-calls-'+empId)?.value)||0;
+    if(!orders){ res.innerHTML='<div style="font-size:.75rem;color:#aaa">Введи кількість замовлень</div>'; return; }
+
+    overtimeRate = 450;
+
+    // Шкала по замовленнях
+    if(orders >= 150){ rate=11000; bonusPct=9; rateLabel='від 150 замовлень 🏆'; }
+    else if(orders >= 115){ rate=10000; bonusPct=8; rateLabel='від 115 замовлень'; }
+    else if(orders >= 90){ rate=9000; bonusPct=7; rateLabel='від 90 замовлень'; }
+    else { rate=0; bonusPct=5; rateLabel='менше 90 замовлень (відпустка/лікарняний)'; }
+
+    // Умови повної ставки: 22 дні + 1600 дзвінків + норма замовлень
+    const fullRate = days>=22 && (calls>=1600||calls===0) && orders>=90;
+    const actualRate = fullRate ? rate : Math.round(rate * days / 22);
+    const bonus = cleanBase * bonusPct / 100;
+    const overtimeDays = Math.max(0, days-22);
+    const overtimePay = overtimeDays * overtimeRate;
+    const total = actualRate + bonus + overtimePay + seniorBonus - penalty;
+
+    rows=`
+      <div class="sal-result-row"><span>Замовлень</span><span>${orders} — ${rateLabel}</span></div>
+      <div class="sal-result-row"><span>Відпрацьовано днів</span><span>${days} з 22</span></div>
+      ${calls>0?`<div class="sal-result-row"><span>Дзвінків</span><span>${calls} ${calls>=1600?'✅':'⚠️ <1600'}</span></div>`:''}
+      <div class="sal-result-row"><span>Чиста сума замовлень (після повернень)</span><span>${fmtFull(cleanBase)}</span></div>
+      ${retExcess>0?`<div class="sal-result-row"><span>Коригування повернень (${retExcess}% надлишок)</span><span style="color:#ef5350">−${fmtFull(retCorrection)}</span></div>`:''}
+      <div class="sal-result-row"><span>Ставка ${fullRate?'(повна)':'(пропорційна '+days+'/22)'}</span><span>${fmtFull(actualRate)}</span></div>
+      <div class="sal-result-row"><span>Бонус ${bonusPct}% від ${fmtFull(cleanBase)}</span><span>${fmtFull(bonus)}</span></div>
+      ${overtimeDays>0?`<div class="sal-result-row"><span>Переробка ${overtimeDays} дн. × 450 ₴</span><span style="color:#2e7d52">+${fmtFull(overtimePay)}</span></div>`:''}
+      ${seniorBonus>0?`<div class="sal-result-row"><span>Доплата</span><span style="color:#2e7d52">+${fmtFull(seniorBonus)}</span></div>`:''}
+      ${penalty>0?`<div class="sal-result-row"><span>Штраф</span><span style="color:#ef5350">−${fmtFull(penalty)}</span></div>`:''}
+      <div class="sal-result-row green"><span>💰 Підсумкова ЗП</span><span>${fmtFull(total)}</span></div>`;
+
   } else {
-    rate=15000; bonusPct=7; rateLabel='Топ-перформер (110%+) 🏆';
+    // ══ РЗПК / ГАРЯЧІ: по % виконання плану ══
+    const plan = parseFloat(document.getElementById('sal-plan-'+empId).value)||0;
+    if(!plan){ res.innerHTML='<div style="font-size:.75rem;color:#aaa">Введи план та оборот</div>'; return; }
+    const pct = Math.round(cleanBase / plan * 100);
+
+    if(days < 15 && pct < 80){ rate=8000; bonusPct=4; rateLabel='Неповний місяць'; }
+    else if(pct < 70){ rate=13000; bonusPct=4; rateLabel='Зона ризику (<70%)'; }
+    else if(pct < 80){ rate=13000; bonusPct=4.5; rateLabel='Базова страховка (70–79%)'; }
+    else if(pct < 100){ rate=15000; bonusPct=5; rateLabel='Стабільна зона (80–99%)'; }
+    else if(pct < 110){ rate=15000; bonusPct=6; rateLabel='План виконано (100–110%)'; }
+    else { rate=15000; bonusPct=7; rateLabel='Топ-перформер (110%+) 🏆'; }
+
+    const bonus = cleanBase * bonusPct / 100;
+    const overtimeDays = Math.max(0, days-22);
+    const overtimePay = overtimeDays * 400;
+    const total = rate + bonus + overtimePay + seniorBonus - penalty;
+
+    rows=`
+      <div class="sal-result-row"><span>Виконання плану</span><span>${pct}% — ${rateLabel}</span></div>
+      <div class="sal-result-row"><span>Чиста база (після повернень)</span><span>${fmtFull(cleanBase)}</span></div>
+      ${retExcess>0?`<div class="sal-result-row"><span>Коригування повернень (${retExcess}% надлишок)</span><span style="color:#ef5350">−${fmtFull(retCorrection)}</span></div>`:''}
+      <div class="sal-result-row"><span>Ставка</span><span>${fmtFull(rate)}</span></div>
+      <div class="sal-result-row"><span>Бонус ${bonusPct}% від ${fmtFull(cleanBase)}</span><span>${fmtFull(bonus)}</span></div>
+      ${overtimeDays>0?`<div class="sal-result-row"><span>Переробка ${overtimeDays} дн. × 400 ₴</span><span style="color:#2e7d52">+${fmtFull(overtimePay)}</span></div>`:''}
+      ${seniorBonus>0?`<div class="sal-result-row"><span>Доплата старш. менеджера</span><span style="color:#2e7d52">+${fmtFull(seniorBonus)}</span></div>`:''}
+      ${penalty>0?`<div class="sal-result-row"><span>Штраф</span><span style="color:#ef5350">−${fmtFull(penalty)}</span></div>`:''}
+      <div class="sal-result-row green"><span>💰 Підсумкова ЗП</span><span>${fmtFull(total)}</span></div>`;
   }
 
-  const bonus = cleanBase * bonusPct / 100;
-  // Overtime: days > 22 → +400 per day
-  const normDays = 22;
-  const overtimeDays = Math.max(0, days - normDays);
-  const overtimePay = overtimeDays * 400;
-  // Senior bonus and penalty
-  const seniorBonus = parseFloat(document.getElementById('sal-bonus-'+empId)?.value)||0;
-  const penalty = parseFloat(document.getElementById('sal-penalty-'+empId)?.value)||0;
-  const total = rate + bonus + overtimePay + seniorBonus - penalty;
-
-  res.innerHTML=`
-    <div class="sal-result-row"><span>Виконання плану</span><span>${pct}% — ${rateLabel}</span></div>
-    <div class="sal-result-row"><span>Чиста база (після повернень)</span><span>${fmtFull(cleanBase)}</span></div>
-    ${retExcess>0?`<div class="sal-result-row"><span>Коригування повернень (${retExcess}% надлишок)</span><span style="color:#ef5350">−${fmtFull(retCorrection)}</span></div>`:''}
-    <div class="sal-result-row"><span>Ставка</span><span>${fmtFull(rate)}</span></div>
-    <div class="sal-result-row"><span>Бонус ${bonusPct}% від ${fmtFull(cleanBase)}</span><span>${fmtFull(bonus)}</span></div>
-    ${overtimeDays>0?`<div class="sal-result-row"><span>Переробка ${overtimeDays} дн. × 400 ₴</span><span style="color:#2e7d52">+${fmtFull(overtimePay)}</span></div>`:''}
-    ${seniorBonus>0?`<div class="sal-result-row"><span>Доплата старш. менеджера</span><span style="color:#2e7d52">+${fmtFull(seniorBonus)}</span></div>`:''}
-    ${penalty>0?`<div class="sal-result-row"><span>Штраф</span><span style="color:#ef5350">−${fmtFull(penalty)}</span></div>`:''}
-    <div class="sal-result-row green"><span>💰 Підсумкова ЗП</span><span>${fmtFull(total)}</span></div>
-  `;
+  res.innerHTML = `<div class="sal-result">${rows}</div>`;
 }
 
+
+
+// ══ CUSTOM RANGE ══════════════════════════════════════
+let customRangeEmpId=null;
+function openCustomRangeModal(empId,name){
+  customRangeEmpId=empId;
+  document.getElementById('custom-range-emp').textContent=name;
+  document.getElementById('custom-range-status').value='';
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('custom-range-from').value=today;
+  document.getElementById('custom-range-to').value=today;
+  closeMgrCardForce();
+  document.getElementById('custom-range-ov').classList.add('open');
+}
+function closeCustomRangeModal(){ document.getElementById('custom-range-ov').classList.remove('open'); }
+async function saveCustomRange(){
+  const status=document.getElementById('custom-range-status').value.trim();
+  const from=document.getElementById('custom-range-from').value;
+  const to=document.getElementById('custom-range-to').value;
+  if(!status){alert('Введи статус');return;}
+  if(!from||!to||from>to){alert('Перевір дати');return;}
+  setSave('Збереження...',false);
+  try{
+    const days=getDays(Y,M);
+    const inRange=days.filter(d=>d.date>=from&&d.date<=to);
+    for(const d of inRange){
+      await api('/api/schedule',{method:'PUT',body:JSON.stringify({
+        employee_id:customRangeEmpId,entry_date:d.date,status
+      })});
+      schedMap[`${customRangeEmpId}_${d.date}`]={employee_id:customRangeEmpId,entry_date:d.date,status};
+    }
+    closeCustomRangeModal();
+    renderTable();renderStats();
+    setSave(`Статус "${status}" поставлено на ${inRange.length} днів ✓`,true);
+  }catch(e){alert('Помилка: '+e.message);}
+}
 
 // ══ TEAM CHANGE ═══════════════════════════════════════
 let teamEmpId=null;
@@ -1494,6 +1576,24 @@ async function saveLevel(){
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeTeamModal()">Скасувати</button>
       <button class="btn-save"   onclick="saveTeam()">Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOM RANGE MODAL -->
+<div class="modal-ov" id="custom-range-ov">
+  <div class="modal">
+    <h3>✏️ Свій графік на діапазон</h3>
+    <div id="custom-range-emp" style="font-size:.8rem;color:#8a7060;margin-bottom:12px"></div>
+    <label>Статус (наприклад 10-21)</label>
+    <input type="text" id="custom-range-status" placeholder="10-21" style="margin-bottom:4px">
+    <label>Від</label>
+    <input type="date" id="custom-range-from">
+    <label>До</label>
+    <input type="date" id="custom-range-to">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeCustomRangeModal()">Скасувати</button>
+      <button class="btn-save" onclick="saveCustomRange()">Поставити</button>
     </div>
   </div>
 </div>
