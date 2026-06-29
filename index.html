@@ -111,6 +111,8 @@ td.rev-td:hover{background:#1a2535}
 td.rev-td.empty{color:#2a3040}
 td.wk{background:#e8e4dc}
 td.today-cell{background:#fff3ef;border-left:2px solid #b84e30;border-right:2px solid #b84e30}
+td.director-cell{background:#f0f5ff}
+.cs-director{background:#d4e4f8;color:#1a5c8a;border:1px solid #a8c4dc}
 tbody tr:hover td.wk{background:#e4e0d8}
 tr.group-row td{background:#f7f2ec;color:#b84e30;font-size:.7rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:9px 12px;cursor:default;border-top:2px solid #d4cdc4;position:sticky;left:0;z-index:5}
 tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2px solid #d4cdc4}
@@ -131,7 +133,8 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 .cs-late {background:#f0e4d0;color:#ff9800;border:1px solid #d4b890}
 .cs-extra{background:#e4d4f0;color:#ba68c8;border:1px solid #c4a8d4}
 .cs-fired{background:#e8e4e0;color:#333;border:1px solid #d0ccc8}
-.cs-empty{background:#f0ede8;color:#ccc;border:1px solid #e8e4e0}.cs-before{background:#f0ede8;color:transparent;border:1px solid transparent;cursor:default}
+.cs-empty{background:#f0ede8;color:#ccc;border:1px solid #e8e4e0}
+.cs-custom{background:#e8f0f8;color:#1a5c8a;border:1px solid #a8c4dc}.cs-before{background:#f0ede8;color:transparent;border:1px solid transparent;cursor:default}
 
 /* POPUP */
 .popup-ov{display:none;position:fixed;inset:0;z-index:100}
@@ -345,9 +348,9 @@ const STATUSES = [
   {v:'',        label:'—',       cls:'cs-empty',h:0},
 ];
 const SM = Object.fromEntries(STATUSES.map(s=>[s.v,s]));
-const sc = v => (SM[v]||SM['']).cls;
-const sl = v => (SM[v]||SM['']).label || '—';
-const sh = v => (SM[v]||SM['']).h || 0;
+const sc = v => (SM[v]||{cls:'cs-custom'}).cls;
+const sl = v => v && !SM[v] ? v : ((SM[v]||SM['']).label || '—');
+const sh = v => (SM[v]||{h:8}).h;
 
 const LEVEL_LABEL = {top:'ТОП',mid:'Мідл',jun:'Джун',new:'Новий'};
 const MONTH_UA = ['','Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
@@ -631,10 +634,12 @@ function renderTable(){
         const v=getStatus(emp.id,d.date);
         const h2=sh(v);if(h2>0){wd++;hrs+=h2;}
         const isToday3=d.date===todayDate;
-        const cellCls=isToday3?'today-cell':(d.isW?'wk':'');
+        const isDirector=['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name);
+        const cellCls=isToday3?'today-cell':(d.isW?'wk':(isDirector?'director-cell':''));
+        const chipCls=isDirector&&sc(v)==='cs-work'?'cs-director':sc(v);
         row+=`<td class="${cellCls}" data-emp="${emp.id}" data-date="${d.date}"
                onclick="openPopup(event,${emp.id},'${d.date}','${v}',this)">
-               <span class="chip ${sc(v)}">${sl(v)}</span></td>`;
+               <span class="chip ${chipCls}">${sl(v)}</span></td>`;
       });
       row+=`<td class="stat-td">${wd}</td>
             <td class="stat-td">${hrs}</td>
