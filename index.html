@@ -108,6 +108,7 @@ td.rev-td{background:#ede8e0;font-size:.7rem;color:#2e7d52;font-weight:600;borde
 td.rev-td:hover{background:#1a2535}
 td.rev-td.empty{color:#2a3040}
 td.wk{background:#e8e4dc}
+td.today-cell{background:#fff3ef;border-left:2px solid #b84e30;border-right:2px solid #b84e30}
 tbody tr:hover td.wk{background:#e4e0d8}
 tr.group-row td{background:#f7f2ec;color:#b84e30;font-size:.7rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:9px 12px;cursor:default;border-top:2px solid #d4cdc4;position:sticky;left:0;z-index:5}
 tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2px solid #d4cdc4}
@@ -521,14 +522,22 @@ function renderTable(){
   // Add any remaining teams not in order
   Object.keys(groupsRaw).forEach(t=>{ if(!groups[t]) groups[t]=groupsRaw[t]; });
 
+  const todayDate = new Date().toISOString().slice(0,10);
   let h=`<table><thead>
   <tr>
     <th class="name-th">Менеджер</th>
     <th style="width:34px"></th>`;
-  days.forEach(d=>{h+=`<th class="${d.isW?'wk':''}">${d.label}</th>`;});
+  days.forEach(d=>{
+    const isToday = d.date===todayDate;
+    const cls = isToday ? 'today-col' : (d.isW?'wk':'');
+    h+=`<th class="${cls}" ${isToday?'style="background:#b84e30;color:#fff;border-radius:6px 6px 0 0"':''}>${d.label}</th>`;
+  });
   h+=`<th>Зм.</th><th>Год.</th><th>💰</th></tr>
   <tr class="dow-row"><th class="name-th"></th><th></th>`;
-  days.forEach(d=>{h+=`<th class="${d.isW?'wk':''}">${d.dow}</th>`;});
+  days.forEach(d=>{
+    const isToday2=d.date===todayDate;
+    h+=`<th class="${isToday2?'today-col':(d.isW?'wk':'')}" ${isToday2?'style="background:#c96c2d;color:#fff"':''}>${d.dow}</th>`;
+  });
   h+=`<th></th><th></th><th></th></tr></thead><tbody>`;
 
   // Daily plan row — dynamic per working managers each day
@@ -618,7 +627,9 @@ function renderTable(){
       days.forEach(d=>{
         const v=getStatus(emp.id,d.date);
         const h2=sh(v);if(h2>0){wd++;hrs+=h2;}
-        row+=`<td class="${d.isW?'wk':''}" data-emp="${emp.id}" data-date="${d.date}"
+        const isToday3=d.date===todayDate;
+        const cellCls=isToday3?'today-cell':(d.isW?'wk':'');
+        row+=`<td class="${cellCls}" data-emp="${emp.id}" data-date="${d.date}"
                onclick="openPopup(event,${emp.id},'${d.date}','${v}',this)">
                <span class="chip ${sc(v)}">${sl(v)}</span></td>`;
       });
