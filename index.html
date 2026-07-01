@@ -432,19 +432,18 @@ function getStatus(empId,date){
   // New employees without filled status show empty
   if(emp&&emp.level==='new') return '';
   // Default shifts per department
+  const dow = new Date(date).getDay();
   if(emp&&emp.dept_code==='refuse') return '9:30-17:30';
   if(emp&&emp.dept_code==='admin'&&emp.name==='Мединська Ірина') return '9:30-17:30';
   if(emp&&emp.dept_code==='accounting'){
     if(dow===0||dow===6) return 'вих';
     return '9-17';
   }
-  if(emp&&emp.dept_code==='logistics') return '8:30-16:30';
-  // Weekends off for management, admin, training, accounting (sat+sun)
-  const dow = new Date(date).getDay();
-  if(emp&&['management','training','accounting'].includes(emp.dept_code)&&(dow===0||dow===6)) return 'вих';
-  if(emp&&emp.dept_code==='admin'&&(dow===0||dow===6)) return 'вих';
-  if(emp&&emp.dept_code==='management'&&(dow===0||dow===6)) return 'вих';
-  if(emp&&emp.dept_code==='logistics'&&dow===0) return 'вих';
+  if(emp&&emp.dept_code==='logistics'){
+    if(dow===0) return 'вих';
+    return '8:30-16:30';
+  }
+  if(emp&&['management','training','admin'].includes(emp.dept_code)&&(dow===0||dow===6)) return 'вих';
   return '10-18';
 }
 
