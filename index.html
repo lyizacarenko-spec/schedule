@@ -434,7 +434,10 @@ function getStatus(empId,date){
   // Default shifts per department
   const dow = new Date(date).getDay();
   if(emp&&emp.dept_code==='refuse') return '9:30-17:30';
-  if(emp&&emp.dept_code==='admin'&&emp.name==='Мединська Ірина') return '9:30-17:30';
+  if(emp&&emp.dept_code==='admin'&&emp.name==='Мединська Ірина'){
+    if(dow===0||dow===6) return 'вих';
+    return '9:30-17:30';
+  }
   if(emp&&emp.dept_code==='accounting'){
     if(dow===0||dow===6) return 'вих';
     return '9-17';
