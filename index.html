@@ -240,9 +240,14 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 </div>
 
 <div class="dept-tabs">
-  <button class="dept-tab active" id="tab-rzpk"   onclick="setDept('rzpk')">РЗПК</button>
-  <button class="dept-tab"        id="tab-hot"    onclick="setDept('hot')">Гарячі продажі</button>
-  <button class="dept-tab"        id="tab-refuse" onclick="setDept('refuse')">Відмови</button>
+  <button class="dept-tab active" id="tab-rzpk"       onclick="setDept('rzpk')">РЗПК</button>
+  <button class="dept-tab"        id="tab-hot"         onclick="setDept('hot')">Гарячі продажі</button>
+  <button class="dept-tab"        id="tab-refuse"      onclick="setDept('refuse')">Відмови</button>
+  <button class="dept-tab"        id="tab-management"  onclick="setDept('management')">Керівництво</button>
+  <button class="dept-tab"        id="tab-admin"       onclick="setDept('admin')">Адмін блок</button>
+  <button class="dept-tab"        id="tab-training"    onclick="setDept('training')">Навчання</button>
+  <button class="dept-tab"        id="tab-accounting"  onclick="setDept('accounting')">Бухгалтерія</button>
+  <button class="dept-tab"        id="tab-logistics"   onclick="setDept('logistics')">Логістика</button>
 </div>
 
 <div class="stats-row" id="stats-row"><div class="loading">Завантаження...</div></div>
@@ -302,6 +307,11 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
       <option value="1">РЗПК</option>
       <option value="2">Гарячі продажі</option>
       <option value="3">Відмови</option>
+      <option value="4">Керівництво</option>
+      <option value="5">Адмін блок</option>
+      <option value="6">Відділ навчання</option>
+      <option value="7">Бухгалтерія</option>
+      <option value="8">Логістика</option>
     </select>
     <label>Рівень</label>
     <select id="ae-level">
@@ -338,6 +348,8 @@ const STATUSES = [
   {v:'11-18',   label:'11-18',   cls:'cs-work2',h:7},
   {v:'10-17',   label:'10-17',   cls:'cs-work', h:7},
   {v:'9:30-17:30',label:'9:30-17:30',cls:'cs-work', h:8},
+  {v:'9-17',      label:'9-17',      cls:'cs-work', h:8},
+  {v:'8:30-16:30',label:'8:30-16:30',cls:'cs-work', h:8},
   {v:'вих',     label:'вих',     cls:'cs-off',  h:0},
   {v:'больн',   label:'больн',   cls:'cs-sick', h:0},
   {v:'відпуск', label:'відпуск', cls:'cs-vac',  h:0},
@@ -419,8 +431,17 @@ function getStatus(empId,date){
   if(emp&&emp.start_date&&date<emp.start_date) return '';
   // New employees without filled status show empty
   if(emp&&emp.level==='new') return '';
-  // Відмови department default shift
+  // Default shifts per department
   if(emp&&emp.dept_code==='refuse') return '9:30-17:30';
+  if(emp&&emp.dept_code==='admin'&&emp.name==='Мединська Ірина') return '9:30-17:30';
+  if(emp&&emp.dept_code==='admin'&&emp.name==='Чубострoєва Валентина') return '9:30-17:30';
+  if(emp&&emp.dept_code==='accounting') return '9-17';
+  if(emp&&emp.dept_code==='logistics') return '8:30-16:30';
+  // Weekends off for management, admin, training, accounting (sat+sun)
+  const dow = new Date(date).getDay();
+  if(emp&&['management','training','accounting'].includes(emp.dept_code)&&(dow===0||dow===6)) return 'вих';
+  if(emp&&emp.dept_code==='admin'&&(dow===0||dow===6)) return 'вих';
+  if(emp&&emp.dept_code==='logistics'&&dow===0) return 'вих';
   return '10-18';
 }
 
@@ -1115,6 +1136,7 @@ function openMgrCard(empId){
     </div>
     <div class="sal-block">
       <h4>💰 Розрахунок ЗП — ${MONTH_UA[M]} ${Y}</h4>
+      ${ ['management','admin','training','accounting','logistics'].includes(emp.dept_code) ? '<div style="font-size:.75rem;color:#8a7060;padding:8px 0">Розрахунок ЗП не передбачений для цього відділу</div>' : '' }
       <div id="rop-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
         <div style="text-align:center;padding:8px 0 12px">
           <div style="font-size:.78rem;color:#8a7060;margin-bottom:8px">🔒 Доступ тільки для РОП</div>
