@@ -434,13 +434,16 @@ function getStatus(empId,date){
   // Default shifts per department
   if(emp&&emp.dept_code==='refuse') return '9:30-17:30';
   if(emp&&emp.dept_code==='admin'&&emp.name==='Мединська Ірина') return '9:30-17:30';
-  if(emp&&emp.dept_code==='admin'&&emp.name==='Чубострoєва Валентина') return '9:30-17:30';
-  if(emp&&emp.dept_code==='accounting') return '9-17';
+  if(emp&&emp.dept_code==='accounting'){
+    if(dow===0||dow===6) return 'вих';
+    return '9-17';
+  }
   if(emp&&emp.dept_code==='logistics') return '8:30-16:30';
   // Weekends off for management, admin, training, accounting (sat+sun)
   const dow = new Date(date).getDay();
   if(emp&&['management','training','accounting'].includes(emp.dept_code)&&(dow===0||dow===6)) return 'вих';
   if(emp&&emp.dept_code==='admin'&&(dow===0||dow===6)) return 'вих';
+  if(emp&&emp.dept_code==='management'&&(dow===0||dow===6)) return 'вих';
   if(emp&&emp.dept_code==='logistics'&&dow===0) return 'вих';
   return '10-18';
 }
@@ -651,7 +654,10 @@ function renderTable(){
         empRevTotal+=parseFloat(revDetailMap[ek]?.amount||0);
       });
       let row=`<tr>
-        <td class="name-td ${['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name)?'director-name':''}" onclick="openMgrCard(${emp.id})" style="cursor:pointer">${emp.name}${['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name)?'<span style="font-size:.6rem;color:#64b5f6;margin-left:4px">Директ</span>':''}</td>
+        <td class="name-td ${['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name)?'director-name':''}" onclick="openMgrCard(${emp.id})" style="cursor:pointer">
+          <div>${emp.name}${['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name)?'<span style="font-size:.6rem;color:#64b5f6;margin-left:4px">Директ</span>':''}</div>
+          ${POSITIONS[emp.name]?`<div style="font-size:.6rem;color:#a09080;margin-top:1px">${POSITIONS[emp.name]}</div>`:''}
+        </td>
         <td class="level-badge">${emp.dept_code==='rzpk'&&emp.role!=='rop'&&emp.level!=='new'?`<span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span>`:''}</td>`;
       days.forEach(d=>{
         const v=getStatus(emp.id,d.date);
@@ -1261,6 +1267,45 @@ async function saveLate(){
 
 
 
+
+
+// ══ POSITIONS ══════════════════════════════════════
+const POSITIONS = {
+  // Адмін блок
+  'Мединська Ірина': 'Адмін офіс',
+  'Чубострoєва Валентина': 'Адмін офіс',
+  'Овсюченко Луїза': 'Адмін офіс',
+  'Демидов Сергій': 'Медіабайер',
+  'Озерна Карина': 'Контент/СММ',
+  'Пальчун Дмитро': 'Адмін офіс',
+  // Навчання
+  'Бажан Данило': 'Коуч',
+  'Саєнко Аліна': 'Рекрутер',
+  'Великий Олександр': 'Наставник',
+  // Бухгалтерія
+  'Карпусь Анна': 'Бухгалтер',
+  // Логістика
+  'Зайченко Олена': 'Логіст',
+  'Ільєнкова Ольга': 'Логіст',
+  // Керівництво
+  'Щербина Катерина': 'СЕО',
+  'Лунько Євгенія': 'Операційний директор',
+  'Пальчун Елла': 'Комерційний директор',
+  'Константинов Денис': 'Керівник маркетингу',
+  'Шаповалова Вікторія': 'HR-D',
+  // РЗПК
+  'Чоповий Максим': 'Старший менеджер',
+  'Шелковникова Оксана': 'Старший менеджер',
+  'Кіндюшенко Аліна': 'Старший менеджер',
+  'Екатерина П': 'РОП',
+  // Гарячі
+  'Романенко Антон': 'РОП',
+  'Галаєва Анна': 'Директ менеджер',
+  'Желюбовська Анастасія': 'Директ менеджер',
+  'Мажара Аліна': 'Старший менеджер',
+  // Відмови
+  'Даніелла': 'РОП',
+};
 
 // ══ SAVE SALARY ════════════════════════════════════════
 async function saveSalary(empId){
