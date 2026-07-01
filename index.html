@@ -533,7 +533,7 @@ function renderTable(){
   const days=getDays(Y,M);
   const emps=getVisEmps();
   // Group by team within dept - fixed order
-  const TEAM_ORDER = ['РОП','Команда Чопового','Команда Шелковникової','Команда Кіндюшенко','Нові співробітники','Віддалено','Гарячі продажі','Відмови'];
+  const TEAM_ORDER = ['РОП','Команда Чопового','Команда Шелковникової','Команда Кіндюшенко','Нові співробітники','Віддалено','Гарячі продажі','Відмови','Керівництво','Адмін блок','Відділ навчання','Бухгалтерія','Логістика'];
   const groupsRaw={};
   emps.forEach(e=>{
     const teamKey = e.team || e.dept_code;
@@ -541,9 +541,18 @@ function renderTable(){
     // Sort: rop first, then senior, then by name
     groupsRaw[teamKey].emps.push(e);
   });
+  // Admin dept custom order
+  const ADMIN_ORDER = ['Мединська Ірина','Чубострoєва Валентина','Овсюченко Луїза','Демидов Сергій','Озерна Карина','Пальчун Дмитро'];
   // Sort employees within each team: rop → senior → manager, then by name
   Object.values(groupsRaw).forEach(g=>{
     g.emps.sort((a,b)=>{
+      // Admin dept - custom order
+      const ai=ADMIN_ORDER.indexOf(a.name), bi=ADMIN_ORDER.indexOf(b.name);
+      if(ai!==-1||bi!==-1){
+        if(ai!==-1&&bi!==-1) return ai-bi;
+        if(ai!==-1) return -1;
+        if(bi!==-1) return 1;
+      }
       const roleOrder={rop:0,senior:1,manager:2};
       const ra=roleOrder[a.role]??2, rb=roleOrder[b.role]??2;
       if(ra!==rb) return ra-rb;
