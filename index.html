@@ -305,9 +305,9 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     <input type="text" id="ae-name" placeholder="Іванова Марія">
     <label>Відділ</label>
     <select id="ae-dept" class="ae-dept-select"></select>
-    <label>Рівень</label>
+    <label>Рівень <span style="font-size:.7rem;color:#8a7060">(тільки для РЗПК)</span></label>
     <select id="ae-level">
-      <option value="new" selected>Новий співробітник</option>
+      <option value="new" selected>Новий / Не застосовується</option>
       <option value="jun">Джун</option>
       <option value="mid">Мідл</option>
       <option value="top">Топ</option>
@@ -318,6 +318,8 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
       <option value="senior">Старший менеджер</option>
       <option value="rop">РОП</option>
     </select>
+    <label>Посада (необов.)</label>
+    <input type="text" id="ae-position" placeholder="наприклад: Пакувальник, Бухгалтер...">
     <label>Дата початку (перший день)</label>
     <input type="date" id="ae-start-date" style="margin-bottom:4px">
     <label style="margin-top:4px">Кількість днів навчання</label>
@@ -986,6 +988,8 @@ async function saveEmployee(){
   try{
     const r=await api('/api/employees',{method:'POST',body:JSON.stringify({name,department_id:dept,level,role})});
     const d=departments.find(x=>x.id===dept);
+    const position2=document.getElementById('ae-position')?.value?.trim();
+    if(position2) POSITIONS[r.name]=position2;
     employees.push({...r,dept_code:d?.code,dept_name:d?.name});
 
     if(startDate){
@@ -1015,6 +1019,7 @@ async function saveEmployee(){
     closeAeModal();
     document.getElementById('ae-name').value='';
     document.getElementById('ae-start-date').value='';
+    if(document.getElementById('ae-position')) document.getElementById('ae-position').value='';
     await loadMonthData();
   }catch(e){alert('Помилка: '+e.message);}
 }
