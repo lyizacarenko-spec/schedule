@@ -683,7 +683,7 @@ function renderTable(){
       });
       row+=`<td class="stat-td">${wd}</td>
             <td class="stat-td">${hrs}</td>
-            <td class="rev-td ${empRevTotal?'':'empty'}" onclick="openRevEmpModal(${emp.id},'${emp.name}')">${empRevTotal?fmtM(empRevTotal)+' ₴':'—'}</td>
+            <td class="rev-td ${empRevTotal?'':'empty'}" onclick="openRevEmpModalById(${emp.id})">${empRevTotal?fmtM(empRevTotal)+' ₴':'—'}</td>
             </tr>`;
       h+=row;
     });
@@ -925,6 +925,12 @@ function selRevDept(id,el){
   el.classList.add('sel');
 }
 // also called when emp cell is clicked
+
+function openRevEmpModalById(empId){
+  const emp=employees.find(e=>e.id===empId);
+  openRevEmpModal(empId,emp?.name||'');
+}
+
 function openRevEmpModal(empId,name){
   revMode='emp';
   document.getElementById('rev-date').value=new Date().toISOString().slice(0,10);
