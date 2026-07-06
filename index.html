@@ -1201,11 +1201,11 @@ function openMgrCard(empId){
     <div style="font-size:.7rem;color:#8a7060;margin-bottom:6px">Календар ${MONTH_UA[M]} ${Y}</div>
     <div class="mgr-month">${calHtml}</div>
     <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
-      <button class="btn-save" style="flex:1" onclick="closeMgrCardForce();openVacModal(${emp.id},'${emp.name}')">🌴 Відпустка</button>
-      <button class="btn-ghost btn" style="flex:1" onclick="openCustomRangeModal(${emp.id},'${emp.name}')">✏️ Свій графік</button>
-      <button class="btn-ghost btn" style="flex:1" onclick="openLevelModal(${emp.id},'${emp.name}','${emp.level}')">⭐ Рівень</button>
-      <button class="btn-ghost btn" style="flex:1" onclick="openTeamModal(${emp.id},'${emp.name}','${emp.team||''}')">👥 Команда</button>
-      <button class="btn-ghost btn" style="flex:0 0 auto;background:#f0d4d4;color:#b71c1c;border-color:#dca8a8" onclick="deactivateEmp(${emp.id},'${emp.name}')">🗑️</button>
+      <button class="btn-save" style="flex:1" onclick="closeMgrCardForce();openVacModalById(${emp.id})">🌴 Відпустка</button>
+      <button class="btn-ghost btn" style="flex:1" onclick="openCustomRangeModalById(${emp.id})">✏️ Свій графік</button>
+      <button class="btn-ghost btn" style="flex:1" onclick="openLevelModal(${emp.id},this)">⭐ Рівень</button>
+      <button class="btn-ghost btn" style="flex:1" onclick="openTeamModal(${emp.id},this)">👥 Команда</button>
+      <button class="btn-ghost btn" style="flex:0 0 auto;background:#f0d4d4;color:#b71c1c;border-color:#dca8a8" onclick="deactivateEmpById(${emp.id})">🗑️</button>
     </div>
   `;
   document.getElementById('mgr-card-ov').classList.add('open');
@@ -1497,6 +1497,17 @@ async function doExport(){
   }
 }
 
+
+function openVacModalById(empId){
+  const emp=employees.find(e=>e.id===empId);
+  closeMgrCardForce();
+  openVacModal(empId,emp?.name||'');
+}
+function openCustomRangeModalById(empId){
+  const emp=employees.find(e=>e.id===empId);
+  openCustomRangeModal(empId,emp?.name||'');
+}
+
 // ══ CUSTOM RANGE ══════════════════════════════════════
 let customRangeEmpId=null;
 function openCustomRangeModal(empId,name){
@@ -1534,10 +1545,13 @@ async function saveCustomRange(){
 
 // ══ TEAM CHANGE ═══════════════════════════════════════
 let teamEmpId=null;
-function openTeamModal(empId,name,curTeam){
+function openTeamModal(empId,btn){
+  const emp=employees.find(e=>e.id===empId);
+  const name=emp?.name||'';
+  const curTeam=emp?.team||'Нові співробітники';
   teamEmpId=empId;
   document.getElementById('team-emp-name').textContent=name;
-  document.getElementById('team-select').value=curTeam||'Нові співробітники';
+  document.getElementById('team-select').value=curTeam;
   closeMgrCardForce();
   document.getElementById('team-modal-ov').classList.add('open');
 }
@@ -1555,6 +1569,12 @@ async function saveTeam(){
   }catch(e){alert('Помилка: '+e.message);}
 }
 
+
+function deactivateEmpById(empId){
+  const emp=employees.find(e=>e.id===empId);
+  deactivateEmp(empId,emp?.name||'');
+}
+
 // ══ DEACTIVATE EMPLOYEE ═══════════════════════════════
 async function deactivateEmp(empId, name){
   if(!confirm(`Видалити ${name} зі списку?\nМенеджер буде прихований, але дані збережуться.`)) return;
@@ -1569,7 +1589,10 @@ async function deactivateEmp(empId, name){
 
 // ══ LEVEL CHANGE ══════════════════════════════════════
 let levelEmpId=null, selectedLevel=null;
-function openLevelModal(empId,name,curLevel){
+function openLevelModal(empId,btn){
+  const emp=employees.find(e=>e.id===empId);
+  const name=emp?.name||'';
+  const curLevel=emp?.level||'mid';
   levelEmpId=empId;
   selectedLevel=curLevel;
   document.getElementById('level-emp-name').textContent=name;
