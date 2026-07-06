@@ -664,10 +664,12 @@ function renderTable(){
         const ek=`${emp.id}_${d.date}`;
         empRevTotal+=parseFloat(revDetailMap[ek]?.amount||0);
       });
+      const empPos = POSITIONS[emp.name]||'';
+      const empIsDir = ['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name);
       let row=`<tr>
-        <td class="name-td ${['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name)?'director-name':''}" onclick="openMgrCard(${emp.id})" style="cursor:pointer">
-          <div>${emp.name}${['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name)?'<span style="font-size:.6rem;color:#64b5f6;margin-left:4px">Директ</span>':''}</div>
-          ${POSITIONS[emp.name]?`<div style="font-size:.6rem;color:#a09080;margin-top:1px">${POSITIONS[emp.name]}</div>`:''}
+        <td class="name-td ${empIsDir?'director-name':''}" onclick="openMgrCard(${emp.id})" style="cursor:pointer">
+          <div>${emp.name}${empIsDir?'<span style="font-size:.6rem;color:#64b5f6;margin-left:4px">Директ</span>':''}</div>
+          ${empPos?`<div style="font-size:.6rem;color:#a09080;margin-top:1px">${empPos}</div>`:''}
         </td>
         <td class="level-badge">${emp.dept_code==='rzpk'&&emp.role!=='rop'&&emp.level!=='new'?`<span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span>`:''}</td>`;
       days.forEach(d=>{
