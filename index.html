@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="uk">
-<head>   
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Графік — IkorkaShop</title>
@@ -986,7 +986,9 @@ async function saveEmployee(){
   const startDate=document.getElementById('ae-start-date').value;
   if(!name){alert('Введіть ім\'я');return;}
   try{
-    const r=await api('/api/employees',{method:'POST',body:JSON.stringify({name,department_id:dept,level,role})});
+    const deptObj=departments.find(x=>x.id===dept);
+    const autoTeam=deptObj?.name||'';
+    const r=await api('/api/employees',{method:'POST',body:JSON.stringify({name,department_id:dept,level,role,team:autoTeam})});
     const d=departments.find(x=>x.id===dept);
     const position2=document.getElementById('ae-position')?.value?.trim();
     if(position2) POSITIONS[r.name]=position2;
