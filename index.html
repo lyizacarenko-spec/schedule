@@ -304,17 +304,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     <label>Ім'я та прізвище</label>
     <input type="text" id="ae-name" placeholder="Іванова Марія">
     <label>Відділ</label>
-    <select id="ae-dept">
-      <option value="1">РЗПК</option>
-      <option value="2">Гарячі продажі</option>
-      <option value="3">Відмови</option>
-      <option value="4">Керівництво</option>
-      <option value="5">Адмін блок</option>
-      <option value="6">Відділ навчання</option>
-      <option value="7">Бухгалтерія</option>
-      <option value="8">Логістика</option>
-      <option value="9">Склад</option>
-    </select>
+    <select id="ae-dept" class="ae-dept-select"></select>
     <label>Рівень</label>
     <select id="ae-level">
       <option value="new" selected>Новий співробітник</option>
@@ -980,7 +970,11 @@ async function saveRevenue(){
 }
 
 // ══ ADD EMPLOYEE ══════════════════════════════════════
-function openAddEmpModal(){ document.getElementById('ae-modal-ov').classList.add('open'); }
+function openAddEmpModal(){
+  const sel = document.getElementById('ae-dept');
+  sel.innerHTML = departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  document.getElementById('ae-modal-ov').classList.add('open');
+}
 function closeAeModal(){ document.getElementById('ae-modal-ov').classList.remove('open'); }
 async function saveEmployee(){
   const name=document.getElementById('ae-name').value.trim();
