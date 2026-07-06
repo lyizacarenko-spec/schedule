@@ -445,10 +445,7 @@ function getStatus(empId,date){
     if(dow===0||dow===6) return 'вих';
     return '9-17';
   }
-  if(emp&&emp.dept_code==='warehouse'){
-    if(dow===0||dow===6) return 'вих';
-    return '9-18';
-  }
+  if(emp&&emp.dept_code==='warehouse') return '9-18';
   if(emp&&emp.dept_code==='logistics'){
     if(dow===0) return 'вих';
     return '8:30-16:30';
