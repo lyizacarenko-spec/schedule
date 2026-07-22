@@ -44,7 +44,7 @@ input,select{font-family:inherit}
 .dept-tab{
   padding:10px 22px;font-size:.84rem;font-weight:600;
   color:#5a4535;border-bottom:2px solid transparent;margin-bottom:-2px;
-  white-space:nowrap;transition:.15s;
+  white-space:nowrap;transition:.15s;background:none;
 }
 .dept-tab:hover{color:#6a5848}
 .dept-tab.active{color:#b84e30;border-bottom-color:#b84e30}
@@ -135,7 +135,8 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 .cs-extra{background:#e4d4f0;color:#ba68c8;border:1px solid #c4a8d4}
 .cs-fired{background:#e8e4e0;color:#333;border:1px solid #d0ccc8}
 .cs-empty{background:#f0ede8;color:#ccc;border:1px solid #e8e4e0}
-.cs-custom{background:#e8f0f8;color:#1a5c8a;border:1px solid #a8c4dc}.cs-before{background:#f0ede8;color:transparent;border:1px solid transparent;cursor:default}
+.cs-custom{background:#e8f0f8;color:#1a5c8a;border:1px solid #a8c4dc}
+.cs-before{background:#f0ede8;color:transparent;border:1px solid transparent;cursor:default}
 
 /* POPUP */
 .popup-ov{display:none;position:fixed;inset:0;z-index:100}
@@ -152,7 +153,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 /* MODALS */
 .modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center}
 .modal-ov.open{display:flex}
-.modal{background:#e2dbd0;border:1px solid #c8c0b4;border-radius:13px;padding:22px;min-width:320px;max-width:460px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.8)}
+.modal{background:#e2dbd0;border:1px solid #c8c0b4;border-radius:13px;padding:22px;min-width:320px;max-width:460px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.8);max-height:90vh;overflow-y:auto}
 .modal h3{font-size:.98rem;color:#2c2218;margin-bottom:16px}
 .modal label{font-size:.77rem;color:#6a5040;display:block;margin-bottom:3px}
 .modal input,.modal select{width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:7px 11px;font-size:.88rem;margin-bottom:12px;outline:none}
@@ -194,7 +195,6 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 .sal-result-row span:last-child{color:#b84e30}
 .sal-result-row.green span:last-child{color:#2e7d52}
 
-
 /* MANAGER CARD */
 .mgr-card-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center}
 .mgr-card-ov.open{display:flex}
@@ -216,7 +216,6 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 .daily-plan-row{background:#fff8f4;border-bottom:1px solid #e8e0d8;padding:6px 20px;font-size:.78rem;color:#7a5040;display:flex;gap:16px;flex-wrap:wrap}
 .daily-plan-item{display:flex;gap:6px;align-items:center}
 .daily-plan-item strong{color:#b84e30;font-size:.88rem}
-
 </style>
 </head>
 <body>
@@ -231,7 +230,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
   <div class="toolbar">
     <button class="btn btn-green"  onclick="openRevModal()">💰 Виручка</button>
     <button class="btn btn-ghost"  onclick="openPlanModal()">📊 Плани</button>
-    <button class="btn btn-orange" onclick="openAddEmpModal()">＋ Менеджер</button>
+    <button class="btn btn-orange" onclick="openAddEmpModal()">＋ Співробітник</button>
     <button class="btn btn-ghost" onclick="openExportModal()" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e">📊 Експорт ЗП</button>
     <button class="btn btn-ghost" onclick="toggleArchive()" id="btn-archive">📦 Архів</button>
   </div>
@@ -240,17 +239,8 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
   </div>
 </div>
 
-<div class="dept-tabs">
-  <button class="dept-tab active" id="tab-rzpk"       onclick="setDept('rzpk')">РЗПК</button>
-  <button class="dept-tab"        id="tab-hot"         onclick="setDept('hot')">Гарячі продажі</button>
-  <button class="dept-tab"        id="tab-refuse"      onclick="setDept('refuse')">Відмови</button>
-  <button class="dept-tab"        id="tab-management"  onclick="setDept('management')">Керівництво</button>
-  <button class="dept-tab"        id="tab-admin"       onclick="setDept('admin')">Адмін блок</button>
-  <button class="dept-tab"        id="tab-training"    onclick="setDept('training')">Навчання</button>
-  <button class="dept-tab"        id="tab-accounting"  onclick="setDept('accounting')">Бухгалтерія</button>
-  <button class="dept-tab"        id="tab-logistics"   onclick="setDept('logistics')">Логістика</button>
-  <button class="dept-tab"        id="tab-warehouse"   onclick="setDept('warehouse')">Склад</button>
-</div>
+<!-- Вкладки відділів будуються динамічно з /api/departments -->
+<div class="dept-tabs" id="dept-tabs"></div>
 
 <div class="stats-row" id="stats-row"><div class="loading">Завантаження...</div></div>
 
@@ -305,27 +295,36 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     <label>Ім'я та прізвище</label>
     <input type="text" id="ae-name" placeholder="Іванова Марія">
     <label>Відділ</label>
-    <select id="ae-dept" class="ae-dept-select" onmousedown="if(!this.options.length){this.innerHTML=departments.map(d=>`<option value='${d.id}'>${d.name}</option>`).join('')}"></select>
-    <label>Рівень <span style="font-size:.7rem;color:#8a7060">(тільки для РЗПК)</span></label>
-    <select id="ae-level">
-      <option value="new" selected>Новий / Не застосовується</option>
-      <option value="jun">Джун</option>
-      <option value="mid">Мідл</option>
-      <option value="top">Топ</option>
-    </select>
+    <select id="ae-dept" onchange="onAeDeptChange()"></select>
     <label>Роль</label>
     <select id="ae-role">
       <option value="manager">Менеджер</option>
       <option value="senior">Старший менеджер</option>
+      <option value="teamlead">Тімлід</option>
       <option value="rop">РОП</option>
+      <option value="staff">Співробітник</option>
+      <option value="head">Керівник</option>
     </select>
+    <div id="ae-level-wrap">
+      <label>Рівень <span style="font-size:.7rem;color:#8a7060">(тільки для відділів продажів)</span></label>
+      <select id="ae-level">
+        <option value="new" selected>Новий / Не застосовується</option>
+        <option value="jun">Джун</option>
+        <option value="mid">Мідл</option>
+        <option value="top">Топ</option>
+      </select>
+    </div>
     <label>Посада (необов.)</label>
-    <input type="text" id="ae-position" placeholder="наприклад: Пакувальник, Бухгалтер...">
+    <input type="text" id="ae-position" placeholder="наприклад: Пакувальник, Контент/СММ...">
     <label>Дата початку (перший день)</label>
     <input type="date" id="ae-start-date" style="margin-bottom:4px">
     <label style="margin-top:4px">Кількість днів навчання</label>
     <input type="number" id="ae-navch-days" placeholder="наприклад 5" min="0" max="31" style="margin-bottom:4px">
-    <div style="font-size:.72rem;color:#8a7060;margin-bottom:12px">До дати — прочерки. З дати — навч (стільки днів). Далі заповниш вручну.</div>
+    <label style="display:flex;align-items:center;gap:7px;margin:8px 0 12px;font-size:.78rem;cursor:pointer">
+      <input type="checkbox" id="ae-autofill" checked style="width:auto;margin:0">
+      Заповнити решту місяця графіком за замовчуванням
+    </label>
+    <div style="font-size:.72rem;color:#8a7060;margin-bottom:12px">До дати початку — порожньо. Далі навч (стільки днів), потім стандартний графік відділу.</div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeAeModal()">Скасувати</button>
       <button class="btn-save"   onclick="saveEmployee()">Додати</button>
@@ -336,6 +335,14 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 <script>
 // ══ CONFIG ══════════════════════════════════════════
 const API = 'https://ikorka-schedule-production.up.railway.app';
+
+// ══ ГРУПИ ВІДДІЛІВ ══════════════════════════════════
+// Продажі — ЗП по % виконання плану, є рівні top/mid/jun
+const SALES_DEPTS = ['rzpk','retail','wholesale','resellers','hot'];
+// Реактивація/Відмови — ЗП по кількості замовлень
+const ORDER_DEPTS = ['refuse','reactivation'];
+// Ролі, які не рахуються в план відділу
+const NO_PLAN_ROLES = ['rop','head','teamlead'];
 
 // ══ STATUSES ════════════════════════════════════════
 const STATUSES = [
@@ -363,17 +370,23 @@ const sl = v => v && !SM[v] ? v : ((SM[v]||SM['']).label || '—');
 const sh = v => (SM[v]||{h:8}).h;
 
 const LEVEL_LABEL = {top:'ТОП',mid:'Мідл',jun:'Джун',new:'Новий'};
+const ROLE_LABEL  = {rop:'РОП',head:'Керівник',teamlead:'Тімлід',senior:'Старший менеджер',manager:'Менеджер',staff:'Співробітник'};
 const MONTH_UA = ['','Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
 
 // ══ STATE ════════════════════════════════════════════
 let Y = new Date().getFullYear();
 let M = new Date().getMonth()+1;
-let curDept = 'rzpk';
+let curDept = 'retail';
 let employees=[], departments=[], schedMap={}, revDetailMap={}, revDeptMap={}, statsData=[], salaryMap={};
 let pending={};
 let revMode = 'dept';
 let showArchive = false;
 let revDeptSel = 1;
+
+// ══ HELPERS ══════════════════════════════════════════
+const isSalesDept  = code => SALES_DEPTS.includes(code);
+const isOrderDept  = code => ORDER_DEPTS.includes(code);
+const hasSalaryCalc = code => isSalesDept(code) || isOrderDept(code);
 
 // ══ DAYS ════════════════════════════════════════════
 function getDays(y,m){
@@ -395,6 +408,8 @@ async function api(path,opts={}){
 
 async function loadAll(){
   [employees,departments]=await Promise.all([api('/api/employees'),api('/api/departments')]);
+  // якщо поточний відділ більше не активний — беремо перший доступний
+  if(!departments.find(d=>d.code===curDept)) curDept = departments[0]?.code || 'retail';
   await loadMonthData();
 }
 
@@ -419,41 +434,49 @@ async function loadMonthData(){
   renderAll();
 }
 
+// Дефолтний статус за кодом відділу і днем тижня
+function defaultStatusFor(deptCode, dow, empName){
+  if(isOrderDept(deptCode)) return '9:30-17:30';
+  if(deptCode==='admin' && empName==='Мединська Ірина')
+    return (dow===0||dow===6) ? 'вих' : '9:30-17:30';
+  if(deptCode==='accounting')
+    return (dow===0||dow===6) ? 'вих' : '9-17';
+  if(deptCode==='warehouse') return '9-18';
+  if(deptCode==='logistics')
+    return dow===0 ? 'вих' : '8:30-16:30';
+  if(['management','training','admin'].includes(deptCode) && (dow===0||dow===6)) return 'вих';
+  return '10-18';
+}
+
 function getStatus(empId,date){
   const k=`${empId}_${date}`;
   if(k in pending) return pending[k];
   if(k in schedMap) return schedMap[k].status;
   const emp=employees.find(e=>e.id===empId);
-  // If employee has start_date and date is before it - show empty
-  if(emp&&emp.start_date&&date<emp.start_date) return '';
-  // New employees without filled status show empty
-  if(emp&&emp.level==='new') return '';
-  // Default shifts per department
+  // до дати старту — порожньо
+  if(emp&&emp.start_date&&date<emp.start_date.slice(0,10)) return '';
+  // новенькі менеджери — порожньо (керівні ролі отримують дефолт)
+  if(emp&&emp.level==='new'&&!NO_PLAN_ROLES.includes(emp.role)) return '';
   const dow = new Date(date).getDay();
-  if(emp&&emp.dept_code==='refuse') return '9:30-17:30';
-  if(emp&&emp.dept_code==='admin'&&emp.name==='Мединська Ірина'){
-    if(dow===0||dow===6) return 'вих';
-    return '9:30-17:30';
-  }
-  if(emp&&emp.dept_code==='accounting'){
-    if(dow===0||dow===6) return 'вих';
-    return '9-17';
-  }
-  if(emp&&emp.dept_code==='warehouse') return '9-18';
-  if(emp&&emp.dept_code==='logistics'){
-    if(dow===0) return 'вих';
-    return '8:30-16:30';
-  }
-  if(emp&&['management','training','admin'].includes(emp.dept_code)&&(dow===0||dow===6)) return 'вих';
-  return '10-18';
+  return defaultStatusFor(emp?.dept_code, dow, emp?.name);
 }
 
 // ══ RENDER ════════════════════════════════════════════
 function renderAll(){
   document.getElementById('month-label').textContent=`${MONTH_UA[M]} ${Y}`;
+  renderDeptTabs();
   renderStats();
   renderTable();
   renderDailyPlanBar();
+}
+
+function renderDeptTabs(){
+  const el=document.getElementById('dept-tabs');
+  if(!el||!departments.length) return;
+  if(!departments.find(d=>d.code===curDept)) curDept=departments[0].code;
+  el.innerHTML=departments.map(d=>
+    `<button class="dept-tab ${d.code===curDept?'active':''}" id="tab-${d.code}" onclick="setDept('${d.code}')">${d.name}</button>`
+  ).join('');
 }
 
 function fmtM(n){
@@ -485,7 +508,6 @@ function renderStats(){
   let planCards='';
   visDepts.forEach(dept=>{
     const s=statsData.find(x=>x.dept_code===dept.code)||{plan_total:0,fact_total:0,pct:0,plan_breakdown:{}};
-    // exclude rop from employee count for display
     const pct=s.pct;
     const cls=pbarCls(pct);
     const bd=s.plan_breakdown||{};
@@ -512,7 +534,7 @@ function renderStats(){
   });
 
   document.getElementById('stats-row').innerHTML=`
-    <div class="stat-card"><span class="n">${visEmps.length}</span><span class="l">Менедж.</span></div>
+    <div class="stat-card"><span class="n">${visEmps.length}</span><span class="l">Людей</span></div>
     <div class="stat-card"><span class="n">${wd}</span><span class="l">Змін</span></div>
     <div class="stat-card"><span class="n">${hrs}</span><span class="l">Годин</span></div>
     <div class="stat-card"><span class="n" style="color:#ef5350">${sick}</span><span class="l">Лікарн.</span></div>
@@ -530,43 +552,42 @@ function getVisEmps(){
 function renderTable(){
   const days=getDays(Y,M);
   const emps=getVisEmps();
-  // Group by team within dept - fixed order
-  const TEAM_ORDER = ['РОП','Команда Чопового','Команда Шелковникової','Команда Кіндюшенко','Нові співробітники','Віддалено','Гарячі продажі','Відмови','Керівництво','Адмін блок','Відділ навчання','Бухгалтерія','Логістика'];
+  // Порядок груп усередині відділу
+  const TEAM_ORDER = [
+    'РОП','Керівник','Тімлід',
+    'Оперативна група','Планова група',
+    'Команда Чопового','Команда Шелковникової','Команда Кіндюшенко',
+    'Нові співробітники','Віддалено'
+  ];
   const groupsRaw={};
   emps.forEach(e=>{
     const teamKey = e.team || e.dept_code;
     if(!groupsRaw[teamKey]) groupsRaw[teamKey]={name:e.team||e.dept_name,code:e.dept_code,id:departments.find(d=>d.code===e.dept_code)?.id,emps:[]};
-    // Sort: rop first, then senior, then by name
     groupsRaw[teamKey].emps.push(e);
   });
-  // Admin dept custom order
   const ADMIN_ORDER = ['Мединська Ірина','Чубострoєва Валентина','Овсюченко Луїза','Демидов Сергій','Озерна Карина','Пальчун Дмитро'];
-  // Sort employees within each team: rop → senior → manager, then by name
   Object.values(groupsRaw).forEach(g=>{
     g.emps.sort((a,b)=>{
-      // Admin dept - custom order
       const ai=ADMIN_ORDER.indexOf(a.name), bi=ADMIN_ORDER.indexOf(b.name);
       if(ai!==-1||bi!==-1){
         if(ai!==-1&&bi!==-1) return ai-bi;
         if(ai!==-1) return -1;
         if(bi!==-1) return 1;
       }
-      const roleOrder={rop:0,senior:1,manager:2};
+      const roleOrder={rop:0,head:0,teamlead:1,senior:1,manager:2,staff:3};
       const ra=roleOrder[a.role]??2, rb=roleOrder[b.role]??2;
       if(ra!==rb) return ra-rb;
       return a.name.localeCompare(b.name,'uk');
     });
   });
-  // Order groups by TEAM_ORDER
   const groups={};
   TEAM_ORDER.forEach(t=>{ if(groupsRaw[t]) groups[t]=groupsRaw[t]; });
-  // Add any remaining teams not in order
   Object.keys(groupsRaw).forEach(t=>{ if(!groups[t]) groups[t]=groupsRaw[t]; });
 
   const todayDate = new Date().toISOString().slice(0,10);
   let h=`<table><thead>
   <tr>
-    <th class="name-th">Менеджер</th>
+    <th class="name-th">Співробітник</th>
     <th style="width:34px"></th>`;
   days.forEach(d=>{
     const isToday = d.date===todayDate;
@@ -581,7 +602,7 @@ function renderTable(){
   });
   h+=`<th></th><th></th><th></th></tr></thead><tbody>`;
 
-  // Daily plan row — dynamic per working managers each day
+  // Рядок "План/день"
   const s3 = statsData.find(x=>x.dept_code===curDept);
   if(s3 && s3.plan_total){
     const today3 = new Date().toISOString().slice(0,10);
@@ -600,7 +621,7 @@ function renderTable(){
       const isT3=d.date===today3;
       let dayPlan3=0;
       emps.forEach(e=>{
-        if(e.role==='rop'||e.level==='new') return;
+        if(NO_PLAN_ROLES.includes(e.role)||e.level==='new') return;
         if(WORK_ST3.includes(getStatus(e.id,d.date))) dayPlan3+=planPerDay3[e.level]||0;
       });
       const col=isT3?'#b84e30':'#8a6050', fw=isT3?'700':'500', bg=isT3?'#ffeee8':'#fff8f4';
@@ -609,13 +630,11 @@ function renderTable(){
     h+=`<td style="background:#fff8f4"></td><td style="background:#fff8f4"></td><td style="background:#fff8f4"></td></tr>`;
   }
 
-  // Calc daily plan per level
   const today2 = new Date().toISOString().slice(0,10);
   const s2 = statsData.find(x=>x.dept_code===curDept);
   const bd2 = s2?.plan_breakdown||{};
   const workDays2 = days.filter(d=>!d.isW).length||22;
 
-  // Total dept daily summary (above ROP)
   let deptDayHtml = '';
   if(s2&&s2.plan_total){
     const totalDay = Math.round(s2.plan_total/workDays2);
@@ -628,13 +647,13 @@ function renderTable(){
     deptDayHtml = `<span style="margin-right:16px;font-weight:700;color:#b84e30">📊 День: ${fmtM(totalDay)} ₴</span>${lvlParts}`;
   }
 
+  let firstGroup = true;
   Object.values(groups).forEach(g=>{
-    // Per-team daily plan
     let teamDayHtml = '';
-    if(g.name !== 'РОП' && s2 && s2.plan_total){
+    if(!['РОП','Керівник'].includes(g.name) && s2 && s2.plan_total){
       const lvlCounts={top:0,mid:0,jun:0};
       g.emps.forEach(e=>{
-        if(e.role==='rop') return;
+        if(NO_PLAN_ROLES.includes(e.role)) return;
         const v=getStatus(e.id,today2);
         const working=['10-18','11-18','10-17','9:30-17:30','удаленка','відробіт'].includes(v);
         if(working && lvlCounts[e.level]!==undefined) lvlCounts[e.level]++;
@@ -650,9 +669,10 @@ function renderTable(){
       if(parts.length) teamDayHtml = ` <span style="font-weight:400;font-size:.65rem;color:#8a6050;margin-left:8px">${parts.join(' · ')}</span>`;
     }
 
-    if(g.name==='РОП' && deptDayHtml){
+    if(firstGroup && deptDayHtml){
       h+=`<tr class="group-row"><td colspan="${days.length+5}" style="font-size:.68rem">${deptDayHtml}</td></tr>`;
     }
+    firstGroup = false;
     h+=`<tr class="group-row"><td colspan="${days.length+5}">${g.name}${teamDayHtml}</td></tr>`;
 
     g.emps.forEach(emp=>{
@@ -662,14 +682,15 @@ function renderTable(){
         const ek=`${emp.id}_${d.date}`;
         empRevTotal+=parseFloat(revDetailMap[ek]?.amount||0);
       });
-      const empPos = POSITIONS[emp.name]||'';
+      const empPos = POSITIONS[emp.name] || ROLE_LABEL[emp.role] || '';
       const empIsDir = ['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name);
+      const showLevel = isSalesDept(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role) && emp.level!=='new';
       let row=`<tr>
         <td class="name-td ${empIsDir?'director-name':''}" onclick="openMgrCard(${emp.id})" style="cursor:pointer">
           <div>${emp.name}${empIsDir?'<span style="font-size:.6rem;color:#64b5f6;margin-left:4px">Директ</span>':''}</div>
           ${empPos?`<div style="font-size:.6rem;color:#a09080;margin-top:1px">${empPos}</div>`:''}
         </td>
-        <td class="level-badge">${emp.dept_code==='rzpk'&&emp.role!=='rop'&&emp.level!=='new'?`<span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span>`:''}</td>`;
+        <td class="level-badge">${showLevel?`<span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span>`:''}</td>`;
       days.forEach(d=>{
         const v=getStatus(emp.id,d.date);
         const h2=sh(v);if(h2>0){wd++;hrs+=h2;}
@@ -688,7 +709,7 @@ function renderTable(){
       h+=row;
     });
   });
-  // Show archived employees if toggled
+  // Архів
   if(showArchive && archivedEmployees.length){
     const archFiltered = curDept==='all' ? archivedEmployees : archivedEmployees.filter(e=>e.dept_code===curDept);
     if(archFiltered.length){
@@ -745,18 +766,15 @@ async function applyStatus(v){
   // Звільнення — заповнюємо до кінця місяця
   if(v==='-'){
     const emp=employees.find(e=>e.id===pEmp);
-    const empName=emp?.name||'менеджера';
+    const empName=emp?.name||'співробітника';
     if(!confirm(`Поставити звільнення для ${empName} з ${pDate.slice(8)}.${pDate.slice(5,7)} до кінця місяця?`)) return;
     setSave('Збереження...',false);
     try{
       const days=getDays(Y,M);
-      const fromDay=days.find(d=>d.date===pDate);
-      if(!fromDay) return;
       const toFill=days.filter(d=>d.date>=pDate);
-      for(const d of toFill){
-        await api('/api/schedule',{method:'PUT',body:JSON.stringify({employee_id:pEmp,entry_date:d.date,status:'-'})});
-        schedMap[`${pEmp}_${d.date}`]={employee_id:pEmp,entry_date:d.date,status:'-'};
-      }
+      const entries=toFill.map(d=>({employee_id:pEmp,entry_date:d.date,status:'-'}));
+      await bulkSchedule(entries);
+      toFill.forEach(d=>{ schedMap[`${pEmp}_${d.date}`]={employee_id:pEmp,entry_date:d.date,status:'-'}; });
       renderTable();renderStats();
       setSave(`Звільнення встановлено з ${pDate.slice(8)}.${pDate.slice(5,7)} (${toFill.length} днів) ✓`,true);
     }catch(e){setSave('Помилка ✗',false);}
@@ -774,13 +792,50 @@ async function applyStatus(v){
   }catch(e){setSave('Помилка ✗',false);}
 }
 
+// ══ BULK SCHEDULE (з фолбеком на одиночні PUT) ═══════
+async function bulkSchedule(entries){
+  if(!entries.length) return;
+  try{
+    await api('/api/schedule/bulk',{method:'PUT',body:JSON.stringify({entries})});
+  }catch(e){
+    // старий бекенд без /bulk — пишемо по одному
+    for(const en of entries){
+      await api('/api/schedule',{method:'PUT',body:JSON.stringify(en)});
+    }
+  }
+}
+
+// ══ ЗАПОВНИТИ МІСЯЦЬ ЗА ЗАМОВЧУВАННЯМ ════════════════
+async function fillDefaultMonth(empId){
+  const emp=employees.find(e=>e.id===empId);
+  if(!emp) return;
+  if(!confirm(`Заповнити ${MONTH_UA[M]} ${Y} стандартним графіком для ${emp.name}?\nІснуючі відмітки буде перезаписано.`)) return;
+  const days=getDays(Y,M);
+  const entries=[];
+  days.forEach(d=>{
+    if(emp.start_date && d.date < emp.start_date.slice(0,10)) return;
+    const dow=new Date(d.date).getDay();
+    const st=defaultStatusFor(emp.dept_code,dow,emp.name);
+    if(!st) return;
+    entries.push({employee_id:empId,entry_date:d.date,status:st});
+  });
+  setSave('Заповнення...',false);
+  try{
+    await bulkSchedule(entries);
+    entries.forEach(en=>{ schedMap[`${empId}_${en.entry_date}`]=en; });
+    closeMgrCardForce();
+    renderAll();
+    setSave(`Заповнено ${entries.length} днів ✓`,true);
+  }catch(e){ setSave('Помилка ✗',false); alert('Помилка: '+e.message); }
+}
+
 // ══ PLAN MODAL ════════════════════════════════════════
 let planDeptFilter=null;
 function openPlanModal(deptCode){
   planDeptFilter=deptCode||null;
   const visDepts=planDeptFilter
     ? departments.filter(d=>d.code===planDeptFilter)
-    : departments;
+    : departments.filter(d=>isSalesDept(d.code));
 
   let body='';
   visDepts.forEach(dept=>{
@@ -819,19 +874,17 @@ function openPlanModal(deptCode){
       </div>
     </div>`;
   });
-  document.getElementById('plan-modal-body').innerHTML=body;
+  document.getElementById('plan-modal-body').innerHTML=body||'<div style="font-size:.8rem;color:#8a7060">Для цього відділу плани не задаються.</div>';
   document.getElementById('plan-modal-ov').classList.add('open');
 }
 
 function updatePlanTotal(deptId){
   const s=statsData.find(x=>x.dept_code===(departments.find(d=>d.id==deptId)?.code))||{plan_breakdown:{}};
   const bd=s.plan_breakdown||{};
-  // Update dept total preview
   const deptTotal=parseFloat(document.getElementById(`plan-dept-total-${deptId}`)?.value)||0;
   const dayEl=document.getElementById(`plan-dept-day-${deptId}`);
   const dAll=getDays(Y,M);
   if(dayEl) dayEl.textContent=deptTotal>0?`≈ ${fmtM(Math.round(deptTotal/dAll.length))} ₴/день`:'';
-  // Update levels sum
   let lvlSum=0;
   ['top','mid','jun'].forEach(lvl=>{
     const cnt=bd[lvl]?.cnt||0;
@@ -848,11 +901,10 @@ function updatePlanTotal(deptId){
 function closePlanModal(){ document.getElementById('plan-modal-ov').classList.remove('open'); }
 
 async function savePlans(){
-  const visDepts=planDeptFilter ? departments.filter(d=>d.code===planDeptFilter) : departments;
+  const visDepts=planDeptFilter ? departments.filter(d=>d.code===planDeptFilter) : departments.filter(d=>isSalesDept(d.code));
   setSave('Збереження...',false);
   try{
     for(const dept of visDepts){
-      // Save individual level plans (for salary calc)
       let lvlSum=0;
       const s=statsData.find(x=>x.dept_code===dept.code)||{plan_breakdown:{}};
       const bd=s.plan_breakdown||{};
@@ -865,10 +917,8 @@ async function savePlans(){
           department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:amt
         })});
       }
-      // If dept total is set and differs from levels sum - save dept total as override
       const deptTotalEl=document.getElementById(`plan-dept-total-${dept.id}`);
       const deptTotal=parseFloat(deptTotalEl?.value)||0;
-      // If dept total set but levels not filled - distribute evenly
       if(deptTotal>0 && lvlSum===0){
         const cnt=Object.values(bd).reduce((a,b)=>a+(b.cnt||0),0)||1;
         const perPerson=Math.round(deptTotal/cnt);
@@ -895,7 +945,7 @@ function setRevMode(mode){
 }
 function openRevModal(){
   document.getElementById('rev-date').value=new Date().toISOString().slice(0,10);
-  revDeptSel=departments[0]?.id||1;
+  revDeptSel=departments.find(d=>d.code===curDept)?.id||departments[0]?.id||1;
   renderRevBody();
   document.getElementById('rev-modal-ov').classList.add('open');
 }
@@ -903,9 +953,10 @@ function closeRevModal(){ document.getElementById('rev-modal-ov').classList.remo
 
 function renderRevBody(){
   if(revMode==='dept'){
+    const revDepts=departments.filter(d=>isSalesDept(d.code)||isOrderDept(d.code));
     document.getElementById('rev-body').innerHTML=`
       <label>Відділ</label>
-      <div class="dept-btns">${departments.map(d=>
+      <div class="dept-btns">${revDepts.map(d=>
         `<button class="dept-btn ${d.id===revDeptSel?'sel':''}" onclick="selRevDept(${d.id},this)">${d.name}</button>`
       ).join('')}</div>
       <label>Сума (грн)</label>
@@ -915,14 +966,14 @@ function renderRevBody(){
     `;
   } else {
     const date=document.getElementById('rev-date').value;
-    const visEmps=getVisEmps();
+    const visEmps=getVisEmps().filter(e=>!NO_PLAN_ROLES.includes(e.role));
     document.getElementById('rev-body').innerHTML=`
       <div style="max-height:280px;overflow-y:auto">
       ${visEmps.map(e=>{
         const k=`${e.id}_${date}`;
         const cur=parseFloat(revDetailMap[k]?.amount||0);
         return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <div style="flex:1;font-size:.8rem;color:#4a3828">${e.name} <span class="lbadge ${e.level}" style="font-size:.6rem">${LEVEL_LABEL[e.level]}</span></div>
+          <div style="flex:1;font-size:.8rem;color:#4a3828">${e.name} ${LEVEL_LABEL[e.level]?`<span class="lbadge ${e.level}" style="font-size:.6rem">${LEVEL_LABEL[e.level]}</span>`:''}</div>
           <input type="number" id="rev-emp-${e.id}" value="${cur||''}" placeholder="0"
                  style="width:110px;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:6px;padding:5px 8px;font-size:.82rem;outline:none">
         </div>`;
@@ -936,7 +987,6 @@ function selRevDept(id,el){
   document.querySelectorAll('.dept-btn').forEach(b=>b.classList.remove('sel'));
   el.classList.add('sel');
 }
-// also called when emp cell is clicked
 
 function openRevEmpModalById(empId){
   const emp=employees.find(e=>e.id===empId);
@@ -950,7 +1000,6 @@ function openRevEmpModal(empId,name){
   document.getElementById('rev-tab-emp').classList.add('active');
   renderRevBody();
   document.getElementById('rev-modal-ov').classList.add('open');
-  // scroll to that employee
   setTimeout(()=>{
     const el=document.getElementById(`rev-emp-${empId}`);
     if(el)el.scrollIntoView({block:'center'});
@@ -989,55 +1038,72 @@ async function saveRevenue(){
 function openAddEmpModal(){
   const sel = document.getElementById('ae-dept');
   if(departments && departments.length){
-    sel.innerHTML = departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+    sel.innerHTML = departments.map(d=>`<option value="${d.id}" ${d.code===curDept?'selected':''}>${d.name}</option>`).join('');
   }
+  onAeDeptChange();
   document.getElementById('ae-modal-ov').classList.add('open');
 }
+function onAeDeptChange(){
+  const deptId=parseInt(document.getElementById('ae-dept').value);
+  const dept=departments.find(d=>d.id===deptId);
+  const wrap=document.getElementById('ae-level-wrap');
+  // рівень має сенс лише для відділів продажів
+  wrap.style.display = isSalesDept(dept?.code) ? 'block' : 'none';
+  // для несейлз відділів дефолтна роль — Співробітник
+  const roleSel=document.getElementById('ae-role');
+  if(!isSalesDept(dept?.code)&&!isOrderDept(dept?.code)) roleSel.value='staff';
+}
 function closeAeModal(){ document.getElementById('ae-modal-ov').classList.remove('open'); }
+
 async function saveEmployee(){
   const name=document.getElementById('ae-name').value.trim();
   const dept=parseInt(document.getElementById('ae-dept').value);
-  const level=document.getElementById('ae-level').value;
   const role=document.getElementById('ae-role').value;
   const startDate=document.getElementById('ae-start-date').value;
+  const autofill=document.getElementById('ae-autofill').checked;
+  const deptObj=departments.find(x=>x.id===dept);
+  // рівень лише для продажів, інакше 'mid' щоб не блокувати графік
+  let level=document.getElementById('ae-level').value;
+  if(!isSalesDept(deptObj?.code)) level='mid';
+  if(NO_PLAN_ROLES.includes(role)&&level==='new') level='mid';
   if(!name){alert('Введіть ім\'я');return;}
   try{
-    const deptObj=departments.find(x=>x.id===dept);
-    const autoTeam=deptObj?.name||'';
-    const r=await api('/api/employees',{method:'POST',body:JSON.stringify({name,department_id:dept,level,role,team:autoTeam})});
-    const d=departments.find(x=>x.id===dept);
+    const autoTeam = ROLE_LABEL[role]==='РОП' ? 'РОП'
+                   : role==='teamlead' ? 'Тімлід'
+                   : (deptObj?.name||'');
+    const r=await api('/api/employees',{method:'POST',body:JSON.stringify({
+      name,department_id:dept,level,role,team:autoTeam,start_date:startDate||null
+    })});
     const position2=document.getElementById('ae-position')?.value?.trim();
     if(position2) POSITIONS[r.name]=position2;
-    employees.push({...r,dept_code:d?.code,dept_name:d?.name});
+    employees.push({...r,dept_code:deptObj?.code,dept_name:deptObj?.name,start_date:startDate||null});
 
-    if(startDate){
-      const navchDays = parseInt(document.getElementById('ae-navch-days').value)||0;
-      const allDays = getDays(Y,M);
-      // Fill navch from startDate for navchDays working days
-      let filled = 0;
-      for(const d of allDays){
-        if(d.date < startDate) continue;
-        const status = filled < navchDays ? 'навч' : null;
-        if(status){
-          await api('/api/schedule',{method:'PUT',body:JSON.stringify({
-            employee_id:r.id, entry_date:d.date, status
-          })});
-          schedMap[`${r.id}_${d.date}`]={employee_id:r.id,entry_date:d.date,status};
-          filled++;
-        }
+    const navchDays = parseInt(document.getElementById('ae-navch-days').value)||0;
+    const allDays = getDays(Y,M);
+    const entries=[];
+    let filled=0;
+    for(const d of allDays){
+      if(startDate && d.date < startDate) continue;
+      let status=null;
+      if(filled<navchDays){ status='навч'; filled++; }
+      else if(autofill){
+        const dow=new Date(d.date).getDay();
+        status=defaultStatusFor(deptObj?.code,dow,name);
       }
-      // Save start_date to employee
-      await api('/api/employees/'+r.id,{method:'PATCH',body:JSON.stringify({start_date:startDate})});
-      employees[employees.length-1].start_date=startDate;
-      setSave(`${name} додано з ${startDate.slice(8)}.${startDate.slice(5,7)}, навч ${navchDays} дн. ✓`,true);
-    } else {
-      setSave('Менеджера додано ✓',true);
+      if(status) entries.push({employee_id:r.id,entry_date:d.date,status});
     }
+    if(entries.length){
+      await bulkSchedule(entries);
+      entries.forEach(en=>{ schedMap[`${r.id}_${en.entry_date}`]=en; });
+    }
+    setSave(`${name} додано${entries.length?` · ${entries.length} днів заповнено`:''} ✓`,true);
 
     closeAeModal();
     document.getElementById('ae-name').value='';
     document.getElementById('ae-start-date').value='';
+    document.getElementById('ae-navch-days').value='';
     if(document.getElementById('ae-position')) document.getElementById('ae-position').value='';
+    employees = await api('/api/employees');
     await loadMonthData();
   }catch(e){alert('Помилка: '+e.message);}
 }
@@ -1050,7 +1116,6 @@ function changeMonth(d){
 }
 function setDept(code){
   curDept=code;
-  document.querySelectorAll('.dept-tab').forEach(t=>{t.classList.toggle('active',t.id==='tab-'+code);});
   renderAll();
 }
 
@@ -1058,7 +1123,6 @@ function setSave(msg,ok){
   const el=document.getElementById('save-dot');
   el.textContent=msg;el.className='save-dot'+(ok?' ok':'');
 }
-
 
 // ══ DAILY PLAN BAR ════════════════════════════════════
 function renderDailyPlanBar(){
@@ -1070,15 +1134,14 @@ function renderDailyPlanBar(){
     if(!s||!s.plan_total) return;
     const deptEmps = employees.filter(e=>e.dept_code===dept.code);
     const workingToday = deptEmps.filter(e=>{
-      if(e.role==='rop') return false;
+      if(NO_PLAN_ROLES.includes(e.role)) return false;
       const v = getStatus(e.id, today);
       return ['10-18','11-18','10-17','9:30-17:30','удаленка','відробіт','запізн'].includes(v);
     }).length;
 
     const days = getDays(Y,M);
-    const deptId = departments.find(d=>d.code===dept.code)?.id;
+    const deptId = dept.id;
 
-    // calc cumulative fact up to yesterday
     let cumFact = 0;
     days.forEach(d=>{
       if(d.date >= today) return;
@@ -1088,12 +1151,11 @@ function renderDailyPlanBar(){
       cumFact += df;
     });
 
-    // Today's plan = sum of per-person-per-day plans for those working today
     const bd2 = s.plan_breakdown||{};
     const WORK_ST = ['10-18','11-18','10-17','9:30-17:30','удаленка','відробіт','запізн'];
     let todayPlan2 = 0;
     deptEmps.forEach(e=>{
-      if(e.role==='rop'||e.level==='new') return;
+      if(NO_PLAN_ROLES.includes(e.role)||e.level==='new') return;
       const v=getStatus(e.id,today);
       if(WORK_ST.includes(v)){
         const perMonth=bd2[e.level]?.plan_per_person||0;
@@ -1104,7 +1166,7 @@ function renderDailyPlanBar(){
 
     barHtml += `<div class="daily-plan-item">
       <span style="color:#8a7060">Сьогодні в зміні:</span>
-      <strong>${workingToday} менедж.</strong>
+      <strong>${workingToday} ос.</strong>
       <span style="color:#aaa">•</span>
       <span style="color:#8a7060">План на день:</span>
       <strong style="color:#b84e30">${fmtM(todayPlan2)} ₴</strong>
@@ -1124,12 +1186,9 @@ function openMgrCard(empId){
   const days = getDays(Y,M);
   let wd=0,hrs=0,sick=0,vac=0,late=0,rem=0,rev=0;
   const dows=['нд','пн','вт','ср','чт','пт','сб'];
-  const LEVEL_LABEL2={top:'ТОП',mid:'Мідл',jun:'Джун'};
 
   let calHtml='';
-  // header days
   dows.forEach(d=>{ calHtml+=`<div class="mgr-day hdr">${d}</div>`; });
-  // empty cells before first day
   const firstDow = new Date(Y,M-1,1).getDay();
   for(let i=0;i<firstDow;i++) calHtml+=`<div class="mgr-day"></div>`;
 
@@ -1161,12 +1220,15 @@ function openMgrCard(empId){
   const s = statsData.find(x=>x.dept_code===emp.dept_code);
   const bd = s?.plan_breakdown||{};
   const empPlan = bd[emp.level]?.plan_per_person||0;
+  const canCalcSalary = hasSalaryCalc(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role);
+  const orderMode = isOrderDept(emp.dept_code);
+  const levelPart = isSalesDept(emp.dept_code) && LEVEL_LABEL[emp.level] ? ` · ${LEVEL_LABEL[emp.level]}` : '';
 
   document.getElementById('mgr-card-content').innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
         <h3>${emp.name}</h3>
-        <div class="mgr-sub">${emp.dept_name} · ${LEVEL_LABEL2[emp.level]} · ${emp.role==='rop'?'РОП':emp.role==='senior'?'Старший менеджер':'Менеджер'}</div>
+        <div class="mgr-sub">${emp.dept_name}${levelPart} · ${ROLE_LABEL[emp.role]||'Співробітник'}${POSITIONS[emp.name]?' · '+POSITIONS[emp.name]:''}</div>
       </div>
       <button onclick="closeMgrCardForce()" style="background:none;color:#aaa;font-size:1.1rem;cursor:pointer">✕</button>
     </div>
@@ -1182,7 +1244,7 @@ function openMgrCard(empId){
     </div>
     <div class="sal-block">
       <h4>💰 Розрахунок ЗП — ${MONTH_UA[M]} ${Y}</h4>
-      ${ ['management','admin','training','accounting','logistics','warehouse'].includes(emp.dept_code) ? '<div style="font-size:.75rem;color:#8a7060;padding:8px 0">Розрахунок ЗП не передбачений для цього відділу</div>' : '' }
+      ${ !canCalcSalary ? '<div style="font-size:.75rem;color:#8a7060;padding:8px 0">Розрахунок ЗП для цієї ролі/відділу не передбачений</div>' : `
       <div id="rop-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
         <div style="text-align:center;padding:8px 0 12px">
           <div style="font-size:.78rem;color:#8a7060;margin-bottom:8px">🔒 Доступ тільки для РОП</div>
@@ -1195,7 +1257,7 @@ function openMgrCard(empId){
         </div>
       </div>
       <div id="sal-unlock-block" style="${ropUnlocked?'display:block':'display:none'}">
-        ${emp.dept_code==='refuse'?`
+        ${orderMode?`
         <div class="sal-row">
           <div class="sal-field"><label>Кількість замовлень</label><input type="number" id="sal-plan-${emp.id}" placeholder="90+" value="${salaryMap[emp.id]?.plan_amount||''}"></div>
           <div class="sal-field"><label>Сума замовлень (грн)</label><input type="number" id="sal-fact-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.fact_amount||''}"></div>
@@ -1204,6 +1266,7 @@ function openMgrCard(empId){
         </div>
         <div class="sal-row" style="margin-top:4px">
           <div class="sal-field"><label>Дзвінків за місяць</label><input type="number" id="sal-calls-${emp.id}" placeholder="1600" value="${salaryMap[emp.id]?.calls||''}"></div>
+          <div class="sal-field"><label>Доплата (грн)</label><input type="number" id="sal-bonus-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.senior_bonus||''}"></div>
           <div class="sal-field"><label>Штраф (грн)</label><input type="number" id="sal-penalty-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.penalty||''}"></div>
           <div class="sal-field"><label>Примітка</label><input type="text" id="sal-note-${emp.id}" placeholder="" value="${salaryMap[emp.id]?.note||''}"></div>
         </div>`:`
@@ -1225,15 +1288,17 @@ function openMgrCard(empId){
         <div id="sal-result-${emp.id}" style="margin-top:8px">
           ${salaryMap[emp.id]?.fact_amount?'<div style="font-size:.72rem;color:#8a7060">📋 Є збережені дані — натисни Розрахувати для перегляду</div>':'<div style="font-size:.75rem;color:#aaa">Введи дані та натисни Розрахувати</div>'}
         </div>
-      </div>
+      </div>`}
     </div>
     <div style="font-size:.7rem;color:#8a7060;margin-bottom:6px">Календар ${MONTH_UA[M]} ${Y}</div>
     <div class="mgr-month">${calHtml}</div>
     <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+      <button class="btn-ghost btn" style="flex:1 1 100%;background:#d4edd8;color:#1a5c30;border-color:#a8d4b0;font-weight:600" onclick="fillDefaultMonth(${emp.id})">📅 Заповнити місяць за замовчуванням</button>
       <button class="btn-save" style="flex:1" onclick="closeMgrCardForce();openVacModalById(${emp.id})">🌴 Відпустка</button>
       <button class="btn-ghost btn" style="flex:1" onclick="openCustomRangeModalById(${emp.id})">✏️ Свій графік</button>
-      <button class="btn-ghost btn" style="flex:1" onclick="openLevelModal(${emp.id},this)">⭐ Рівень</button>
-      <button class="btn-ghost btn" style="flex:1" onclick="openTeamModal(${emp.id},this)">👥 Команда</button>
+      ${isSalesDept(emp.dept_code)?`<button class="btn-ghost btn" style="flex:1" onclick="openLevelModal(${emp.id})">⭐ Рівень</button>`:''}
+      <button class="btn-ghost btn" style="flex:1" onclick="openTeamModal(${emp.id})">👥 Група</button>
+      <button class="btn-ghost btn" style="flex:1" onclick="openMoveDeptModal(${emp.id})">🔀 Відділ</button>
       <button class="btn-ghost btn" style="flex:0 0 auto;background:#f0d4d4;color:#b71c1c;border-color:#dca8a8" onclick="deactivateEmpById(${emp.id})">🗑️</button>
     </div>
   `;
@@ -1261,19 +1326,16 @@ async function saveVacation(){
   try{
     const days=getDays(Y,M);
     const inRange=days.filter(d=>d.date>=from&&d.date<=to);
-    for(const d of inRange){
-      await api('/api/schedule',{method:'PUT',body:JSON.stringify({
-        employee_id:vacEmpId,entry_date:d.date,status:'відпуск'
-      })});
-      schedMap[`${vacEmpId}_${d.date}`]={employee_id:vacEmpId,entry_date:d.date,status:'відпуск'};
-    }
+    const entries=inRange.map(d=>({employee_id:vacEmpId,entry_date:d.date,status:'відпуск'}));
+    await bulkSchedule(entries);
+    entries.forEach(en=>{ schedMap[`${vacEmpId}_${en.entry_date}`]=en; });
     closeVacModal();
     renderTable();renderStats();
     setSave(`Відпустку встановлено (${inRange.length} днів) ✓`,true);
   }catch(e){alert('Помилка: '+e.message);}
 }
 
-// ══ LATE POPUP (час + коментар) ══════════════════════
+// ══ LATE POPUP ═══════════════════════════════════════
 let lateEmpId=null,lateDate=null;
 function openLatePopup(empId,date,name){
   lateEmpId=empId;lateDate=date;
@@ -1302,12 +1364,6 @@ async function saveLate(){
     setSave('Збережено ✓',true);
   }catch(e){alert('Помилка: '+e.message);}
 }
-
-
-
-
-
-
 
 // ══ POSITIONS ══════════════════════════════════════
 const POSITIONS = {
@@ -1340,17 +1396,16 @@ const POSITIONS = {
   'Пальчун Елла': 'Комерційний директор',
   'Константинов Денис': 'Керівник маркетингу',
   'Шаповалова Вікторія': 'HR-D',
-  // РЗПК
+  // Продажі
   'Чоповий Максим': 'Старший менеджер',
   'Шелковникова Оксана': 'Старший менеджер',
   'Кіндюшенко Аліна': 'Старший менеджер',
   'Екатерина П': 'РОП',
-  // Гарячі
   'Романенко Антон': 'РОП',
   'Галаєва Анна': 'Директ менеджер',
   'Желюбовська Анастасія': 'Директ менеджер',
   'Мажара Аліна': 'Старший менеджер',
-  // Відмови
+  // Реактивація
   'Даніелла': 'РОП',
 };
 
@@ -1372,7 +1427,6 @@ async function saveSalary(empId){
     })});
     salaryMap[empId]=r;
     setSave('ЗП збережено ✓',true);
-    // auto-calc after save
     calcSalary(empId);
   }catch(e){ alert('Помилка збереження: '+e.message); }
 }
@@ -1399,7 +1453,7 @@ function fmtFull(n){
 
 function calcSalary(empId){
   const emp = employees.find(e=>e.id===empId);
-  const isRefuse = emp?.dept_code==='refuse';
+  const orderMode = isOrderDept(emp?.dept_code);
   const fact = parseFloat(document.getElementById('sal-fact-'+empId).value)||0;
   const ret  = parseFloat(document.getElementById('sal-ret-'+empId).value)||0;
   const days = parseInt(document.getElementById('sal-days-'+empId).value)||0;
@@ -1409,30 +1463,27 @@ function calcSalary(empId){
 
   if(!fact){ res.innerHTML='<div style="font-size:.75rem;color:#aaa">Введи суму замовлень / оборот</div>'; return; }
 
-  // Повернення (спільне для всіх)
   const retNorm = 6;
   const retExcess = Math.max(0, ret - retNorm);
   const retCorrection = fact * retExcess / 100;
   const cleanBase = fact - retCorrection;
 
-  let rate=0, bonusPct=0, rateLabel='', overtimeRate=400;
+  let rate=0, bonusPct=0, rateLabel='';
   let rows='';
 
-  if(isRefuse){
-    // ══ ВІДМОВИ: по кількості замовлень ══
+  if(orderMode){
+    // ══ РЕАКТИВАЦІЯ: по кількості замовлень ══
     const orders = parseFloat(document.getElementById('sal-plan-'+empId).value)||0;
     const calls  = parseFloat(document.getElementById('sal-calls-'+empId)?.value)||0;
     if(!orders){ res.innerHTML='<div style="font-size:.75rem;color:#aaa">Введи кількість замовлень</div>'; return; }
 
-    overtimeRate = 450;
+    const overtimeRate = 450;
 
-    // Шкала по замовленнях
     if(orders >= 150){ rate=11000; bonusPct=9; rateLabel='від 150 замовлень 🏆'; }
     else if(orders >= 115){ rate=10000; bonusPct=8; rateLabel='від 115 замовлень'; }
     else if(orders >= 90){ rate=9000; bonusPct=7; rateLabel='від 90 замовлень'; }
     else { rate=0; bonusPct=5; rateLabel='менше 90 замовлень (відпустка/лікарняний)'; }
 
-    // Умови повної ставки: 22 дні + 1600 дзвінків + норма замовлень
     const fullRate = days>=22 && (calls>=1600||calls===0) && orders>=90;
     const actualRate = fullRate ? rate : Math.round(rate * days / 22);
     const bonus = cleanBase * bonusPct / 100;
@@ -1454,7 +1505,7 @@ function calcSalary(empId){
       <div class="sal-result-row green"><span>💰 Підсумкова ЗП</span><span>${fmtFull(total)}</span></div>`;
 
   } else {
-    // ══ РЗПК / ГАРЯЧІ: по % виконання плану ══
+    // ══ ПРОДАЖІ: по % виконання плану ══
     const plan = parseFloat(document.getElementById('sal-plan-'+empId).value)||0;
     if(!plan){ res.innerHTML='<div style="font-size:.75rem;color:#aaa">Введи план та оборот</div>'; return; }
     const pct = Math.round(cleanBase / plan * 100);
@@ -1486,25 +1537,23 @@ function calcSalary(empId){
   res.innerHTML = `<div class="sal-result">${rows}</div>`;
 }
 
-
-
-
 // ══ GOOGLE SHEETS EXPORT ══════════════════════════════
+function exportDeptList(){
+  return departments.filter(d=>isSalesDept(d.code)||isOrderDept(d.code));
+}
 function updateExportSheetName(){
-  const MONTHS=['','Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
-  const DEPT_NAMES={'rzpk':'РЗПК','hot':'Гарячі','refuse':'Відмови',''  :'Всі'};
   const deptKey=document.getElementById('export-dept').value;
-  const deptLabel=DEPT_NAMES[deptKey]||'';
-  document.getElementById('export-sheet-name').value=`ЗП ${deptLabel ? deptLabel+' ' : ''}${MONTHS[M]} ${Y}`.trim();
+  const deptLabel=departments.find(d=>d.code===deptKey)?.name||'';
+  document.getElementById('export-sheet-name').value=`ЗП ${deptLabel ? deptLabel+' ' : ''}${MONTH_UA[M]} ${Y}`.trim();
 }
 
 function openExportModal(){
-  const MONTHS=['','Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
-  const DEPT_NAMES={'rzpk':'РЗПК','hot':'Гарячі','refuse':'Відмови',''  :'Всі'};
-  const deptKey=curDept==='all'?'':curDept;
-  const deptLabel=DEPT_NAMES[deptKey]||'';
-  document.getElementById('export-sheet-name').value=`ЗП ${deptLabel ? deptLabel+' ' : ''}${MONTHS[M]} ${Y}`.trim();
-  document.getElementById('export-dept').value=deptKey;
+  const sel=document.getElementById('export-dept');
+  sel.innerHTML='<option value="">Всі відділи</option>'+
+    exportDeptList().map(d=>`<option value="${d.code}">${d.name}</option>`).join('');
+  const deptKey = exportDeptList().some(d=>d.code===curDept) ? curDept : '';
+  sel.value=deptKey;
+  updateExportSheetName();
   document.getElementById('export-status').textContent='';
   document.getElementById('export-modal-ov').classList.add('open');
 }
@@ -1532,7 +1581,6 @@ async function doExport(){
     statusEl.style.color='#ef5350';
   }
 }
-
 
 function openVacModalById(empId){
   const emp=employees.find(e=>e.id===empId);
@@ -1567,18 +1615,14 @@ async function saveCustomRange(){
   try{
     const days=getDays(Y,M);
     const inRange=days.filter(d=>d.date>=from&&d.date<=to);
-    for(const d of inRange){
-      await api('/api/schedule',{method:'PUT',body:JSON.stringify({
-        employee_id:customRangeEmpId,entry_date:d.date,status
-      })});
-      schedMap[`${customRangeEmpId}_${d.date}`]={employee_id:customRangeEmpId,entry_date:d.date,status};
-    }
+    const entries=inRange.map(d=>({employee_id:customRangeEmpId,entry_date:d.date,status}));
+    await bulkSchedule(entries);
+    entries.forEach(en=>{ schedMap[`${customRangeEmpId}_${en.entry_date}`]=en; });
     closeCustomRangeModal();
     renderTable();renderStats();
     setSave(`Статус "${status}" поставлено на ${inRange.length} днів ✓`,true);
   }catch(e){alert('Помилка: '+e.message);}
 }
-
 
 // ══ ARCHIVE ════════════════════════════════════════════
 let archivedEmployees = [];
@@ -1607,22 +1651,35 @@ async function restoreEmployee(empId){
   try{
     await api('/api/employees/'+empId,{method:'PATCH',body:JSON.stringify({is_active:true})});
     archivedEmployees = archivedEmployees.filter(e=>e.id!==empId);
-    // reload employees
     employees = await api('/api/employees');
     renderAll();
     setSave(`${name} відновлено ✓`,true);
   }catch(e){alert('Помилка: '+e.message);}
 }
 
-// ══ TEAM CHANGE ═══════════════════════════════════════
+// ══ TEAM / GROUP CHANGE ═══════════════════════════════
+const TEAMS_BY_DEPT = {
+  reactivation: ['Оперативна група','Планова група','РОП'],
+  refuse:       ['Оперативна група','Планова група','РОП'],
+  retail:       ['РОП','Тімлід','Нові співробітники','Віддалено'],
+  wholesale:    ['РОП','Тімлід','Нові співробітники','Віддалено'],
+  resellers:    ['РОП','Тімлід','Нові співробітники','Віддалено'],
+  rzpk:         ['РОП','Команда Чопового','Команда Шелковникової','Команда Кіндюшенко','Нові співробітники','Віддалено'],
+  hot:          ['РОП','Гарячі продажі','Нові співробітники'],
+};
+
 let teamEmpId=null;
-function openTeamModal(empId,btn){
+function openTeamModal(empId){
   const emp=employees.find(e=>e.id===empId);
-  const name=emp?.name||'';
-  const curTeam=emp?.team||'Нові співробітники';
+  if(!emp) return;
   teamEmpId=empId;
-  document.getElementById('team-emp-name').textContent=name;
-  document.getElementById('team-select').value=curTeam;
+  const list = TEAMS_BY_DEPT[emp.dept_code] || [emp.dept_name||''];
+  const sel=document.getElementById('team-select');
+  const cur=emp.team||list[0];
+  const opts = list.includes(cur) ? list : [cur,...list];
+  sel.innerHTML=opts.map(t=>`<option value="${t}">${t}</option>`).join('');
+  sel.value=cur;
+  document.getElementById('team-emp-name').textContent=emp.name;
   closeMgrCardForce();
   document.getElementById('team-modal-ov').classList.add('open');
 }
@@ -1636,17 +1693,44 @@ async function saveTeam(){
     if(emp) emp.team=team;
     closeTeamModal();
     renderAll();
-    setSave('Команду змінено ✓',true);
+    setSave('Групу змінено ✓',true);
   }catch(e){alert('Помилка: '+e.message);}
 }
 
+// ══ MOVE TO ANOTHER DEPARTMENT ════════════════════════
+let moveEmpId=null;
+function openMoveDeptModal(empId){
+  const emp=employees.find(e=>e.id===empId);
+  if(!emp) return;
+  moveEmpId=empId;
+  document.getElementById('move-emp-name').textContent=emp.name;
+  const sel=document.getElementById('move-dept-select');
+  sel.innerHTML=departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  sel.value=departments.find(d=>d.code===emp.dept_code)?.id||'';
+  closeMgrCardForce();
+  document.getElementById('move-dept-ov').classList.add('open');
+}
+function closeMoveDeptModal(){ document.getElementById('move-dept-ov').classList.remove('open'); }
+async function saveMoveDept(){
+  const deptId=parseInt(document.getElementById('move-dept-select').value);
+  const dept=departments.find(d=>d.id===deptId);
+  if(!dept) return;
+  setSave('Збереження...',false);
+  try{
+    const defTeam = (TEAMS_BY_DEPT[dept.code]||[dept.name])[0];
+    await api('/api/employees/'+moveEmpId,{method:'PATCH',body:JSON.stringify({department_id:deptId,team:defTeam})});
+    employees = await api('/api/employees');
+    closeMoveDeptModal();
+    await loadMonthData();
+    setSave(`Переведено у "${dept.name}" ✓`,true);
+  }catch(e){alert('Помилка: '+e.message);}
+}
 
 function deactivateEmpById(empId){
   const emp=employees.find(e=>e.id===empId);
   deactivateEmp(empId,emp?.name||'');
 }
 
-// ══ DEACTIVATE EMPLOYEE ═══════════════════════════════
 async function deactivateEmp(empId, name){
   if(!confirm(`Архівувати ${name}?\nСпівробітник зникне з графіка, але дані збережуться. Можна відновити через кнопку Архів.`)) return;
   try{
@@ -1660,7 +1744,7 @@ async function deactivateEmp(empId, name){
 
 // ══ LEVEL CHANGE ══════════════════════════════════════
 let levelEmpId=null, selectedLevel=null;
-function openLevelModal(empId,btn){
+function openLevelModal(empId){
   const emp=employees.find(e=>e.id===empId);
   const name=emp?.name||'';
   const curLevel=emp?.level||'mid';
@@ -1668,20 +1752,19 @@ function openLevelModal(empId,btn){
   selectedLevel=curLevel;
   document.getElementById('level-emp-name').textContent=name;
   closeMgrCardForce();
-  // highlight current
   ['top','mid','jun'].forEach(l=>{
-    const btn=document.getElementById('lopt-'+l);
-    btn.style.border=l===curLevel?'2px solid #b84e30':'2px solid transparent';
-    btn.style.opacity=l===curLevel?'1':'0.7';
+    const b=document.getElementById('lopt-'+l);
+    b.style.border=l===curLevel?'2px solid #b84e30':'2px solid transparent';
+    b.style.opacity=l===curLevel?'1':'0.7';
   });
   document.getElementById('level-modal-ov').classList.add('open');
 }
 function selLevel(level){
   selectedLevel=level;
   ['top','mid','jun'].forEach(l=>{
-    const btn=document.getElementById('lopt-'+l);
-    btn.style.border=l===level?'2px solid #b84e30':'2px solid transparent';
-    btn.style.opacity=l===level?'1':'0.7';
+    const b=document.getElementById('lopt-'+l);
+    b.style.border=l===level?'2px solid #b84e30':'2px solid transparent';
+    b.style.opacity=l===level?'1':'0.7';
   });
 }
 function closeLevelModal(){ document.getElementById('level-modal-ov').classList.remove('open'); }
@@ -1690,7 +1773,6 @@ async function saveLevel(){
   setSave('Збереження...',false);
   try{
     await api('/api/employees/'+levelEmpId,{method:'PATCH',body:JSON.stringify({level:selectedLevel})});
-    // update local
     const emp=employees.find(e=>e.id===levelEmpId);
     if(emp) emp.level=selectedLevel;
     closeLevelModal();
@@ -1705,7 +1787,7 @@ async function saveLevel(){
   catch(e){
     document.getElementById('table-area').innerHTML=
       `<div class="loading" style="color:#ef5350">⚠️ Не вдалось підключитись до API.<br>
-       <small style="color:#5a4535">Задеплой бекенд → заміни API URL у рядку const API='...'</small></div>`;
+       <small style="color:#5a4535">${e.message}</small></div>`;
     document.getElementById('stats-row').innerHTML='';
   }
 })();
@@ -1713,10 +1795,8 @@ async function saveLevel(){
 
 <!-- MANAGER CARD -->
 <div class="mgr-card-ov" id="mgr-card-ov" onclick="closeMgrCard(event)">
-  <div class="mgr-card" id="mgr-card-content">
-  </div>
+  <div class="mgr-card" id="mgr-card-content"></div>
 </div>
-
 
 <!-- LATE MODAL -->
 <div class="modal-ov" id="late-modal-ov">
@@ -1757,15 +1837,15 @@ async function saveLevel(){
     <div style="display:flex;gap:10px;margin-bottom:16px">
       <button class="level-opt" id="lopt-top" onclick="selLevel('top')"
         style="flex:1;padding:14px;border-radius:10px;background:#d4e4f0;color:#1a5c8a;font-weight:700;font-size:.9rem;border:2px solid transparent;transition:.15s">
-        ТОП<br><span style="font-size:.7rem;font-weight:400">260К/міс</span>
+        ТОП
       </button>
       <button class="level-opt" id="lopt-mid" onclick="selLevel('mid')"
         style="flex:1;padding:14px;border-radius:10px;background:#e4d4f0;color:#6a1a80;font-weight:700;font-size:.9rem;border:2px solid transparent;transition:.15s">
-        МІДЛ<br><span style="font-size:.7rem;font-weight:400">235К/міс</span>
+        МІДЛ
       </button>
       <button class="level-opt" id="lopt-jun" onclick="selLevel('jun')"
         style="flex:1;padding:14px;border-radius:10px;background:#d4edd8;color:#1a5c30;font-weight:700;font-size:.9rem;border:2px solid transparent;transition:.15s">
-        ДЖУН<br><span style="font-size:.7rem;font-weight:400">187К/міс</span>
+        ДЖУН
       </button>
     </div>
     <div style="font-size:.75rem;color:#8a7060;margin-bottom:14px">
@@ -1781,20 +1861,28 @@ async function saveLevel(){
 <!-- TEAM MODAL -->
 <div class="modal-ov" id="team-modal-ov">
   <div class="modal">
-    <h3>👥 Змінити команду</h3>
+    <h3>👥 Змінити групу</h3>
     <div id="team-emp-name" style="font-size:.8rem;color:#8a7060;margin-bottom:14px"></div>
-    <label>Команда</label>
-    <select id="team-select" style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:7px 11px;font-size:.88rem;margin-bottom:14px;outline:none">
-      <option value="РОП">РОП</option>
-      <option value="Команда Чопового">Команда Чопового</option>
-      <option value="Команда Шелковникової">Команда Шелковникової</option>
-      <option value="Команда Кіндюшенко">Команда Кіндюшенко</option>
-      <option value="Нові співробітники">Нові співробітники</option>
-      <option value="Віддалено">Віддалено</option>
-    </select>
+    <label>Група / команда</label>
+    <select id="team-select" style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:7px 11px;font-size:.88rem;margin-bottom:14px;outline:none"></select>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeTeamModal()">Скасувати</button>
       <button class="btn-save"   onclick="saveTeam()">Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<!-- MOVE DEPT MODAL -->
+<div class="modal-ov" id="move-dept-ov">
+  <div class="modal">
+    <h3>🔀 Перевести у інший відділ</h3>
+    <div id="move-emp-name" style="font-size:.8rem;color:#8a7060;margin-bottom:14px"></div>
+    <label>Відділ</label>
+    <select id="move-dept-select" style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:7px 11px;font-size:.88rem;margin-bottom:14px;outline:none"></select>
+    <div style="font-size:.72rem;color:#8a7060;margin-bottom:12px">Графік і історія ЗП зберігаються за співробітником.</div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeMoveDeptModal()">Скасувати</button>
+      <button class="btn-save" onclick="saveMoveDept()">Перевести</button>
     </div>
   </div>
 </div>
@@ -1823,14 +1911,9 @@ async function saveLevel(){
     <h3>📊 Експорт ЗП в Google Sheets</h3>
     <div style="font-size:.78rem;color:#8a7060;margin-bottom:14px">Дані будуть записані у нову вкладку таблиці бухгалтера</div>
     <label>Назва вкладки в таблиці</label>
-    <input type="text" id="export-sheet-name" placeholder="ЗП Липень 2026">
+    <input type="text" id="export-sheet-name" placeholder="ЗП Серпень 2026">
     <label>Відділ</label>
-    <select id="export-dept" onchange="updateExportSheetName()" style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:7px 11px;font-size:.88rem;margin-bottom:12px;outline:none">
-      <option value="">Всі відділи</option>
-      <option value="rzpk">РЗПК</option>
-      <option value="hot">Гарячі продажі</option>
-      <option value="refuse">Відмови</option>
-    </select>
+    <select id="export-dept" onchange="updateExportSheetName()" style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:7px 11px;font-size:.88rem;margin-bottom:12px;outline:none"></select>
     <div id="export-status" style="font-size:.78rem;color:#8a7060;min-height:20px;margin-bottom:8px"></div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeExportModal()">Скасувати</button>
