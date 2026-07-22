@@ -688,6 +688,18 @@ function renderTable(){
       h+=row;
     });
   });
+  // Show archived employees if toggled
+  if(showArchive && archivedEmployees.length){
+    const archFiltered = curDept==='all' ? archivedEmployees : archivedEmployees.filter(e=>e.dept_code===curDept);
+    if(archFiltered.length){
+      h+=`<tr class="group-row"><td colspan="${days.length+5}" style="color:#8a7060">📦 Архів (${archFiltered.length})</td></tr>`;
+      archFiltered.forEach(emp=>{
+        h+=`<tr style="opacity:.5"><td class="name-td" style="color:#8a7060;text-decoration:line-through">${emp.name} <button onclick="restoreEmployee(${emp.id})" style="font-size:.65rem;background:#d4edd8;color:#2e7d52;border:none;border-radius:4px;padding:2px 6px;cursor:pointer">↩</button></td><td></td>`;
+        days.forEach(d=>{ h+=`<td style="background:#f5f5f5"></td>`; });
+        h+=`<td></td><td></td><td></td><td></td></tr>`;
+      });
+    }
+  }
   h+=`</tbody></table>`;
   document.getElementById('table-area').innerHTML=h;
 }
@@ -1577,20 +1589,20 @@ async function toggleArchive(){
   if(showArchive){
     btn.style.background='#3a2a10';
     btn.style.color='#ffc107';
-    // Load archived employees
     try{
-      const all = await api('/api/employees/archived');
-      archivedEmployees = all;
+      archivedEmployees = await api('/api/employees/archived');
     }catch(e){ archivedEmployees=[]; }
   } else {
     btn.style.background='';
     btn.style.color='';
     archivedEmployees=[];
   }
-  renderAll();
+  renderTable();
 }
 
-async function restoreEmployee(empId, name){
+async function restoreEmployee(empId){
+  const emp = archivedEmployees.find(e=>e.id===empId);
+  const name = emp?.name||'';
   if(!confirm(`Відновити ${name}?`)) return;
   try{
     await api('/api/employees/'+empId,{method:'PATCH',body:JSON.stringify({is_active:true})});
