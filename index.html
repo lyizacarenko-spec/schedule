@@ -233,6 +233,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     <button class="btn btn-ghost"  onclick="openPlanModal()">📊 Плани</button>
     <button class="btn btn-orange" onclick="openAddEmpModal()">＋ Менеджер</button>
     <button class="btn btn-ghost" onclick="openExportModal()" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e">📊 Експорт ЗП</button>
+    <button class="btn btn-ghost" onclick="toggleArchive()" id="btn-archive">📦 Архів</button>
   </div>
   <div class="topbar-right">
     <div class="save-dot" id="save-dot">—</div>
@@ -371,6 +372,7 @@ let curDept = 'rzpk';
 let employees=[], departments=[], schedMap={}, revDetailMap={}, revDeptMap={}, statsData=[], salaryMap={};
 let pending={};
 let revMode = 'dept';
+let showArchive = false;
 let revDeptSel = 1;
 
 // ══ DAYS ════════════════════════════════════════════
@@ -1565,6 +1567,41 @@ async function saveCustomRange(){
   }catch(e){alert('Помилка: '+e.message);}
 }
 
+
+// ══ ARCHIVE ════════════════════════════════════════════
+let archivedEmployees = [];
+
+async function toggleArchive(){
+  showArchive = !showArchive;
+  const btn = document.getElementById('btn-archive');
+  if(showArchive){
+    btn.style.background='#3a2a10';
+    btn.style.color='#ffc107';
+    // Load archived employees
+    try{
+      const all = await api('/api/employees/archived');
+      archivedEmployees = all;
+    }catch(e){ archivedEmployees=[]; }
+  } else {
+    btn.style.background='';
+    btn.style.color='';
+    archivedEmployees=[];
+  }
+  renderAll();
+}
+
+async function restoreEmployee(empId, name){
+  if(!confirm(`Відновити ${name}?`)) return;
+  try{
+    await api('/api/employees/'+empId,{method:'PATCH',body:JSON.stringify({is_active:true})});
+    archivedEmployees = archivedEmployees.filter(e=>e.id!==empId);
+    // reload employees
+    employees = await api('/api/employees');
+    renderAll();
+    setSave(`${name} відновлено ✓`,true);
+  }catch(e){alert('Помилка: '+e.message);}
+}
+
 // ══ TEAM CHANGE ═══════════════════════════════════════
 let teamEmpId=null;
 function openTeamModal(empId,btn){
@@ -1599,13 +1636,13 @@ function deactivateEmpById(empId){
 
 // ══ DEACTIVATE EMPLOYEE ═══════════════════════════════
 async function deactivateEmp(empId, name){
-  if(!confirm(`Видалити ${name} зі списку?\nМенеджер буде прихований, але дані збережуться.`)) return;
+  if(!confirm(`Архівувати ${name}?\nСпівробітник зникне з графіка, але дані збережуться. Можна відновити через кнопку Архів.`)) return;
   try{
     await api('/api/employees/'+empId,{method:'PATCH',body:JSON.stringify({is_active:false})});
     employees = employees.filter(e=>e.id!==empId);
     closeMgrCardForce();
     renderAll();
-    setSave(`${name} деактивовано ✓`,true);
+    setSave(`${name} архівовано ✓`,true);
   }catch(e){alert('Помилка: '+e.message);}
 }
 
