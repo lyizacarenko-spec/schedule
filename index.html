@@ -1313,12 +1313,13 @@ function openMgrCard(empId){
       ${ isPieceWh ? (()=>{
         let whTotal=0, whDays=0;
         getDays(Y,M).forEach(d=>{ const r=whMap[`${emp.id}_${d.date}`]; if(r){ whTotal+=whDayAmount(r); whDays++; } });
-        const advance=0;
         return `<div style="font-size:.78rem;color:#8a7060;margin-bottom:10px">Відрядна оплата (упаковка + фасовка + вихід). Клікай на дні у графіку, щоб вносити.</div>
         <div class="sal-result">
           <div class="sal-result-row"><span>Робочих днів внесено</span><span>${whDays}</span></div>
-          <div class="sal-result-row green"><span>💰 Всього за ${MONTH_UA[M]}</span><span>${fmtFull(whTotal)}</span></div>
-        </div>`;
+          <div class="sal-result-row green"><span>💰 Відрядно за ${MONTH_UA[M]}</span><span>${fmtFull(whTotal)}</span></div>
+        </div>
+        ${adjBlockHtml(emp.id)}
+        <div id="frate-result-${emp.id}" style="margin-top:8px"></div>`;
       })() : isHr ? (()=>{
         let hrTotal=0, hrDays=0, hoursSum=0;
         const rate=hrRate(emp.id);
@@ -1326,9 +1327,10 @@ function openMgrCard(empId){
         return `<div style="font-size:.78rem;color:#8a7060;margin-bottom:10px">Почасова оплата ${rate} грн/год. Клікай на дні у графіку → «⏱ Години».</div>
         <div class="sal-result">
           <div class="sal-result-row"><span>Днів / годин</span><span>${hrDays} дн · ${hoursSum} год</span></div>
-          <div class="sal-result-row green"><span>💰 Всього за ${MONTH_UA[M]}</span><span>${fmtFull(hrTotal)}</span></div>
+          <div class="sal-result-row green"><span>💰 Години за ${MONTH_UA[M]}</span><span>${fmtFull(hrTotal)}</span></div>
         </div>
-        <div style="font-size:.7rem;color:#8a7060;margin-top:6px">Доплати (напр. водій +5000) додавай через корегування у ставочників, або скажи — виведу тут.</div>`;
+        ${adjBlockHtml(emp.id)}
+        <div id="frate-result-${emp.id}" style="margin-top:8px"></div>`;
       })() : (isFixedRate ? `
       <div id="frate-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
         <div style="text-align:center;padding:8px 0 12px">
@@ -1355,27 +1357,7 @@ function openMgrCard(empId){
           <button onclick="saveFrate(${emp.id})" style="flex:1;padding:8px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem">💾 Зберегти оклад</button>
         </div>
 
-        <div style="margin-top:12px;border-top:1px solid #d4cdc4;padding-top:10px">
-          <div style="font-size:.72rem;color:#b84e30;font-weight:700;margin-bottom:8px">Корегування за ${MONTH_UA[M]}</div>
-          <div id="frate-adj-list-${emp.id}"></div>
-          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:end">
-            <div style="flex:0 0 auto"><label style="font-size:.62rem;color:#8a7060">Тип</label>
-              <select id="frate-adj-type-${emp.id}" style="background:#fff;border:1px solid #c8c0b4;border-radius:6px;padding:5px 6px;font-size:.78rem">
-                <option value="премія">Премія</option>
-                <option value="доплата">Доплата</option>
-                <option value="компенсація">Компенсація</option>
-                <option value="штраф">Штраф</option>
-                <option value="утримання">Утримання</option>
-                <option value="перерахунок">Перерахунок</option>
-                <option value="інше">Інше</option>
-              </select></div>
-            <div style="flex:0 0 90px"><label style="font-size:.62rem;color:#8a7060">Сума (±)</label>
-              <input type="number" id="frate-adj-amount-${emp.id}" placeholder="8000 або -500" style="width:100%;background:#fff;border:1px solid #c8c0b4;border-radius:6px;padding:5px 6px;font-size:.78rem"></div>
-            <div style="flex:1;min-width:100px"><label style="font-size:.62rem;color:#8a7060">Коментар</label>
-              <input type="text" id="frate-adj-comment-${emp.id}" placeholder="за що" style="width:100%;background:#fff;border:1px solid #c8c0b4;border-radius:6px;padding:5px 6px;font-size:.78rem"></div>
-            <button onclick="addAdjustment(${emp.id})" style="flex:0 0 auto;background:#b84e30;color:#fff;border-radius:6px;padding:6px 12px;font-size:.78rem;font-weight:600">+ Додати</button>
-          </div>
-        </div>
+        ${adjBlockHtml(emp.id)}
 
         <div id="frate-result-${emp.id}" style="margin-top:10px"></div>
       </div>` : (!canCalcSalary ? '<div style="font-size:.75rem;color:#8a7060;padding:8px 0">Розрахунок ЗП для цієї ролі/відділу не передбачений</div>' : `
@@ -1442,6 +1424,9 @@ function openMgrCard(empId){
       renderAdjList(emp.id);
       if(scheme.base_rate) calcFrate(emp.id);
     });
+  }
+  if(isPieceWh||isHr){
+    loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
   }
 }
 function closeMgrCard(e){ if(e&&e.target.id!=='mgr-card-ov')return; document.getElementById('mgr-card-ov').classList.remove('open'); }
@@ -1574,6 +1559,31 @@ async function saveSalary(empId){
 // ══ FIXED-RATE (ставочник) у картці ═══════════════════
 let adjMap = {};  // employee_id -> [adjustments] за поточний місяць
 
+// HTML блоку корегувань (спільний для ставочників, відрядників, погодинних)
+function adjBlockHtml(empId){
+  return `<div style="margin-top:12px;border-top:1px solid #d4cdc4;padding-top:10px">
+    <div style="font-size:.72rem;color:#b84e30;font-weight:700;margin-bottom:8px">Корегування за ${MONTH_UA[M]}</div>
+    <div id="frate-adj-list-${empId}"></div>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:end">
+      <div style="flex:0 0 auto"><label style="font-size:.62rem;color:#8a7060">Тип</label>
+        <select id="frate-adj-type-${empId}" style="background:#fff;border:1px solid #c8c0b4;border-radius:6px;padding:5px 6px;font-size:.78rem">
+          <option value="премія">Премія</option>
+          <option value="доплата">Доплата</option>
+          <option value="компенсація">Компенсація</option>
+          <option value="штраф">Штраф</option>
+          <option value="утримання">Утримання</option>
+          <option value="перерахунок">Перерахунок</option>
+          <option value="інше">Інше</option>
+        </select></div>
+      <div style="flex:0 0 90px"><label style="font-size:.62rem;color:#8a7060">Сума (±)</label>
+        <input type="number" id="frate-adj-amount-${empId}" placeholder="5000 або -500" style="width:100%;background:#fff;border:1px solid #c8c0b4;border-radius:6px;padding:5px 6px;font-size:.78rem"></div>
+      <div style="flex:1;min-width:100px"><label style="font-size:.62rem;color:#8a7060">Коментар</label>
+        <input type="text" id="frate-adj-comment-${empId}" placeholder="за що" style="width:100%;background:#fff;border:1px solid #c8c0b4;border-radius:6px;padding:5px 6px;font-size:.78rem"></div>
+      <button onclick="addAdjustment(${empId})" style="flex:0 0 auto;background:#b84e30;color:#fff;border-radius:6px;padding:6px 12px;font-size:.78rem;font-weight:600">+ Додати</button>
+    </div>
+  </div>`;
+}
+
 function unlockFrate(){
   const pin=document.getElementById('frate-pin-input')?.value;
   if(pin===ROP_PIN){
@@ -1642,7 +1652,7 @@ async function addAdjustment(empId){
     document.getElementById('frate-adj-amount-'+empId).value='';
     document.getElementById('frate-adj-comment-'+empId).value='';
     renderAdjList(empId);
-    calcFrate(empId);
+    if(schemeMap[empId]?.scheme_type==='fixed_rate') calcFrate(empId); else openMgrCard(empId);
     setSave('Корегування додано ✓',true);
   }catch(e){ alert('Помилка: '+e.message); }
 }
@@ -1653,7 +1663,7 @@ async function deleteAdjustment(empId,adjId){
     await api('/api/salary-adjustments/'+adjId,{method:'DELETE'});
     adjMap[empId]=(adjMap[empId]||[]).filter(a=>a.id!==adjId);
     renderAdjList(empId);
-    calcFrate(empId);
+    if(schemeMap[empId]?.scheme_type==='fixed_rate') calcFrate(empId); else openMgrCard(empId);
     setSave('Видалено ✓',true);
   }catch(e){ alert('Помилка: '+e.message); }
 }
