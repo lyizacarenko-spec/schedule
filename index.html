@@ -722,22 +722,10 @@ function renderTable(){
           ${empPos?`<div style="font-size:.6rem;color:#a09080;margin-top:1px">${empPos}</div>`:''}
         </td>
         <td class="level-badge">${showLevel?`<span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span>`:''}</td>`;
-      const pieceWh = isPieceWarehouse(emp.id);
       days.forEach(d=>{
-        const isToday3=d.date===todayDate;
-        const cellClsBase=isToday3?'today-cell':(d.isW?'wk':'');
-        if(pieceWh){
-          // відрядник складу: у клітинці сума за день, клік → форма вводу
-          const rec=whMap[`${emp.id}_${d.date}`];
-          const sum=rec?whDayAmount(rec):0;
-          if(sum>0){ wd++; }
-          row+=`<td class="${cellClsBase}" data-emp="${emp.id}" data-date="${d.date}"
-                 onclick="openWhModal(${emp.id},'${d.date}')" style="cursor:pointer">
-                 <span class="chip ${sum>0?'cs-work':'cs-empty'}" style="min-width:42px">${sum>0?fmtM(sum):'—'}</span></td>`;
-          return;
-        }
         const v=getStatus(emp.id,d.date);
         const h2=sh(v);if(h2>0){wd++;hrs+=h2;}
+        const isToday3=d.date===todayDate;
         const isDirector=['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name);
         const cellCls=isToday3?'today-cell':(d.isW?'wk':(isDirector?'director-cell':''));
         const chipCls=isDirector&&sc(v)==='cs-work'?'cs-director':sc(v);
@@ -745,8 +733,8 @@ function renderTable(){
                onclick="openPopup(event,${emp.id},'${d.date}','${v}',this)">
                <span class="chip ${chipCls}">${sl(v)}</span></td>`;
       });
-      // для відрядника у колонці 💰 — сума за місяць
-      if(pieceWh){
+      // для відрядника склада у колонці 💰 — сума за місяць (графік не чіпаємо)
+      if(isPieceWarehouse(emp.id)){
         let whMonth=0;
         days.forEach(d=>{ const r=whMap[`${emp.id}_${d.date}`]; if(r) whMonth+=whDayAmount(r); });
         empRevTotal=whMonth;
@@ -782,9 +770,16 @@ function openPopup(e,empId,date,cur,nameTd){
   const emp=employees.find(x=>x.id===empId);
   const name=emp?.name||'';
   document.getElementById('popup-title').textContent=`${name} · ${date.slice(8)}.${date.slice(5,7)}`;
-  document.getElementById('popup-grid').innerHTML=STATUSES.map(s=>
+  let grid=STATUSES.map(s=>
     `<button class="s-btn ${s.cls} ${s.v===cur?'cur':''}" onclick="applyStatus('${s.v}')">${s.label||'—'}</button>`
   ).join('');
+  // для відрядника складу — кнопка вводу даних упаковки/фасовки
+  if(isPieceWarehouse(empId)){
+    const rec=whMap[`${empId}_${date}`];
+    const sum=rec?whDayAmount(rec):0;
+    grid+=`<button class="s-btn" style="grid-column:1/3;background:#e4d4f0;color:#6a1a80;font-weight:700" onclick="closePopupForce();openWhModal(${empId},'${date}')">📦 Дані складу${sum>0?' ('+fmtM(sum)+'₴)':''}</button>`;
+  }
+  document.getElementById('popup-grid').innerHTML=grid;
   const ov=document.getElementById('popup-ov');
   ov.classList.add('open');
   const x=Math.min(e.clientX,window.innerWidth-230);
