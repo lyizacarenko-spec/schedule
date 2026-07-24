@@ -216,6 +216,12 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 .daily-plan-row{background:#fff8f4;border-bottom:1px solid #e8e0d8;padding:6px 20px;font-size:.78rem;color:#7a5040;display:flex;gap:16px;flex-wrap:wrap}
 .daily-plan-item{display:flex;gap:6px;align-items:center}
 .daily-plan-item strong{color:#b84e30;font-size:.88rem}
+
+/* FINANCE PAGE tables — темна тема, перекриваємо глобальний світлий table */
+#finance-page table{background:transparent!important;box-shadow:none!important;min-width:0!important}
+#finance-page thead th{background:transparent!important;color:#8a7050!important;box-shadow:none!important;border:none!important;position:static!important}
+#finance-page td{background:transparent!important}
+#finance-page tbody tr:hover{background:#241810!important}
 </style>
 </head>
 <body>
@@ -1275,14 +1281,33 @@ function openMgrCard(empId){
             </select>
           </div>
         </div>
-        <div class="sal-row" style="margin-top:4px">
-          <div class="sal-field"><label>Премія (грн)</label><input type="number" id="frate-bonus-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.bonus_manual||''}" oninput="calcFrate(${emp.id})"></div>
-          <div class="sal-field"><label>Штраф (грн)</label><input type="number" id="frate-penalty-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.penalty||''}" oninput="calcFrate(${emp.id})"></div>
-        </div>
         <div style="display:flex;gap:6px;margin-top:4px">
-          <button onclick="saveFrate(${emp.id})" style="flex:1;padding:8px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem">💾 Зберегти оклад та розрахувати</button>
+          <button onclick="saveFrate(${emp.id})" style="flex:1;padding:8px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem">💾 Зберегти оклад</button>
         </div>
-        <div id="frate-result-${emp.id}" style="margin-top:8px"></div>
+
+        <div style="margin-top:12px;border-top:1px solid #d4cdc4;padding-top:10px">
+          <div style="font-size:.72rem;color:#b84e30;font-weight:700;margin-bottom:8px">Корегування за ${MONTH_UA[M]}</div>
+          <div id="frate-adj-list-${emp.id}"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:end">
+            <div style="flex:0 0 auto"><label style="font-size:.62rem;color:#8a7060">Тип</label>
+              <select id="frate-adj-type-${emp.id}" style="background:#fff;border:1px solid #c8c0b4;border-radius:6px;padding:5px 6px;font-size:.78rem">
+                <option value="премія">Премія</option>
+                <option value="доплата">Доплата</option>
+                <option value="компенсація">Компенсація</option>
+                <option value="штраф">Штраф</option>
+                <option value="утримання">Утримання</option>
+                <option value="перерахунок">Перерахунок</option>
+                <option value="інше">Інше</option>
+              </select></div>
+            <div style="flex:0 0 90px"><label style="font-size:.62rem;color:#8a7060">Сума (±)</label>
+              <input type="number" id="frate-adj-amount-${emp.id}" placeholder="8000 або -500" style="width:100%;background:#fff;border:1px solid #c8c0b4;border-radius:6px;padding:5px 6px;font-size:.78rem"></div>
+            <div style="flex:1;min-width:100px"><label style="font-size:.62rem;color:#8a7060">Коментар</label>
+              <input type="text" id="frate-adj-comment-${emp.id}" placeholder="за що" style="width:100%;background:#fff;border:1px solid #c8c0b4;border-radius:6px;padding:5px 6px;font-size:.78rem"></div>
+            <button onclick="addAdjustment(${emp.id})" style="flex:0 0 auto;background:#b84e30;color:#fff;border-radius:6px;padding:6px 12px;font-size:.78rem;font-weight:600">+ Додати</button>
+          </div>
+        </div>
+
+        <div id="frate-result-${emp.id}" style="margin-top:10px"></div>
       </div>` : (!canCalcSalary ? '<div style="font-size:.75rem;color:#8a7060;padding:8px 0">Розрахунок ЗП для цієї ролі/відділу не передбачений</div>' : `
       <div id="rop-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
         <div style="text-align:center;padding:8px 0 12px">
@@ -1342,7 +1367,12 @@ function openMgrCard(empId){
     </div>
   `;
   document.getElementById('mgr-card-ov').classList.add('open');
-  if(isFixedRate && ropUnlocked && scheme.base_rate) calcFrate(emp.id);
+  if(isFixedRate && ropUnlocked){
+    loadAdjustments(emp.id).then(()=>{
+      renderAdjList(emp.id);
+      if(scheme.base_rate) calcFrate(emp.id);
+    });
+  }
 }
 function closeMgrCard(e){ if(e&&e.target.id!=='mgr-card-ov')return; document.getElementById('mgr-card-ov').classList.remove('open'); }
 function closeMgrCardForce(){ document.getElementById('mgr-card-ov').classList.remove('open'); }
@@ -1472,20 +1502,26 @@ async function saveSalary(empId){
 }
 
 // ══ FIXED-RATE (ставочник) у картці ═══════════════════
+let adjMap = {};  // employee_id -> [adjustments] за поточний місяць
+
 function unlockFrate(){
   const pin=document.getElementById('frate-pin-input')?.value;
   if(pin===ROP_PIN){
     ropUnlocked=true;
     document.getElementById('frate-pin-block').style.display='none';
     document.getElementById('frate-block').style.display='block';
+    // визначаємо empId з наявного поля
+    const baseInput=document.querySelector('[id^="frate-base-"]');
+    if(baseInput){
+      const empId=parseInt(baseInput.id.replace('frate-base-',''));
+      loadAdjustments(empId).then(()=>{ renderAdjList(empId); calcFrate(empId); });
+    }
   } else alert('Невірний PIN');
 }
 
 async function saveFrate(empId){
   const base=parseFloat(document.getElementById('frate-base-'+empId).value)||0;
   const normType=document.getElementById('frate-normtype-'+empId).value;
-  const bonus=parseFloat(document.getElementById('frate-bonus-'+empId).value)||0;
-  const penalty=parseFloat(document.getElementById('frate-penalty-'+empId).value)||0;
   if(!base){ alert('Введи оклад'); return; }
   setSave('Збереження...',false);
   try{
@@ -1493,16 +1529,62 @@ async function saveFrate(empId){
       employee_id:empId, scheme_type:'fixed_rate', base_rate:base, norm_days:22, norm_type:normType
     })});
     schemeMap[empId]=sc;
-    await api('/api/salary',{method:'PUT',body:JSON.stringify({
-      employee_id:empId, calc_year:Y, calc_month:M,
-      plan_amount:0, fact_amount:0, returns_pct:0, worked_days:0,
-      senior_bonus:0, penalty:penalty, note:'', bonus_manual:bonus
-    })});
-    if(!salaryMap[empId]) salaryMap[empId]={};
-    salaryMap[empId].bonus_manual=bonus;
-    salaryMap[empId].penalty=penalty;
     calcFrate(empId);
     setSave('Оклад збережено ✓',true);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+
+// завантажити корегування співробітника за поточний місяць
+async function loadAdjustments(empId){
+  try{
+    adjMap[empId]=await api(`/api/salary-adjustments?employee_id=${empId}&year=${Y}&month=${M}`);
+  }catch(e){ adjMap[empId]=[]; }
+}
+
+function renderAdjList(empId){
+  const el=document.getElementById('frate-adj-list-'+empId);
+  if(!el) return;
+  const list=adjMap[empId]||[];
+  if(!list.length){ el.innerHTML='<div style="font-size:.72rem;color:#aaa">Немає корегувань</div>'; return; }
+  el.innerHTML=list.map(a=>{
+    const amt=parseFloat(a.amount)||0;
+    const col=amt>=0?'#2e7d52':'#ef5350';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #ede8e0;font-size:.75rem">
+      <span style="flex:0 0 auto;background:#e8e0d4;border-radius:4px;padding:1px 6px;color:#7a6050;font-size:.68rem">${a.type}</span>
+      <span style="flex:0 0 70px;text-align:right;color:${col};font-weight:700">${amt>=0?'+':''}${fmtFull(amt)}</span>
+      <span style="flex:1;color:#7a6050">${a.comment||''}</span>
+      <button onclick="deleteAdjustment(${empId},${a.id})" style="flex:0 0 auto;background:none;color:#c07050;font-size:.85rem;cursor:pointer">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function addAdjustment(empId){
+  const type=document.getElementById('frate-adj-type-'+empId).value;
+  const amount=parseFloat(document.getElementById('frate-adj-amount-'+empId).value);
+  const comment=document.getElementById('frate-adj-comment-'+empId).value.trim();
+  if(isNaN(amount)||amount===0){ alert('Введи суму (напр. 8000 або -500)'); return; }
+  setSave('Збереження...',false);
+  try{
+    const a=await api('/api/salary-adjustments',{method:'POST',body:JSON.stringify({
+      employee_id:empId, calc_year:Y, calc_month:M, type, amount, comment
+    })});
+    (adjMap[empId]=adjMap[empId]||[]).push(a);
+    document.getElementById('frate-adj-amount-'+empId).value='';
+    document.getElementById('frate-adj-comment-'+empId).value='';
+    renderAdjList(empId);
+    calcFrate(empId);
+    setSave('Корегування додано ✓',true);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+
+async function deleteAdjustment(empId,adjId){
+  if(!confirm('Видалити це корегування?')) return;
+  try{
+    await api('/api/salary-adjustments/'+adjId,{method:'DELETE'});
+    adjMap[empId]=(adjMap[empId]||[]).filter(a=>a.id!==adjId);
+    renderAdjList(empId);
+    calcFrate(empId);
+    setSave('Видалено ✓',true);
   }catch(e){ alert('Помилка: '+e.message); }
 }
 
@@ -1515,11 +1597,9 @@ function monthWeekdaysCount(){
 function calcFrate(empId){
   const base=parseFloat(document.getElementById('frate-base-'+empId).value)||0;
   const normType=document.getElementById('frate-normtype-'+empId)?.value||'month_workdays';
-  const bonus=parseFloat(document.getElementById('frate-bonus-'+empId).value)||0;
-  const penalty=parseFloat(document.getElementById('frate-penalty-'+empId).value)||0;
   const res=document.getElementById('frate-result-'+empId);
-  if(!base){ res.innerHTML=''; return; }
-  const dayPrice=base/22;                       // ціна дня завжди /22
+  if(!base){ if(res) res.innerHTML=''; return; }
+  const dayPrice=base/22;
   const targetDays = normType==='month_workdays' ? monthWeekdaysCount() : 22;
   const days=getDays(Y,M);
   const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','8:30-16:30','удаленка','запізн','відробіт'];
@@ -1527,16 +1607,17 @@ function calcFrate(empId){
   days.forEach(d=>{ if(WORKS.includes(getStatus(empId,d.date))) worked++; });
   const diff=worked-targetDays;
   const dayAdjust=diff*dayPrice;
-  const total=base+dayAdjust+bonus-penalty;
+  const list=adjMap[empId]||[];
+  const adjTotal=list.reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
+  const total=base+dayAdjust+adjTotal;
   const advance=base/2;
-  res.innerHTML=`<div class="sal-result">
+  if(res) res.innerHTML=`<div class="sal-result">
     <div class="sal-result-row"><span>Оклад</span><span>${fmtFull(base)}</span></div>
     <div class="sal-result-row"><span>Відпрацьовано / норма</span><span>${worked} / ${targetDays}${normType==='month_workdays'?' (будні місяця)':''}</span></div>
     <div class="sal-result-row"><span>Ціна дня (оклад/22)</span><span>${fmtFull(dayPrice)}</span></div>
     ${diff>0?`<div class="sal-result-row"><span>Переробка +${diff} дн.</span><span style="color:#2e7d52">+${fmtFull(dayAdjust)}</span></div>`:''}
     ${diff<0?`<div class="sal-result-row"><span>Недопрацьовано ${-diff} дн.</span><span style="color:#ef5350">−${fmtFull(-dayAdjust)}</span></div>`:''}
-    ${bonus>0?`<div class="sal-result-row"><span>Премія</span><span style="color:#2e7d52">+${fmtFull(bonus)}</span></div>`:''}
-    ${penalty>0?`<div class="sal-result-row"><span>Штраф</span><span style="color:#ef5350">−${fmtFull(penalty)}</span></div>`:''}
+    ${list.map(a=>{const amt=parseFloat(a.amount)||0;return `<div class="sal-result-row"><span>${a.type}${a.comment?' ('+a.comment+')':''}</span><span style="color:${amt>=0?'#2e7d52':'#ef5350'}">${amt>=0?'+':''}${fmtFull(amt)}</span></div>`;}).join('')}
     <div class="sal-result-row"><span>Аванс (1–5)</span><span>${fmtFull(advance)}</span></div>
     <div class="sal-result-row"><span>Залишок (10–15)</span><span>${fmtFull(total-advance)}</span></div>
     <div class="sal-result-row green"><span>💰 Всього за місяць</span><span>${fmtFull(total)}</span></div>
@@ -2040,22 +2121,23 @@ function financeTable(rows, detailed){
   let h=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
     <thead><tr style="color:#8a7050;text-align:left">
       <th style="padding:7px 5px">Співробітник</th>
-      ${detailed?'<th style="text-align:center">Оклад</th><th style="text-align:center">Змін</th><th style="text-align:center">±дні</th><th style="text-align:right">Премія</th><th style="text-align:right">Штраф</th>':''}
+      ${detailed?'<th style="text-align:center">Оклад</th><th style="text-align:center">Змін</th><th style="text-align:center">±дні</th><th style="text-align:right">Корегування</th>':''}
       <th style="text-align:right">Аванс</th><th style="text-align:right">Залишок</th><th style="text-align:right">Всього</th>
     </tr></thead><tbody>`;
   rows.forEach(r=>{
     if(r.total==null){
-      h+=`<tr style="border-top:1px solid #3a2818;opacity:.5"><td style="padding:8px 5px;color:#c0a878">${r.name}</td><td colspan="${detailed?7:3}" style="text-align:right;color:#8a7050;font-size:.72rem">${r.note||'—'}</td></tr>`;
+      h+=`<tr style="border-top:1px solid #3a2818;opacity:.5"><td style="padding:8px 5px;color:#c0a878">${r.name}</td><td colspan="${detailed?6:3}" style="text-align:right;color:#8a7050;font-size:.72rem">${r.note||'—'}</td></tr>`;
       return;
     }
     const diff=r.diff_days||0;
+    const adj=r.adj_total||0;
+    const adjTitle=(r.adjustments||[]).map(a=>`${a.type}: ${a.amount}${a.comment?' ('+a.comment+')':''}`).join('\n');
     h+=`<tr style="border-top:1px solid #3a2818">
       <td style="padding:8px 5px;color:#e8dcc8">${r.name}</td>
       ${detailed?`<td style="text-align:center;color:#a09070">${fmtUAH(r.base_rate)}</td>
       <td style="text-align:center;color:#c0a878">${r.worked_days}</td>
       <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${diff>0?'+'+diff:diff<0?diff:'—'}</td>
-      <td style="text-align:right;color:${r.bonus?'#7ac070':'#6a5040'}">${r.bonus?fmtUAH(r.bonus):'—'}</td>
-      <td style="text-align:right;color:${r.penalty?'#e06050':'#6a5040'}">${r.penalty?fmtUAH(r.penalty):'—'}</td>`:''}
+      <td style="text-align:right;color:${adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjTitle}">${adj?((adj>0?'+':'')+fmtUAH(adj)):'—'}</td>`:''}
       <td style="text-align:right;color:#c0a878">${fmtUAH(r.advance)}</td>
       <td style="text-align:right;color:#c0a878">${fmtUAH(r.remainder)}</td>
       <td style="text-align:right;color:#f0c040;font-weight:700">${fmtUAH2(r.total)}</td>
