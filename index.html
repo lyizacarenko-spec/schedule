@@ -233,6 +233,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     <button class="btn btn-orange" onclick="openAddEmpModal()">＋ Співробітник</button>
     <button class="btn btn-ghost" onclick="openExportModal()" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e">📊 Експорт ЗП</button>
     <button class="btn btn-ghost" onclick="toggleArchive()" id="btn-archive">📦 Архів</button>
+    <button class="btn" onclick="openFinance()" id="btn-finance" style="background:linear-gradient(135deg,#2c1810,#4a2818);color:#f0c040;border:1px solid #6a4020;font-weight:700">💰 Фінанси</button>
   </div>
   <div class="topbar-right">
     <div class="save-dot" id="save-dot">—</div>
@@ -377,7 +378,7 @@ const MONTH_UA = ['','Січень','Лютий','Березень','Квіте�
 let Y = new Date().getFullYear();
 let M = new Date().getMonth()+1;
 let curDept = 'retail';
-let employees=[], departments=[], schedMap={}, revDetailMap={}, revDeptMap={}, statsData=[], salaryMap={};
+let employees=[], departments=[], schedMap={}, revDetailMap={}, revDeptMap={}, statsData=[], salaryMap={}, schemeMap={};
 let pending={};
 let revMode = 'dept';
 let showArchive = false;
@@ -424,6 +425,11 @@ async function loadMonthData(){
   ]);
   salaryMap={};
   salData.forEach(s=>{ salaryMap[s.employee_id]=s; });
+  // схеми окладів (ставочники) — не критично, тому окремо і без падіння
+  try{
+    const schemes = await api('/api/salary-schemes');
+    schemeMap={}; schemes.forEach(s=>{ schemeMap[s.employee_id]=s; });
+  }catch(e){ schemeMap={}; }
   schedMap={};
   sched.forEach(e=>{schedMap[`${e.employee_id}_${e.entry_date.slice(0,10)}`]=e;});
   revDetailMap={};
@@ -1223,6 +1229,9 @@ function openMgrCard(empId){
   const canCalcSalary = hasSalaryCalc(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role);
   const orderMode = isOrderDept(emp.dept_code);
   const levelPart = isSalesDept(emp.dept_code) && LEVEL_LABEL[emp.level] ? ` · ${LEVEL_LABEL[emp.level]}` : '';
+  // ставочник: несейлз-відділ або керівна роль — оклад + премія/штраф
+  const isFixedRate = !hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role);
+  const scheme = schemeMap[emp.id] || {};
 
   document.getElementById('mgr-card-content').innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -1244,7 +1253,37 @@ function openMgrCard(empId){
     </div>
     <div class="sal-block">
       <h4>💰 Розрахунок ЗП — ${MONTH_UA[M]} ${Y}</h4>
-      ${ !canCalcSalary ? '<div style="font-size:.75rem;color:#8a7060;padding:8px 0">Розрахунок ЗП для цієї ролі/відділу не передбачений</div>' : `
+      ${ isFixedRate ? `
+      <div id="frate-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
+        <div style="text-align:center;padding:8px 0 12px">
+          <div style="font-size:.78rem;color:#8a7060;margin-bottom:8px">🔒 Доступ до ЗП за PIN</div>
+          <div style="display:flex;gap:6px;justify-content:center">
+            <input type="password" id="frate-pin-input" placeholder="PIN" maxlength="4"
+              style="width:80px;background:#ede8e0;border:1px solid #c8c0b4;border-radius:6px;padding:6px 8px;font-size:.85rem;text-align:center;outline:none"
+              onkeydown="if(event.key==='Enter')unlockFrate()">
+            <button onclick="unlockFrate()" style="background:#b84e30;color:#fff;border-radius:6px;padding:6px 12px;font-size:.8rem;font-weight:600">Увійти</button>
+          </div>
+        </div>
+      </div>
+      <div id="frate-block" style="${ropUnlocked?'display:block':'display:none'}">
+        <div class="sal-row">
+          <div class="sal-field"><label>Оклад (грн/міс)</label><input type="number" id="frate-base-${emp.id}" placeholder="25000" value="${scheme.base_rate||''}" oninput="calcFrate(${emp.id})"></div>
+          <div class="sal-field"><label>Тип норми</label>
+            <select id="frate-normtype-${emp.id}" onchange="calcFrate(${emp.id})" style="background:#fff;border:1px solid #c8c0b4;border-radius:6px;padding:6px 8px;font-size:.82rem">
+              <option value="month_workdays" ${(scheme.norm_type||'month_workdays')==='month_workdays'?'selected':''}>Будні місяця (адмінка/бух)</option>
+              <option value="fixed" ${scheme.norm_type==='fixed'?'selected':''}>Фікс. 22 (логісти)</option>
+            </select>
+          </div>
+        </div>
+        <div class="sal-row" style="margin-top:4px">
+          <div class="sal-field"><label>Премія (грн)</label><input type="number" id="frate-bonus-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.bonus_manual||''}" oninput="calcFrate(${emp.id})"></div>
+          <div class="sal-field"><label>Штраф (грн)</label><input type="number" id="frate-penalty-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.penalty||''}" oninput="calcFrate(${emp.id})"></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <button onclick="saveFrate(${emp.id})" style="flex:1;padding:8px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem">💾 Зберегти оклад та розрахувати</button>
+        </div>
+        <div id="frate-result-${emp.id}" style="margin-top:8px"></div>
+      </div>` : (!canCalcSalary ? '<div style="font-size:.75rem;color:#8a7060;padding:8px 0">Розрахунок ЗП для цієї ролі/відділу не передбачений</div>' : `
       <div id="rop-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
         <div style="text-align:center;padding:8px 0 12px">
           <div style="font-size:.78rem;color:#8a7060;margin-bottom:8px">🔒 Доступ тільки для РОП</div>
@@ -1288,7 +1327,7 @@ function openMgrCard(empId){
         <div id="sal-result-${emp.id}" style="margin-top:8px">
           ${salaryMap[emp.id]?.fact_amount?'<div style="font-size:.72rem;color:#8a7060">📋 Є збережені дані — натисни Розрахувати для перегляду</div>':'<div style="font-size:.75rem;color:#aaa">Введи дані та натисни Розрахувати</div>'}
         </div>
-      </div>`}
+      </div>`) }
     </div>
     <div style="font-size:.7rem;color:#8a7060;margin-bottom:6px">Календар ${MONTH_UA[M]} ${Y}</div>
     <div class="mgr-month">${calHtml}</div>
@@ -1303,6 +1342,7 @@ function openMgrCard(empId){
     </div>
   `;
   document.getElementById('mgr-card-ov').classList.add('open');
+  if(isFixedRate && ropUnlocked && scheme.base_rate) calcFrate(emp.id);
 }
 function closeMgrCard(e){ if(e&&e.target.id!=='mgr-card-ov')return; document.getElementById('mgr-card-ov').classList.remove('open'); }
 function closeMgrCardForce(){ document.getElementById('mgr-card-ov').classList.remove('open'); }
@@ -1429,6 +1469,78 @@ async function saveSalary(empId){
     setSave('ЗП збережено ✓',true);
     calcSalary(empId);
   }catch(e){ alert('Помилка збереження: '+e.message); }
+}
+
+// ══ FIXED-RATE (ставочник) у картці ═══════════════════
+function unlockFrate(){
+  const pin=document.getElementById('frate-pin-input')?.value;
+  if(pin===ROP_PIN){
+    ropUnlocked=true;
+    document.getElementById('frate-pin-block').style.display='none';
+    document.getElementById('frate-block').style.display='block';
+  } else alert('Невірний PIN');
+}
+
+async function saveFrate(empId){
+  const base=parseFloat(document.getElementById('frate-base-'+empId).value)||0;
+  const normType=document.getElementById('frate-normtype-'+empId).value;
+  const bonus=parseFloat(document.getElementById('frate-bonus-'+empId).value)||0;
+  const penalty=parseFloat(document.getElementById('frate-penalty-'+empId).value)||0;
+  if(!base){ alert('Введи оклад'); return; }
+  setSave('Збереження...',false);
+  try{
+    const sc=await api('/api/salary-schemes',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, scheme_type:'fixed_rate', base_rate:base, norm_days:22, norm_type:normType
+    })});
+    schemeMap[empId]=sc;
+    await api('/api/salary',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:Y, calc_month:M,
+      plan_amount:0, fact_amount:0, returns_pct:0, worked_days:0,
+      senior_bonus:0, penalty:penalty, note:'', bonus_manual:bonus
+    })});
+    if(!salaryMap[empId]) salaryMap[empId]={};
+    salaryMap[empId].bonus_manual=bonus;
+    salaryMap[empId].penalty=penalty;
+    calcFrate(empId);
+    setSave('Оклад збережено ✓',true);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+
+// кількість будніх днів у поточному місяці
+function monthWeekdaysCount(){
+  return getDays(Y,M).filter(d=>!d.isW).length;
+}
+
+// Розрахунок ставочника на клієнті (та сама логіка, що на бекенді)
+function calcFrate(empId){
+  const base=parseFloat(document.getElementById('frate-base-'+empId).value)||0;
+  const normType=document.getElementById('frate-normtype-'+empId)?.value||'month_workdays';
+  const bonus=parseFloat(document.getElementById('frate-bonus-'+empId).value)||0;
+  const penalty=parseFloat(document.getElementById('frate-penalty-'+empId).value)||0;
+  const res=document.getElementById('frate-result-'+empId);
+  if(!base){ res.innerHTML=''; return; }
+  const dayPrice=base/22;                       // ціна дня завжди /22
+  const targetDays = normType==='month_workdays' ? monthWeekdaysCount() : 22;
+  const days=getDays(Y,M);
+  const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','8:30-16:30','удаленка','запізн','відробіт'];
+  let worked=0;
+  days.forEach(d=>{ if(WORKS.includes(getStatus(empId,d.date))) worked++; });
+  const diff=worked-targetDays;
+  const dayAdjust=diff*dayPrice;
+  const total=base+dayAdjust+bonus-penalty;
+  const advance=base/2;
+  res.innerHTML=`<div class="sal-result">
+    <div class="sal-result-row"><span>Оклад</span><span>${fmtFull(base)}</span></div>
+    <div class="sal-result-row"><span>Відпрацьовано / норма</span><span>${worked} / ${targetDays}${normType==='month_workdays'?' (будні місяця)':''}</span></div>
+    <div class="sal-result-row"><span>Ціна дня (оклад/22)</span><span>${fmtFull(dayPrice)}</span></div>
+    ${diff>0?`<div class="sal-result-row"><span>Переробка +${diff} дн.</span><span style="color:#2e7d52">+${fmtFull(dayAdjust)}</span></div>`:''}
+    ${diff<0?`<div class="sal-result-row"><span>Недопрацьовано ${-diff} дн.</span><span style="color:#ef5350">−${fmtFull(-dayAdjust)}</span></div>`:''}
+    ${bonus>0?`<div class="sal-result-row"><span>Премія</span><span style="color:#2e7d52">+${fmtFull(bonus)}</span></div>`:''}
+    ${penalty>0?`<div class="sal-result-row"><span>Штраф</span><span style="color:#ef5350">−${fmtFull(penalty)}</span></div>`:''}
+    <div class="sal-result-row"><span>Аванс (1–5)</span><span>${fmtFull(advance)}</span></div>
+    <div class="sal-result-row"><span>Залишок (10–15)</span><span>${fmtFull(total-advance)}</span></div>
+    <div class="sal-result-row green"><span>💰 Всього за місяць</span><span>${fmtFull(total)}</span></div>
+  </div>`;
 }
 
 // ══ ROP PIN ═══════════════════════════════════════════
@@ -1781,6 +1893,234 @@ async function saveLevel(){
   }catch(e){alert('Помилка: '+e.message);}
 }
 
+// ══ ФІНАНСИ (під PIN) ═════════════════════════════════
+let financeUnlocked = false;
+let financeView = 'summary';   // summary | dept | average
+let financeYear = Y, financeMonth = M;
+let financeDeptFilter = null;
+let financeData = null;
+
+function fmtUAH(n){
+  if(n==null) return '—';
+  return Number(n).toLocaleString('uk-UA',{minimumFractionDigits:0,maximumFractionDigits:0})+' ₴';
+}
+function fmtUAH2(n){
+  if(n==null) return '—';
+  return Number(n).toLocaleString('uk-UA',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₴';
+}
+
+function openFinance(){
+  financeYear = Y; financeMonth = M;
+  document.getElementById('finance-ov').classList.add('open');
+  if(!financeUnlocked){ renderFinancePin(); }
+  else { financeView='summary'; loadFinance(); }
+}
+function closeFinance(){ document.getElementById('finance-ov').classList.remove('open'); }
+
+function renderFinancePin(){
+  document.getElementById('finance-body').innerHTML=`
+    <div style="text-align:center;padding:24px 0">
+      <div style="font-size:.9rem;color:#8a7050;margin-bottom:14px">🔒 Розділ фінансів захищено</div>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <input type="password" id="finance-pin" placeholder="PIN" maxlength="4"
+          style="width:110px;background:#2a1e14;border:1px solid #4a3420;color:#f0c040;border-radius:8px;padding:9px 12px;font-size:1rem;text-align:center;outline:none;letter-spacing:.3em"
+          onkeydown="if(event.key==='Enter')checkFinancePin()">
+        <button onclick="checkFinancePin()" style="background:#6a4020;color:#f0c040;border-radius:8px;padding:9px 18px;font-weight:700">Увійти</button>
+      </div>
+      <div id="finance-pin-err" style="color:#e06050;font-size:.75rem;margin-top:8px;min-height:16px"></div>
+    </div>`;
+  setTimeout(()=>document.getElementById('finance-pin')?.focus(),50);
+}
+function checkFinancePin(){
+  const v=document.getElementById('finance-pin')?.value;
+  if(v===ROP_PIN){ financeUnlocked=true; financeView='summary'; loadFinance(); }
+  else { document.getElementById('finance-pin-err').textContent='Невірний PIN'; }
+}
+
+async function loadFinance(){
+  const body=document.getElementById('finance-body');
+  body.innerHTML='<div class="loading" style="color:#8a7050">Розрахунок...</div>';
+  try{
+    financeData = await api(`/api/finance?year=${financeYear}&month=${financeMonth}`);
+    renderFinance();
+  }catch(e){
+    body.innerHTML=`<div class="loading" style="color:#e06050">Помилка: ${e.message}</div>`;
+  }
+}
+
+function financeMonthNav(){
+  return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+    <button onclick="financeChangeMonth(-1)" style="background:#2a1e14;color:#c0a878;border-radius:6px;padding:5px 11px">◀</button>
+    <div style="font-weight:700;color:#f0c040;min-width:150px;text-align:center">${MONTH_UA[financeMonth]} ${financeYear}</div>
+    <button onclick="financeChangeMonth(1)" style="background:#2a1e14;color:#c0a878;border-radius:6px;padding:5px 11px">▶</button>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button onclick="financeSetView('summary')" style="background:${financeView==='summary'?'#6a4020':'#2a1e14'};color:#f0c040;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">По відділах</button>
+      <button onclick="financeSetView('average')" style="background:${financeView==='average'?'#6a4020':'#2a1e14'};color:#f0c040;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">Середня за період</button>
+    </div>
+  </div>`;
+}
+function financeChangeMonth(d){
+  financeMonth+=d; if(financeMonth>12){financeMonth=1;financeYear++;} if(financeMonth<1){financeMonth=12;financeYear--;}
+  if(financeView==='average'){ renderFinance(); return; }
+  loadFinance();
+}
+function financeSetView(v){ financeView=v; if(v==='average') renderFinance(); else { financeDeptFilter=null; renderFinance(); } }
+
+function renderFinance(){
+  if(financeView==='average'){ renderFinanceAverage(); return; }
+  const body=document.getElementById('finance-body');
+  const d=financeData;
+  if(!d){ body.innerHTML=financeMonthNav()+'<div class="loading">—</div>'; return; }
+
+  // окремий відділ
+  if(financeDeptFilter){
+    const rows=d.rows.filter(r=>r.dept_code===financeDeptFilter);
+    const dept=d.depts.find(x=>x.dept_code===financeDeptFilter);
+    let h=financeMonthNav();
+    h+=`<button onclick="financeDeptFilter=null;renderFinance()" style="background:#2a1e14;color:#c0a878;border-radius:6px;padding:5px 12px;font-size:.78rem;margin-bottom:12px">← всі відділи</button>`;
+    h+=`<div style="font-size:.95rem;color:#f0c040;font-weight:700;margin-bottom:10px">${rows[0]?.dept_name||''}</div>`;
+    h+=financeTable(rows,true);
+    if(dept){
+      h+=`<div style="margin-top:12px;padding:12px;background:#2a1e14;border-radius:8px;display:flex;gap:20px;flex-wrap:wrap">
+        <div><div style="font-size:.65rem;color:#8a7050">Фонд ЗП</div><div style="font-size:1.05rem;font-weight:700;color:#f0c040">${fmtUAH(dept.sum)}</div></div>
+        <div><div style="font-size:.65rem;color:#8a7050">Середня</div><div style="font-size:1.05rem;font-weight:700;color:#7ac070">${fmtUAH(dept.avg)}</div></div>
+        <div><div style="font-size:.65rem;color:#8a7050">Мін / Макс</div><div style="font-size:1.05rem;font-weight:700;color:#c0a878">${fmtUAH(dept.min)} / ${fmtUAH(dept.max)}</div></div>
+        <div><div style="font-size:.65rem;color:#8a7050">Людей</div><div style="font-size:1.05rem;font-weight:700;color:#c0a878">${dept.count}</div></div>
+      </div>`;
+    }
+    body.innerHTML=h;
+    return;
+  }
+
+  // зведення по відділах
+  let h=financeMonthNav();
+  if(!d.depts.length){
+    h+=`<div style="padding:20px;text-align:center;color:#8a7050;font-size:.85rem">
+      Немає порахованих зарплат за цей місяць.<br>
+      <span style="font-size:.75rem">Оклади ставочників задаються в картці співробітника. Відділи продажів/відмов рахуються окремо в картці.</span>
+    </div>`;
+    body.innerHTML=h; return;
+  }
+  const totalFund=d.depts.reduce((a,x)=>a+x.sum,0);
+  const totalPeople=d.depts.reduce((a,x)=>a+x.count,0);
+  h+=`<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <div style="flex:1;min-width:120px;background:#2a1e14;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#8a7050">Загальний фонд ЗП</div><div style="font-size:1.2rem;font-weight:700;color:#f0c040">${fmtUAH(totalFund)}</div></div>
+    <div style="flex:1;min-width:120px;background:#2a1e14;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#8a7050">Людей (ставочники)</div><div style="font-size:1.2rem;font-weight:700;color:#c0a878">${totalPeople}</div></div>
+    <div style="flex:1;min-width:120px;background:#2a1e14;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#8a7050">Середня по всіх</div><div style="font-size:1.2rem;font-weight:700;color:#7ac070">${fmtUAH(totalPeople?totalFund/totalPeople:0)}</div></div>
+  </div>`;
+  h+=`<table style="width:100%;border-collapse:collapse;font-size:.82rem">
+    <thead><tr style="color:#8a7050;text-align:left">
+      <th style="padding:8px 6px">Відділ</th><th style="text-align:center">Людей</th>
+      <th style="text-align:right">Фонд</th><th style="text-align:right">Середня</th><th style="text-align:right">Мін</th><th style="text-align:right">Макс</th><th></th>
+    </tr></thead><tbody>`;
+  d.depts.forEach(dp=>{
+    h+=`<tr style="border-top:1px solid #3a2818;cursor:pointer" onclick="financeDeptFilter='${dp.dept_code}';renderFinance()">
+      <td style="padding:9px 6px;color:#e8dcc8;font-weight:600">${dp.dept_name}</td>
+      <td style="text-align:center;color:#c0a878">${dp.count}</td>
+      <td style="text-align:right;color:#f0c040">${fmtUAH(dp.sum)}</td>
+      <td style="text-align:right;color:#7ac070;font-weight:700">${fmtUAH(dp.avg)}</td>
+      <td style="text-align:right;color:#a09070">${fmtUAH(dp.min)}</td>
+      <td style="text-align:right;color:#a09070">${fmtUAH(dp.max)}</td>
+      <td style="text-align:right;color:#8a7050">›</td>
+    </tr>`;
+  });
+  h+=`</tbody></table>`;
+  const skipped=d.rows.filter(r=>r.total==null && r.note==='оклад не задано');
+  if(skipped.length){
+    h+=`<div style="margin-top:12px;font-size:.72rem;color:#8a7050">⚠️ Без окладу (${skipped.length}): ${skipped.map(r=>r.name).join(', ')}. Задай оклад у картці.</div>`;
+  }
+  body.innerHTML=h;
+}
+
+function financeTable(rows, detailed){
+  let h=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
+    <thead><tr style="color:#8a7050;text-align:left">
+      <th style="padding:7px 5px">Співробітник</th>
+      ${detailed?'<th style="text-align:center">Оклад</th><th style="text-align:center">Змін</th><th style="text-align:center">±дні</th><th style="text-align:right">Премія</th><th style="text-align:right">Штраф</th>':''}
+      <th style="text-align:right">Аванс</th><th style="text-align:right">Залишок</th><th style="text-align:right">Всього</th>
+    </tr></thead><tbody>`;
+  rows.forEach(r=>{
+    if(r.total==null){
+      h+=`<tr style="border-top:1px solid #3a2818;opacity:.5"><td style="padding:8px 5px;color:#c0a878">${r.name}</td><td colspan="${detailed?7:3}" style="text-align:right;color:#8a7050;font-size:.72rem">${r.note||'—'}</td></tr>`;
+      return;
+    }
+    const diff=r.diff_days||0;
+    h+=`<tr style="border-top:1px solid #3a2818">
+      <td style="padding:8px 5px;color:#e8dcc8">${r.name}</td>
+      ${detailed?`<td style="text-align:center;color:#a09070">${fmtUAH(r.base_rate)}</td>
+      <td style="text-align:center;color:#c0a878">${r.worked_days}</td>
+      <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${diff>0?'+'+diff:diff<0?diff:'—'}</td>
+      <td style="text-align:right;color:${r.bonus?'#7ac070':'#6a5040'}">${r.bonus?fmtUAH(r.bonus):'—'}</td>
+      <td style="text-align:right;color:${r.penalty?'#e06050':'#6a5040'}">${r.penalty?fmtUAH(r.penalty):'—'}</td>`:''}
+      <td style="text-align:right;color:#c0a878">${fmtUAH(r.advance)}</td>
+      <td style="text-align:right;color:#c0a878">${fmtUAH(r.remainder)}</td>
+      <td style="text-align:right;color:#f0c040;font-weight:700">${fmtUAH2(r.total)}</td>
+    </tr>`;
+  });
+  h+=`</tbody></table>`;
+  return h;
+}
+
+// ── Середня за період ──
+let avgFrom=null, avgTo=null, avgDept='';
+function renderFinanceAverage(){
+  const body=document.getElementById('finance-body');
+  if(!avgFrom){ avgTo=`${financeYear}-${String(financeMonth).padStart(2,'0')}`;
+    let m=financeMonth-3,y=financeYear; if(m<1){m+=12;y--;} avgFrom=`${y}-${String(m).padStart(2,'0')}`; }
+  const salesDepts = departments.filter(d=>isSalesDept(d.code)||isOrderDept(d.code));
+  const fixedDepts = departments.filter(d=>!isSalesDept(d.code)&&!isOrderDept(d.code));
+  let h=financeMonthNav();
+  h+=`<div style="background:#2a1e14;border-radius:8px;padding:14px;margin-bottom:14px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+      <div><div style="font-size:.65rem;color:#8a7050;margin-bottom:3px">Відділ</div>
+        <select id="avg-dept" style="background:#1a120c;border:1px solid #4a3420;color:#e8dcc8;border-radius:6px;padding:6px 10px;font-size:.82rem">
+          <option value="">Всі ставочники</option>
+          ${fixedDepts.map(d=>`<option value="${d.code}" ${d.code===avgDept?'selected':''}>${d.name}</option>`).join('')}
+        </select></div>
+      <div><div style="font-size:.65rem;color:#8a7050;margin-bottom:3px">Від (місяць)</div>
+        <input type="month" id="avg-from" value="${avgFrom}" style="background:#1a120c;border:1px solid #4a3420;color:#e8dcc8;border-radius:6px;padding:6px 10px;font-size:.82rem"></div>
+      <div><div style="font-size:.65rem;color:#8a7050;margin-bottom:3px">До (місяць)</div>
+        <input type="month" id="avg-to" value="${avgTo}" style="background:#1a120c;border:1px solid #4a3420;color:#e8dcc8;border-radius:6px;padding:6px 10px;font-size:.82rem"></div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;color:#c0a878;cursor:pointer">
+        <input type="checkbox" id="avg-exnew" checked style="width:auto"> без новеньких</label>
+      <button onclick="runFinanceAverage()" style="background:#6a4020;color:#f0c040;border-radius:6px;padding:7px 16px;font-weight:700;font-size:.82rem">Порахувати</button>
+    </div>
+    <div style="font-size:.68rem;color:#6a5040;margin-top:8px">Середня рахується лише для ставочників (fixed_rate). Продажі/відмови поки не входять — у них розрахунок по факту в картці.</div>
+  </div>
+  <div id="avg-result"></div>`;
+  body.innerHTML=h;
+}
+
+async function runFinanceAverage(){
+  avgDept=document.getElementById('avg-dept').value;
+  avgFrom=document.getElementById('avg-from').value;
+  avgTo=document.getElementById('avg-to').value;
+  const exNew=document.getElementById('avg-exnew').checked?'1':'';
+  const res=document.getElementById('avg-result');
+  res.innerHTML='<div class="loading" style="color:#8a7050">Розрахунок...</div>';
+  try{
+    const qs=`?from=${avgFrom}&to=${avgTo}${avgDept?'&dept='+avgDept:''}${exNew?'&exclude_new=1':''}`;
+    const d=await api('/api/finance/average'+qs);
+    if(!d.people.length){ res.innerHTML='<div style="color:#8a7050;padding:16px;text-align:center">Немає даних за період</div>'; return; }
+    let h=`<div style="background:#2a1e14;border-radius:8px;padding:14px;margin-bottom:12px;display:flex;gap:24px;flex-wrap:wrap">
+      <div><div style="font-size:.65rem;color:#8a7050">Середня місячна ЗП (на людину)</div><div style="font-size:1.3rem;font-weight:700;color:#7ac070">${fmtUAH(d.avg_per_person_month)}</div></div>
+      <div><div style="font-size:.65rem;color:#8a7050">Людей у розрахунку</div><div style="font-size:1.3rem;font-weight:700;color:#c0a878">${d.people_count}</div></div>
+      <div><div style="font-size:.65rem;color:#8a7050">Період</div><div style="font-size:.95rem;font-weight:600;color:#e8dcc8;padding-top:6px">${d.months[0]} — ${d.months[d.months.length-1]}</div></div>
+    </div>`;
+    h+=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
+      <thead><tr style="color:#8a7050;text-align:left"><th style="padding:7px 5px">Співробітник</th>
+      ${d.months.map(m=>`<th style="text-align:right;font-size:.68rem">${m.slice(5)}.${m.slice(2,4)}</th>`).join('')}
+      <th style="text-align:right">Середня</th></tr></thead><tbody>`;
+    d.people.forEach(p=>{
+      h+=`<tr style="border-top:1px solid #3a2818"><td style="padding:8px 5px;color:#e8dcc8">${p.name}</td>
+        ${d.months.map(m=>`<td style="text-align:right;color:#a09070">${p.months[m]!=null?fmtUAH(p.months[m]):'—'}</td>`).join('')}
+        <td style="text-align:right;color:#f0c040;font-weight:700">${fmtUAH(p.avg)}</td></tr>`;
+    });
+    h+=`</tbody></table>`;
+    res.innerHTML=h;
+  }catch(e){ res.innerHTML=`<div style="color:#e06050;padding:16px">Помилка: ${e.message}</div>`; }
+}
+
 // ══ INIT ══════════════════════════════════════════════
 (async()=>{
   try{ await loadAll(); }
@@ -1902,6 +2242,17 @@ async function saveLevel(){
       <button class="btn-cancel" onclick="closeCustomRangeModal()">Скасувати</button>
       <button class="btn-save" onclick="saveCustomRange()">Поставити</button>
     </div>
+  </div>
+</div>
+
+<!-- FINANCE MODAL -->
+<div class="modal-ov" id="finance-ov">
+  <div class="modal" style="max-width:820px;width:96%;background:#1a120c;border-color:#3a2818;color:#e8dcc8">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="color:#f0c040;margin:0">💰 Фінанси</h3>
+      <button onclick="closeFinance()" style="background:none;color:#8a7050;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div id="finance-body"></div>
   </div>
 </div>
 
