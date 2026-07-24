@@ -799,9 +799,20 @@ function openPopup(e,empId,date,cur,nameTd){
   document.getElementById('popup-grid').innerHTML=grid;
   const ov=document.getElementById('popup-ov');
   ov.classList.add('open');
-  const x=Math.min(e.clientX,window.innerWidth-230);
-  const y=Math.min(e.clientY+6,window.innerHeight-290);
-  document.getElementById('status-popup').style.cssText=`left:${x}px;top:${y}px`;
+  const pop=document.getElementById('status-popup');
+  // спершу показуємо, щоб виміряти реальну висоту (вона більша для склад/погодинних)
+  pop.style.cssText=`left:-9999px;top:0`;
+  const pw=pop.offsetWidth||220;
+  const ph=pop.offsetHeight||300;
+  const margin=10;
+  let x=e.clientX;
+  let y=e.clientY+6;
+  // не виходити за правий/нижній край
+  if(x+pw>window.innerWidth-margin) x=window.innerWidth-pw-margin;
+  if(y+ph>window.innerHeight-margin) y=window.innerHeight-ph-margin;
+  if(x<margin) x=margin;
+  if(y<margin) y=margin;
+  pop.style.cssText=`left:${x}px;top:${y}px;max-height:${window.innerHeight-2*margin}px;overflow-y:auto`;
 }
 function closePopup(e){ if(e&&e.target.id!=='popup-ov')return; document.getElementById('popup-ov').classList.remove('open'); }
 function closePopupForce(){ document.getElementById('popup-ov').classList.remove('open'); }
