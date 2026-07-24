@@ -359,6 +359,8 @@ const STATUSES = [
   {v:'9:30-17:30',label:'9:30-17:30',cls:'cs-work', h:8},
   {v:'9-17',      label:'9-17',      cls:'cs-work', h:8},
   {v:'9-18',      label:'9-18',      cls:'cs-work', h:9},
+  {v:'9-19',      label:'9-19',      cls:'cs-work', h:10},
+  {v:'9-19:30',   label:'9-19:30',   cls:'cs-work', h:10.5},
   {v:'8:30-16:30',label:'8:30-16:30',cls:'cs-work', h:8},
   {v:'вих',     label:'вих',     cls:'cs-off',  h:0},
   {v:'больн',   label:'больн',   cls:'cs-sick', h:0},
@@ -477,7 +479,7 @@ function defaultStatusFor(deptCode, dow, empName){
     return (dow===0||dow===6) ? 'вих' : '9:30-17:30';
   if(deptCode==='accounting')
     return (dow===0||dow===6) ? 'вих' : '9-17';
-  if(deptCode==='warehouse') return '9-18';
+  if(deptCode==='warehouse') return '9-19';
   if(deptCode==='logistics')
     return dow===0 ? 'вих' : '8:30-16:30';
   if(['management','training','admin'].includes(deptCode) && (dow===0||dow===6)) return 'вих';
@@ -1693,7 +1695,7 @@ function calcFrate(empId){
   const dayPrice=base/22;
   const targetDays = normType==='month_workdays' ? monthWeekdaysCount() : 22;
   const days=getDays(Y,M);
-  const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','8:30-16:30','удаленка','запізн','відробіт'];
+  const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','8:30-16:30','удаленка','запізн','відробіт'];
   let worked=0;
   days.forEach(d=>{ if(WORKS.includes(getStatus(empId,d.date))) worked++; });
   const diff=worked-targetDays;
