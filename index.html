@@ -455,6 +455,11 @@ async function loadMonthData(){
     const wh = await api(`/api/warehouse/daily?year=${Y}&month=${M}`);
     whMap={}; wh.forEach(r=>{ whMap[`${r.employee_id}_${r.work_date}`]=r; });
   }catch(e){ whMap={}; }
+  // склад — години вантажників
+  try{
+    const hr = await api(`/api/hourly/daily?year=${Y}&month=${M}`);
+    hrMap={}; hr.forEach(r=>{ hrMap[`${r.employee_id}_${r.work_date}`]=r; });
+  }catch(e){ hrMap={}; }
   schedMap={};
   sched.forEach(e=>{schedMap[`${e.employee_id}_${e.entry_date.slice(0,10)}`]=e;});
   revDetailMap={};
@@ -739,6 +744,12 @@ function renderTable(){
         days.forEach(d=>{ const r=whMap[`${emp.id}_${d.date}`]; if(r) whMonth+=whDayAmount(r); });
         empRevTotal=whMonth;
       }
+      // для вантажника — години × ставка за місяць
+      if(isHourly(emp.id)){
+        let hrMonth=0;
+        days.forEach(d=>{ const r=hrMap[`${emp.id}_${d.date}`]; if(r) hrMonth+=(parseFloat(r.hours)||0)*hrRate(emp.id); });
+        empRevTotal=hrMonth;
+      }
       row+=`<td class="stat-td">${wd}</td>
             <td class="stat-td">${hrs}</td>
             <td class="rev-td ${empRevTotal?'':'empty'}" onclick="openRevEmpModalById(${emp.id})">${empRevTotal?fmtM(empRevTotal)+' ₴':'—'}</td>
@@ -778,6 +789,12 @@ function openPopup(e,empId,date,cur,nameTd){
     const rec=whMap[`${empId}_${date}`];
     const sum=rec?whDayAmount(rec):0;
     grid+=`<button class="s-btn" style="grid-column:1/3;background:#e4d4f0;color:#6a1a80;font-weight:700" onclick="closePopupForce();openWhModal(${empId},'${date}')">📦 Дані складу${sum>0?' ('+fmtM(sum)+'₴)':''}</button>`;
+  }
+  // для вантажника — кнопка вводу годин
+  if(isHourly(empId)){
+    const rec=hrMap[`${empId}_${date}`];
+    const hh=rec?parseFloat(rec.hours)||0:0;
+    grid+=`<button class="s-btn" style="grid-column:1/3;background:#d4e4f0;color:#1a5c8a;font-weight:700" onclick="closePopupForce();openHrModal(${empId},'${date}')">⏱ Години${hh>0?' ('+hh+'г = '+fmtM(hh*hrRate(empId))+'₴)':''}</button>`;
   }
   document.getElementById('popup-grid').innerHTML=grid;
   const ov=document.getElementById('popup-ov');
@@ -1269,7 +1286,8 @@ function openMgrCard(empId){
   const levelPart = isSalesDept(emp.dept_code) && LEVEL_LABEL[emp.level] ? ` · ${LEVEL_LABEL[emp.level]}` : '';
   // ставочник: несейлз-відділ або керівна роль — оклад + премія/штраф
   const isPieceWh = isPieceWarehouse(emp.id);
-  const isFixedRate = !isPieceWh && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
+  const isHr = isHourly(emp.id);
+  const isFixedRate = !isPieceWh && !isHr && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
   const scheme = schemeMap[emp.id] || {};
 
   document.getElementById('mgr-card-content').innerHTML=`
@@ -1301,6 +1319,16 @@ function openMgrCard(empId){
           <div class="sal-result-row"><span>Робочих днів внесено</span><span>${whDays}</span></div>
           <div class="sal-result-row green"><span>💰 Всього за ${MONTH_UA[M]}</span><span>${fmtFull(whTotal)}</span></div>
         </div>`;
+      })() : isHr ? (()=>{
+        let hrTotal=0, hrDays=0, hoursSum=0;
+        const rate=hrRate(emp.id);
+        getDays(Y,M).forEach(d=>{ const r=hrMap[`${emp.id}_${d.date}`]; if(r&&parseFloat(r.hours)>0){ hoursSum+=parseFloat(r.hours); hrTotal+=parseFloat(r.hours)*rate; hrDays++; } });
+        return `<div style="font-size:.78rem;color:#8a7060;margin-bottom:10px">Почасова оплата ${rate} грн/год. Клікай на дні у графіку → «⏱ Години».</div>
+        <div class="sal-result">
+          <div class="sal-result-row"><span>Днів / годин</span><span>${hrDays} дн · ${hoursSum} год</span></div>
+          <div class="sal-result-row green"><span>💰 Всього за ${MONTH_UA[M]}</span><span>${fmtFull(hrTotal)}</span></div>
+        </div>
+        <div style="font-size:.7rem;color:#8a7060;margin-top:6px">Доплати (напр. водій +5000) додавай через корегування у ставочників, або скажи — виведу тут.</div>`;
       })() : (isFixedRate ? `
       <div id="frate-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
         <div style="text-align:center;padding:8px 0 12px">
@@ -2175,11 +2203,13 @@ function financeTable(rows, detailed){
     const adj=r.adj_total||0;
     const adjTitle=(r.adjustments||[]).map(a=>`${a.type}: ${a.amount}${a.comment?' ('+a.comment+')':''}`).join('\n');
     const isPiece=r.scheme_type==='piece_warehouse';
+    const isHrRow=r.scheme_type==='hourly';
+    const baseCol = isPiece?fmtUAH(r.piece_total) : isHrRow?(r.hours_total+'г×'+r.base_rate) : fmtUAH(r.base_rate);
     h+=`<tr style="border-top:1px solid #3a2818">
-      <td style="padding:8px 5px;color:#e8dcc8">${r.name}${isPiece?' <span style="font-size:.62rem;color:#8a7050">відрядн.</span>':''}</td>
-      ${detailed?`<td style="text-align:center;color:#a09070">${isPiece?fmtUAH(r.piece_total):fmtUAH(r.base_rate)}</td>
+      <td style="padding:8px 5px;color:#e8dcc8">${r.name}${isPiece?' <span style="font-size:.62rem;color:#8a7050">відрядн.</span>':isHrRow?' <span style="font-size:.62rem;color:#8a7050">почас.</span>':''}</td>
+      ${detailed?`<td style="text-align:center;color:#a09070">${baseCol}</td>
       <td style="text-align:center;color:#c0a878">${r.worked_days}</td>
-      <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${isPiece?'—':(diff>0?'+'+diff:diff<0?diff:'—')}</td>
+      <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${(isPiece||isHrRow)?'—':(diff>0?'+'+diff:diff<0?diff:'—')}</td>
       <td style="text-align:right;color:${adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjTitle}">${adj?((adj>0?'+':'')+fmtUAH(adj)):'—'}</td>`:''}
       <td style="text-align:right;color:#c0a878">${fmtUAH(r.advance)}</td>
       <td style="text-align:right;color:#c0a878">${fmtUAH(r.remainder)}</td>
@@ -2250,6 +2280,35 @@ async function runFinanceAverage(){
   }catch(e){ res.innerHTML=`<div style="color:#e06050;padding:16px">Помилка: ${e.message}</div>`; }
 }
 
+// ══ СКЛАД — форма вводу годин ═════════════════════════
+let hrEmpId=null, hrDate=null;
+function openHrModal(empId, date){
+  hrEmpId=empId; hrDate=date;
+  const emp=employees.find(e=>e.id===empId);
+  const rec=hrMap[`${empId}_${date}`]||{};
+  document.getElementById('hr-modal-title').textContent=`⏱ ${emp?.name||''}`;
+  document.getElementById('hr-modal-sub').textContent=`${date.slice(8)}.${date.slice(5,7)}.${date.slice(0,4)} · ${hrRate(empId)} грн/год`;
+  document.getElementById('hr-hours').value=rec.hours||'';
+  hrRecalc();
+  document.getElementById('hr-modal-ov').classList.add('open');
+}
+function closeHrModal(){ document.getElementById('hr-modal-ov').classList.remove('open'); }
+function hrRecalc(){
+  const h=parseFloat(document.getElementById('hr-hours').value)||0;
+  document.getElementById('hr-day-total').textContent=fmtFull(h*hrRate(hrEmpId));
+}
+async function saveHrDay(){
+  const hours=parseFloat(document.getElementById('hr-hours').value)||0;
+  setSave('Збереження...',false);
+  try{
+    const r=await api('/api/hourly/daily',{method:'PUT',body:JSON.stringify({employee_id:hrEmpId,work_date:hrDate,hours})});
+    hrMap[`${hrEmpId}_${hrDate}`]=r;
+    closeHrModal();
+    renderAll();
+    setSave(`Збережено · ${fmtFull(hours*hrRate(hrEmpId))} ✓`,true);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+
 // ══ СКЛАД — форма вводу дня ═══════════════════════════
 let whEmpId=null, whDate=null, whExit=300;
 function openWhModal(empId, date){
@@ -2298,6 +2357,11 @@ async function saveWhDay(){
     setSave(`Збережено · ${fmtFull(whDayAmount(r))} ✓`,true);
   }catch(e){ alert('Помилка: '+e.message); }
 }
+
+// ══ СКЛАД — вантажники (почасова) ════════════════════
+let hrMap = {};   // "empId_date" -> {hours}
+function isHourly(empId){ return schemeMap[empId]?.scheme_type === 'hourly'; }
+function hrRate(empId){ return parseFloat(schemeMap[empId]?.base_rate)||150; }
 
 // ══ INIT ══════════════════════════════════════════════
 (async()=>{
@@ -2464,6 +2528,24 @@ async function saveWhDay(){
 </div>
 
 <!-- WAREHOUSE DAY MODAL end -->
+
+<!-- HOURLY DAY MODAL -->
+<div class="modal-ov" id="hr-modal-ov">
+  <div class="modal" style="max-width:340px">
+    <h3 id="hr-modal-title">⏱ Години</h3>
+    <div style="font-size:.75rem;color:#8a7060;margin-bottom:14px" id="hr-modal-sub"></div>
+    <label>Відпрацьовано годин</label>
+    <input type="number" id="hr-hours" min="0" step="0.5" placeholder="9" oninput="hrRecalc()">
+    <div style="background:#f0ede8;border-radius:8px;padding:10px 12px;margin:8px 0 12px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:.78rem;color:#7a6050">Сума за день</span>
+      <span id="hr-day-total" style="font-size:1.1rem;font-weight:700;color:#b84e30">0 ₴</span>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeHrModal()">Скасувати</button>
+      <button class="btn-save" onclick="saveHrDay()">Зберегти</button>
+    </div>
+  </div>
+</div>
 
 <!-- FINANCE PAGE (повний екран) -->
 <div id="finance-page" style="display:none;position:fixed;inset:0;z-index:400;background:#1a120c;color:#e8dcc8;overflow-y:auto">
