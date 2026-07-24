@@ -395,6 +395,20 @@ const isSalesDept  = code => SALES_DEPTS.includes(code);
 const isOrderDept  = code => ORDER_DEPTS.includes(code);
 const hasSalaryCalc = code => isSalesDept(code) || isOrderDept(code);
 
+// ══ СКЛАД — відрядники ═══════════════════════════════
+// тарифи: упаковка 6/7/8/9, фасовка скло 1, пластик 1.5
+let whMap = {};   // "empId_date" -> {pack6,pack7,pack8,pack9,glass,plastic,exit_rate}
+function isPieceWarehouse(empId){
+  return schemeMap[empId]?.scheme_type === 'piece_warehouse';
+}
+function whDayAmount(r){
+  if(!r) return 0;
+  const p=(r.pack6||0)*6+(r.pack7||0)*7+(r.pack8||0)*8+(r.pack9||0)*9;
+  const f=(r.glass||0)*1+(r.plastic||0)*1.5;
+  const e=r.exit_rate==null?300:(parseInt(r.exit_rate)||0);
+  return p+f+e;
+}
+
 // ══ DAYS ════════════════════════════════════════════
 function getDays(y,m){
   const n=new Date(y,m,0).getDate();
@@ -436,6 +450,11 @@ async function loadMonthData(){
     const schemes = await api('/api/salary-schemes');
     schemeMap={}; schemes.forEach(s=>{ schemeMap[s.employee_id]=s; });
   }catch(e){ schemeMap={}; }
+  // склад — щоденні дані відрядників
+  try{
+    const wh = await api(`/api/warehouse/daily?year=${Y}&month=${M}`);
+    whMap={}; wh.forEach(r=>{ whMap[`${r.employee_id}_${r.work_date}`]=r; });
+  }catch(e){ whMap={}; }
   schedMap={};
   sched.forEach(e=>{schedMap[`${e.employee_id}_${e.entry_date.slice(0,10)}`]=e;});
   revDetailMap={};
@@ -703,10 +722,22 @@ function renderTable(){
           ${empPos?`<div style="font-size:.6rem;color:#a09080;margin-top:1px">${empPos}</div>`:''}
         </td>
         <td class="level-badge">${showLevel?`<span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span>`:''}</td>`;
+      const pieceWh = isPieceWarehouse(emp.id);
       days.forEach(d=>{
+        const isToday3=d.date===todayDate;
+        const cellClsBase=isToday3?'today-cell':(d.isW?'wk':'');
+        if(pieceWh){
+          // відрядник складу: у клітинці сума за день, клік → форма вводу
+          const rec=whMap[`${emp.id}_${d.date}`];
+          const sum=rec?whDayAmount(rec):0;
+          if(sum>0){ wd++; }
+          row+=`<td class="${cellClsBase}" data-emp="${emp.id}" data-date="${d.date}"
+                 onclick="openWhModal(${emp.id},'${d.date}')" style="cursor:pointer">
+                 <span class="chip ${sum>0?'cs-work':'cs-empty'}" style="min-width:42px">${sum>0?fmtM(sum):'—'}</span></td>`;
+          return;
+        }
         const v=getStatus(emp.id,d.date);
         const h2=sh(v);if(h2>0){wd++;hrs+=h2;}
-        const isToday3=d.date===todayDate;
         const isDirector=['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name);
         const cellCls=isToday3?'today-cell':(d.isW?'wk':(isDirector?'director-cell':''));
         const chipCls=isDirector&&sc(v)==='cs-work'?'cs-director':sc(v);
@@ -714,6 +745,12 @@ function renderTable(){
                onclick="openPopup(event,${emp.id},'${d.date}','${v}',this)">
                <span class="chip ${chipCls}">${sl(v)}</span></td>`;
       });
+      // для відрядника у колонці 💰 — сума за місяць
+      if(pieceWh){
+        let whMonth=0;
+        days.forEach(d=>{ const r=whMap[`${emp.id}_${d.date}`]; if(r) whMonth+=whDayAmount(r); });
+        empRevTotal=whMonth;
+      }
       row+=`<td class="stat-td">${wd}</td>
             <td class="stat-td">${hrs}</td>
             <td class="rev-td ${empRevTotal?'':'empty'}" onclick="openRevEmpModalById(${emp.id})">${empRevTotal?fmtM(empRevTotal)+' ₴':'—'}</td>
@@ -1236,7 +1273,8 @@ function openMgrCard(empId){
   const orderMode = isOrderDept(emp.dept_code);
   const levelPart = isSalesDept(emp.dept_code) && LEVEL_LABEL[emp.level] ? ` · ${LEVEL_LABEL[emp.level]}` : '';
   // ставочник: несейлз-відділ або керівна роль — оклад + премія/штраф
-  const isFixedRate = !hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role);
+  const isPieceWh = isPieceWarehouse(emp.id);
+  const isFixedRate = !isPieceWh && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
   const scheme = schemeMap[emp.id] || {};
 
   document.getElementById('mgr-card-content').innerHTML=`
@@ -1259,7 +1297,16 @@ function openMgrCard(empId){
     </div>
     <div class="sal-block">
       <h4>💰 Розрахунок ЗП — ${MONTH_UA[M]} ${Y}</h4>
-      ${ isFixedRate ? `
+      ${ isPieceWh ? (()=>{
+        let whTotal=0, whDays=0;
+        getDays(Y,M).forEach(d=>{ const r=whMap[`${emp.id}_${d.date}`]; if(r){ whTotal+=whDayAmount(r); whDays++; } });
+        const advance=0;
+        return `<div style="font-size:.78rem;color:#8a7060;margin-bottom:10px">Відрядна оплата (упаковка + фасовка + вихід). Клікай на дні у графіку, щоб вносити.</div>
+        <div class="sal-result">
+          <div class="sal-result-row"><span>Робочих днів внесено</span><span>${whDays}</span></div>
+          <div class="sal-result-row green"><span>💰 Всього за ${MONTH_UA[M]}</span><span>${fmtFull(whTotal)}</span></div>
+        </div>`;
+      })() : (isFixedRate ? `
       <div id="frate-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
         <div style="text-align:center;padding:8px 0 12px">
           <div style="font-size:.78rem;color:#8a7060;margin-bottom:8px">🔒 Доступ до ЗП за PIN</div>
@@ -1352,7 +1399,7 @@ function openMgrCard(empId){
         <div id="sal-result-${emp.id}" style="margin-top:8px">
           ${salaryMap[emp.id]?.fact_amount?'<div style="font-size:.72rem;color:#8a7060">📋 Є збережені дані — натисни Розрахувати для перегляду</div>':'<div style="font-size:.75rem;color:#aaa">Введи дані та натисни Розрахувати</div>'}
         </div>
-      </div>`) }
+      </div>`)) }
     </div>
     <div style="font-size:.7rem;color:#8a7060;margin-bottom:6px">Календар ${MONTH_UA[M]} ${Y}</div>
     <div class="mgr-month">${calHtml}</div>
@@ -2132,11 +2179,12 @@ function financeTable(rows, detailed){
     const diff=r.diff_days||0;
     const adj=r.adj_total||0;
     const adjTitle=(r.adjustments||[]).map(a=>`${a.type}: ${a.amount}${a.comment?' ('+a.comment+')':''}`).join('\n');
+    const isPiece=r.scheme_type==='piece_warehouse';
     h+=`<tr style="border-top:1px solid #3a2818">
-      <td style="padding:8px 5px;color:#e8dcc8">${r.name}</td>
-      ${detailed?`<td style="text-align:center;color:#a09070">${fmtUAH(r.base_rate)}</td>
+      <td style="padding:8px 5px;color:#e8dcc8">${r.name}${isPiece?' <span style="font-size:.62rem;color:#8a7050">відрядн.</span>':''}</td>
+      ${detailed?`<td style="text-align:center;color:#a09070">${isPiece?fmtUAH(r.piece_total):fmtUAH(r.base_rate)}</td>
       <td style="text-align:center;color:#c0a878">${r.worked_days}</td>
-      <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${diff>0?'+'+diff:diff<0?diff:'—'}</td>
+      <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${isPiece?'—':(diff>0?'+'+diff:diff<0?diff:'—')}</td>
       <td style="text-align:right;color:${adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjTitle}">${adj?((adj>0?'+':'')+fmtUAH(adj)):'—'}</td>`:''}
       <td style="text-align:right;color:#c0a878">${fmtUAH(r.advance)}</td>
       <td style="text-align:right;color:#c0a878">${fmtUAH(r.remainder)}</td>
@@ -2205,6 +2253,55 @@ async function runFinanceAverage(){
     h+=`</tbody></table>`;
     res.innerHTML=h;
   }catch(e){ res.innerHTML=`<div style="color:#e06050;padding:16px">Помилка: ${e.message}</div>`; }
+}
+
+// ══ СКЛАД — форма вводу дня ═══════════════════════════
+let whEmpId=null, whDate=null, whExit=300;
+function openWhModal(empId, date){
+  whEmpId=empId; whDate=date;
+  const emp=employees.find(e=>e.id===empId);
+  const rec=whMap[`${empId}_${date}`]||{};
+  document.getElementById('wh-modal-title').textContent=`📦 ${emp?.name||''}`;
+  document.getElementById('wh-modal-sub').textContent=`${date.slice(8)}.${date.slice(5,7)}.${date.slice(0,4)}`;
+  document.getElementById('wh-pack6').value=rec.pack6||'';
+  document.getElementById('wh-pack7').value=rec.pack7||'';
+  document.getElementById('wh-pack8').value=rec.pack8||'';
+  document.getElementById('wh-pack9').value=rec.pack9||'';
+  document.getElementById('wh-glass').value=rec.glass||'';
+  document.getElementById('wh-plastic').value=rec.plastic||'';
+  whSetExit(rec.exit_rate==null?300:rec.exit_rate);
+  document.getElementById('wh-modal-ov').classList.add('open');
+}
+function closeWhModal(){ document.getElementById('wh-modal-ov').classList.remove('open'); }
+function whSetExit(v){
+  whExit=v;
+  document.getElementById('wh-exit-300').style.background = v===300?'#b84e30':'#d4cdc4';
+  document.getElementById('wh-exit-300').style.color      = v===300?'#fff':'#6a5040';
+  document.getElementById('wh-exit-500').style.background = v===500?'#b84e30':'#d4cdc4';
+  document.getElementById('wh-exit-500').style.color      = v===500?'#fff':'#6a5040';
+  whRecalc();
+}
+function whRecalc(){
+  const g=id=>parseFloat(document.getElementById(id).value)||0;
+  const total=g('wh-pack6')*6+g('wh-pack7')*7+g('wh-pack8')*8+g('wh-pack9')*9
+             +g('wh-glass')*1+g('wh-plastic')*1.5+whExit;
+  document.getElementById('wh-day-total').textContent=fmtFull(total);
+}
+async function saveWhDay(){
+  const g=id=>parseInt(document.getElementById(id).value)||0;
+  const body={
+    employee_id:whEmpId, work_date:whDate,
+    pack6:g('wh-pack6'), pack7:g('wh-pack7'), pack8:g('wh-pack8'), pack9:g('wh-pack9'),
+    glass:g('wh-glass'), plastic:g('wh-plastic'), exit_rate:whExit
+  };
+  setSave('Збереження...',false);
+  try{
+    const r=await api('/api/warehouse/daily',{method:'PUT',body:JSON.stringify(body)});
+    whMap[`${whEmpId}_${whDate}`]=r;
+    closeWhModal();
+    renderAll();
+    setSave(`Збережено · ${fmtFull(whDayAmount(r))} ✓`,true);
+  }catch(e){ alert('Помилка: '+e.message); }
 }
 
 // ══ INIT ══════════════════════════════════════════════
@@ -2330,6 +2427,48 @@ async function runFinanceAverage(){
     </div>
   </div>
 </div>
+
+<!-- WAREHOUSE DAY MODAL -->
+<div class="modal-ov" id="wh-modal-ov">
+  <div class="modal" style="max-width:420px">
+    <h3 id="wh-modal-title">📦 Склад — день</h3>
+    <div style="font-size:.75rem;color:#8a7060;margin-bottom:14px" id="wh-modal-sub"></div>
+
+    <div style="font-size:.72rem;color:#b84e30;font-weight:700;margin-bottom:6px">Упаковка</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div><label style="font-size:.68rem;color:#7a6050">до 5 кг (6 грн)</label><input type="number" id="wh-pack6" min="0" placeholder="0" oninput="whRecalc()"></div>
+      <div><label style="font-size:.68rem;color:#7a6050">до 5 кг + хладоген (7 грн)</label><input type="number" id="wh-pack7" min="0" placeholder="0" oninput="whRecalc()"></div>
+      <div><label style="font-size:.68rem;color:#7a6050">від 5 кг (8 грн)</label><input type="number" id="wh-pack8" min="0" placeholder="0" oninput="whRecalc()"></div>
+      <div><label style="font-size:.68rem;color:#7a6050">від 5 кг + хладоген (9 грн)</label><input type="number" id="wh-pack9" min="0" placeholder="0" oninput="whRecalc()"></div>
+    </div>
+
+    <div style="font-size:.72rem;color:#b84e30;font-weight:700;margin-bottom:6px">Фасовка</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div><label style="font-size:.68rem;color:#7a6050">скло (1 грн)</label><input type="number" id="wh-glass" min="0" placeholder="0" oninput="whRecalc()"></div>
+      <div><label style="font-size:.68rem;color:#7a6050">пластик (1.5 грн)</label><input type="number" id="wh-plastic" min="0" placeholder="0" oninput="whRecalc()"></div>
+    </div>
+
+    <div style="margin-bottom:12px">
+      <label style="font-size:.68rem;color:#7a6050">Вихід</label>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button type="button" id="wh-exit-300" onclick="whSetExit(300)" style="flex:1;padding:8px;border-radius:7px;font-weight:600;font-size:.82rem;background:#d4cdc4;color:#6a5040">300 грн</button>
+        <button type="button" id="wh-exit-500" onclick="whSetExit(500)" style="flex:1;padding:8px;border-radius:7px;font-weight:600;font-size:.82rem;background:#d4cdc4;color:#6a5040">500 грн (заміна)</button>
+      </div>
+    </div>
+
+    <div style="background:#f0ede8;border-radius:8px;padding:10px 12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:.78rem;color:#7a6050">Сума за день</span>
+      <span id="wh-day-total" style="font-size:1.1rem;font-weight:700;color:#b84e30">0 ₴</span>
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeWhModal()">Скасувати</button>
+      <button class="btn-save" onclick="saveWhDay()">Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<!-- WAREHOUSE DAY MODAL end -->
 
 <!-- FINANCE PAGE (повний екран) -->
 <div id="finance-page" style="display:none;position:fixed;inset:0;z-index:400;background:#1a120c;color:#e8dcc8;overflow-y:auto">
