@@ -1703,7 +1703,8 @@ function calcFrate(empId){
   const list=adjMap[empId]||[];
   const adjTotal=list.reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
   const total=base+dayAdjust+adjTotal;
-  const advance=base/2;
+  const payout2=base/2;              // 10-15 фікс
+  const payout1=total-payout2;       // 1-5 з допками
   if(res) res.innerHTML=`<div class="sal-result">
     <div class="sal-result-row"><span>Оклад</span><span>${fmtFull(base)}</span></div>
     <div class="sal-result-row"><span>Відпрацьовано / норма</span><span>${worked} / ${targetDays}${normType==='month_workdays'?' (будні місяця)':''}</span></div>
@@ -1711,8 +1712,8 @@ function calcFrate(empId){
     ${diff>0?`<div class="sal-result-row"><span>Переробка +${diff} дн.</span><span style="color:#2e7d52">+${fmtFull(dayAdjust)}</span></div>`:''}
     ${diff<0?`<div class="sal-result-row"><span>Недопрацьовано ${-diff} дн.</span><span style="color:#ef5350">−${fmtFull(-dayAdjust)}</span></div>`:''}
     ${list.map(a=>{const amt=parseFloat(a.amount)||0;return `<div class="sal-result-row"><span>${a.type}${a.comment?' ('+a.comment+')':''}</span><span style="color:${amt>=0?'#2e7d52':'#ef5350'}">${amt>=0?'+':''}${fmtFull(amt)}</span></div>`;}).join('')}
-    <div class="sal-result-row"><span>Аванс (1–5)</span><span>${fmtFull(advance)}</span></div>
-    <div class="sal-result-row"><span>Залишок (10–15)</span><span>${fmtFull(total-advance)}</span></div>
+    <div class="sal-result-row"><span>Виплата 1 (1–5) + допки</span><span>${fmtFull(payout1)}</span></div>
+    <div class="sal-result-row"><span>Виплата 2 (10–15)</span><span>${fmtFull(payout2)}</span></div>
     <div class="sal-result-row green"><span>💰 Всього за місяць</span><span>${fmtFull(total)}</span></div>
   </div>`;
 }
@@ -2215,7 +2216,7 @@ function financeTable(rows, detailed){
     <thead><tr style="color:#8a7050;text-align:left">
       <th style="padding:7px 5px">Співробітник</th>
       ${detailed?'<th style="text-align:center">Оклад</th><th style="text-align:center">Змін</th><th style="text-align:center">±дні</th><th style="text-align:right">Корегування</th>':''}
-      <th style="text-align:right">Аванс</th><th style="text-align:right">Залишок</th><th style="text-align:right">Всього</th>
+      <th style="text-align:right">1–5</th><th style="text-align:right">10–15</th><th style="text-align:right">Всього</th>
     </tr></thead><tbody>`;
   rows.forEach(r=>{
     if(r.total==null){
@@ -2234,8 +2235,8 @@ function financeTable(rows, detailed){
       <td style="text-align:center;color:#c0a878">${r.worked_days}</td>
       <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${(isPiece||isHrRow)?'—':(diff>0?'+'+diff:diff<0?diff:'—')}</td>
       <td style="text-align:right;color:${adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjTitle}">${adj?((adj>0?'+':'')+fmtUAH(adj)):'—'}</td>`:''}
-      <td style="text-align:right;color:#c0a878">${fmtUAH(r.advance)}</td>
-      <td style="text-align:right;color:#c0a878">${fmtUAH(r.remainder)}</td>
+      <td style="text-align:right;color:#c0a878">${fmtUAH(r.payout1!=null?r.payout1:r.remainder)}</td>
+      <td style="text-align:right;color:#c0a878">${fmtUAH(r.payout2!=null?r.payout2:r.advance)}</td>
       <td style="text-align:right;color:#f0c040;font-weight:700">${fmtUAH2(r.total)}</td>
     </tr>`;
   });
