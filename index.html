@@ -2134,6 +2134,7 @@ function financeMonthNav(){
     <button onclick="financeChangeMonth(1)" style="background:#2a1e14;color:#c0a878;border-radius:6px;padding:5px 11px">▶</button>
     <div style="margin-left:auto;display:flex;gap:6px">
       <button onclick="financeSetView('summary')" style="background:${financeView==='summary'?'#6a4020':'#2a1e14'};color:#f0c040;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">По відділах</button>
+      <button onclick="financeSetView('weeks')" style="background:${financeView==='weeks'?'#6a4020':'#2a1e14'};color:#f0c040;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">Склад по тижнях</button>
       <button onclick="financeSetView('average')" style="background:${financeView==='average'?'#6a4020':'#2a1e14'};color:#f0c040;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">Середня за період</button>
     </div>
   </div>`;
@@ -2141,12 +2142,14 @@ function financeMonthNav(){
 function financeChangeMonth(d){
   financeMonth+=d; if(financeMonth>12){financeMonth=1;financeYear++;} if(financeMonth<1){financeMonth=12;financeYear--;}
   if(financeView==='average'){ renderFinance(); return; }
+  if(financeView==='weeks'){ renderFinanceWeeks(); return; }
   loadFinance();
 }
-function financeSetView(v){ financeView=v; if(v==='average') renderFinance(); else { financeDeptFilter=null; renderFinance(); } }
+function financeSetView(v){ financeView=v; if(v==='average') renderFinance(); else if(v==='weeks'){ renderFinance(); } else { financeDeptFilter=null; renderFinance(); } }
 
 function renderFinance(){
   if(financeView==='average'){ renderFinanceAverage(); return; }
+  if(financeView==='weeks'){ renderFinanceWeeks(); return; }
   const body=document.getElementById('finance-body');
   const d=financeData;
   if(!d){ body.innerHTML=financeMonthNav()+'<div class="loading">—</div>'; return; }
@@ -2265,6 +2268,41 @@ function financeTable(rows, detailed){
 
 // ── Середня за період ──
 let avgFrom=null, avgTo=null, avgDept='';
+// ── Склад по тижнях ──
+async function renderFinanceWeeks(){
+  const body=document.getElementById('finance-body');
+  body.innerHTML=financeMonthNav()+'<div class="loading" style="color:#8a7050">Розрахунок...</div>';
+  try{
+    const d=await api(`/api/finance/warehouse-weeks?year=${financeYear}&month=${financeMonth}`);
+    let h=financeMonthNav();
+    if(!d.emps.length){ h+='<div style="padding:20px;text-align:center;color:#8a7050">Немає складських співробітників зі схемою.</div>'; body.innerHTML=h; return; }
+    h+=`<div style="font-size:.75rem;color:#8a7050;margin-bottom:10px">Тижні пн-нд, обриваються кінцем місяця. Виплата — наступний понеділок.</div>`;
+    h+=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
+      <thead><tr style="color:#8a7050;text-align:left">
+        <th style="padding:7px 5px">Тиждень</th>
+        <th style="text-align:center">Виплата</th>
+        ${d.emps.map(e=>`<th style="text-align:right;font-size:.7rem">${e.name.split(' ')[0]}</th>`).join('')}
+        <th style="text-align:right">Разом</th>
+      </tr></thead><tbody>`;
+    d.weeks.forEach(w=>{
+      h+=`<tr style="border-top:1px solid #3a2818">
+        <td style="padding:8px 5px;color:#e8dcc8">${w.period}</td>
+        <td style="text-align:center;color:#7ac070;font-weight:600">${w.pay_date}</td>
+        ${d.emps.map(e=>{const p=w.per_emp.find(x=>x.employee_id===e.id);const s=p?p.sum:0;return `<td style="text-align:right;color:${s?'#c0a878':'#5a4838'}">${s?fmtUAH(s):'—'}</td>`;}).join('')}
+        <td style="text-align:right;color:#f0c040;font-weight:700">${fmtUAH(w.week_total)}</td>
+      </tr>`;
+    });
+    // підсумковий рядок
+    h+=`<tr style="border-top:2px solid #6a4020;background:#241810">
+      <td style="padding:9px 5px;color:#f0c040;font-weight:700" colspan="2">Разом за ${MONTH_UA[financeMonth]}</td>
+      ${d.emps.map(e=>{const t=d.emp_totals.find(x=>x.employee_id===e.id)?.total||0;return `<td style="text-align:right;color:#f0c040;font-weight:700">${fmtUAH(t)}</td>`;}).join('')}
+      <td style="text-align:right;color:#f0c040;font-weight:700">${fmtUAH(d.emp_totals.reduce((a,x)=>a+x.total,0))}</td>
+    </tr>`;
+    h+=`</tbody></table>`;
+    body.innerHTML=h;
+  }catch(e){ body.innerHTML=financeMonthNav()+`<div class="loading" style="color:#e06050">Помилка: ${e.message}</div>`; }
+}
+
 function renderFinanceAverage(){
   const body=document.getElementById('finance-body');
   if(!avgFrom){ avgTo=`${financeYear}-${String(financeMonth).padStart(2,'0')}`;
