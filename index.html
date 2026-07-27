@@ -2228,13 +2228,32 @@ function financeTable(rows, detailed){
     const adjTitle=(r.adjustments||[]).map(a=>`${a.type}: ${a.amount}${a.comment?' ('+a.comment+')':''}`).join('\n');
     const isPiece=r.scheme_type==='piece_warehouse';
     const isHrRow=r.scheme_type==='hourly';
-    const baseCol = isPiece?fmtUAH(r.piece_total) : isHrRow?(r.hours_total+'г×'+r.base_rate) : fmtUAH(r.base_rate);
+    const isSales=r.scheme_type==='percent_plan';
+    const isOrderRow=r.scheme_type==='orders_count';
+    let tag='';
+    if(isPiece) tag=' <span style="font-size:.62rem;color:#8a7050">відрядн.</span>';
+    else if(isHrRow) tag=' <span style="font-size:.62rem;color:#8a7050">почас.</span>';
+    else if(isSales) tag=` <span style="font-size:.62rem;color:#8a7050">${r.pct}% плану</span>`;
+    else if(isOrderRow) tag=` <span style="font-size:.62rem;color:#8a7050">${r.orders} зам.</span>`;
+    let baseCol;
+    if(isPiece) baseCol=fmtUAH(r.piece_total);
+    else if(isHrRow) baseCol=r.hours_total+'г×'+r.base_rate;
+    else if(isSales||isOrderRow) baseCol=fmtUAH(r.rate);
+    else baseCol=fmtUAH(r.base_rate);
+    // для продажів колонка "Корегування" показує бонус, а tooltip — деталі
+    let adjCol, adjCellTitle=adjTitle;
+    if(isSales||isOrderRow){
+      adjCol=`+${fmtUAH(r.bonus)}`;
+      adjCellTitle=`Ставка: ${r.rate}\nБонус ${r.bonus_pct}%: ${Math.round(r.bonus)}\nОборот: ${r.fact}\nПовернення: ${r.returns_pct}%\n${r.overtime?'Переробка: '+r.overtime+'\n':''}${r.senior_bonus?'Доплата: '+r.senior_bonus+'\n':''}${r.penalty?'Штраф: '+r.penalty:''}`;
+    } else {
+      adjCol=adj?((adj>0?'+':'')+fmtUAH(adj)):'—';
+    }
     h+=`<tr style="border-top:1px solid #3a2818">
-      <td style="padding:8px 5px;color:#e8dcc8">${r.name}${isPiece?' <span style="font-size:.62rem;color:#8a7050">відрядн.</span>':isHrRow?' <span style="font-size:.62rem;color:#8a7050">почас.</span>':''}</td>
+      <td style="padding:8px 5px;color:#e8dcc8">${r.name}${tag}</td>
       ${detailed?`<td style="text-align:center;color:#a09070">${baseCol}</td>
       <td style="text-align:center;color:#c0a878">${r.worked_days}</td>
-      <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${(isPiece||isHrRow)?'—':(diff>0?'+'+diff:diff<0?diff:'—')}</td>
-      <td style="text-align:right;color:${adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjTitle}">${adj?((adj>0?'+':'')+fmtUAH(adj)):'—'}</td>`:''}
+      <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${(isPiece||isHrRow||isSales||isOrderRow)?'—':(diff>0?'+'+diff:diff<0?diff:'—')}</td>
+      <td style="text-align:right;color:${(isSales||isOrderRow)?'#7ac070':adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjCellTitle}">${adjCol}</td>`:''}
       <td style="text-align:right;color:#c0a878">${fmtUAH(r.payout1!=null?r.payout1:r.remainder)}</td>
       <td style="text-align:right;color:#c0a878">${fmtUAH(r.payout2!=null?r.payout2:r.advance)}</td>
       <td style="text-align:right;color:#f0c040;font-weight:700">${fmtUAH2(r.total)}</td>
