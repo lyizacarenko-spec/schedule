@@ -583,8 +583,24 @@ function renderStats(){
   `;
 }
 
+// Співробітник видимий у місяці:
+//  - НЕ раніше місяця першої реальної відмітки (до приходу не показуємо)
+//  - якщо звільнений — НЕ пізніше місяця звільнення
+//  - якщо не звільнений — показуємо і в майбутніх місяцях (щоб ставити графік)
+function isVisibleThisMonth(emp){
+  const cur=`${Y}-${String(M).padStart(2,'0')}`;
+  // немає історії взагалі — новий, показуємо
+  if(!emp.first_present) return true;
+  const firstM=emp.first_present.slice(0,7);
+  if(cur < firstM) return false;                 // до приходу
+  if(emp.is_fired && emp.fired_month){
+    if(cur > emp.fired_month) return false;       // після місяця звільнення
+  }
+  return true;
+}
+
 function getVisEmps(){
-  return employees.filter(e=>e.dept_code===curDept);
+  return employees.filter(e=>e.dept_code===curDept && isVisibleThisMonth(e));
 }
 
 function renderTable(){
