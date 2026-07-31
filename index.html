@@ -809,6 +809,12 @@ function openPopup(e,empId,date,cur,nameTd){
     const hh=rec?parseFloat(rec.hours)||0:0;
     grid+=`<button class="s-btn" style="grid-column:1/3;background:#d4e4f0;color:#1a5c8a;font-weight:700" onclick="closePopupForce();openHrModal(${empId},'${date}')">⏱ Години${hh>0?' ('+hh+'г = '+fmtM(hh*hrRate(empId))+'₴)':''}</button>`;
   }
+  // для гібрида начсклада — кнопка вводу фасовки
+  if(isWhHybrid(empId)){
+    const rec=whMap[`${empId}_${date}`];
+    const sum=rec?fasovkaDayAmount(rec):0;
+    grid+=`<button class="s-btn" style="grid-column:1/3;background:#e4d4f0;color:#6a1a80;font-weight:700" onclick="closePopupForce();openFasModal(${empId},'${date}')">🫙 Фасовка${sum>0?' ('+fmtM(sum)+'₴)':''}</button>`;
+  }
   document.getElementById('popup-grid').innerHTML=grid;
   const ov=document.getElementById('popup-ov');
   ov.classList.add('open');
