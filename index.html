@@ -1482,7 +1482,7 @@ function openMgrCard(empId){
       if(scheme.base_rate) calcFrate(emp.id);
     });
   }
-  if(isPieceWh||isHr){
+  if(isPieceWh||isHr||isWhHyb){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
   }
 // Продажі/відмови: показуємо виплати одразу, без «Розрахувати»
