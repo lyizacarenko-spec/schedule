@@ -2787,7 +2787,25 @@ function whHybBaseRate(empId){ return parseFloat(schemeMap[empId]?.base_rate)||4
 </div>
 
 <!-- WAREHOUSE DAY MODAL end -->
-
+<!-- FASOVKA MODAL (гібрид начсклада) -->
+<div class="modal-ov" id="fas-modal-ov">
+  <div class="modal" style="max-width:340px">
+    <h3 id="fas-modal-title">🫙 Фасовка</h3>
+    <div style="font-size:.75rem;color:#8a7060;margin-bottom:14px" id="fas-modal-sub"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div><label style="font-size:.68rem;color:#7a6050">скло (1 грн)</label><input type="number" id="fas-glass" min="0" placeholder="0" oninput="fasRecalc()"></div>
+      <div><label style="font-size:.68rem;color:#7a6050">пластик (1.5 грн)</label><input type="number" id="fas-plastic" min="0" placeholder="0" oninput="fasRecalc()"></div>
+    </div>
+    <div style="background:#f0ede8;border-radius:8px;padding:10px 12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:.78rem;color:#7a6050">Сума за день</span>
+      <span id="fas-day-total" style="font-size:1.1rem;font-weight:700;color:#b84e30">0 ₴</span>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeFasModal()">Скасувати</button>
+      <button class="btn-save" onclick="saveFasDay()">Зберегти</button>
+    </div>
+  </div>
+</div>
 <!-- HOURLY DAY MODAL -->
 <div class="modal-ov" id="hr-modal-ov">
   <div class="modal" style="max-width:340px">
