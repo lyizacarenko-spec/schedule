@@ -1828,6 +1828,24 @@ function calcSalary(empId){
   }
 
   res.innerHTML = `<div class="sal-result">${rows}</div>`;
+  appendPayoutsFromFinance(empId);
+}
+
+async function appendPayoutsFromFinance(empId){
+  try{
+    const d=await api(`/api/finance?year=${Y}&month=${M}`);
+    const row=(d.rows||[]).find(r=>r.employee_id===empId);
+    if(!row || row.payout1==null) return;
+    const res=document.getElementById('sal-result-'+empId);
+    if(!res) return;
+    const block=document.createElement('div');
+    block.className='sal-result';
+    block.style.marginTop='6px';
+    block.innerHTML=
+      '<div class="sal-result-row"><span>Виплата 1 (1–5): аванс</span><span>'+fmtFull(row.payout1)+'</span></div>'+
+      '<div class="sal-result-row green"><span>Виплата 2 (15–20): залишок+%</span><span>'+fmtFull(row.payout2)+'</span></div>';
+    res.appendChild(block);
+  }catch(e){}
 }
 
 // ══ GOOGLE SHEETS EXPORT ══════════════════════════════
