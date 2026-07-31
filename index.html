@@ -2247,7 +2247,7 @@ function financeTable(rows, detailed){
     <thead><tr style="color:#8a7050;text-align:left">
       <th style="padding:7px 5px">Співробітник</th>
       ${detailed?'<th style="text-align:center">Оклад</th><th style="text-align:center">Змін</th><th style="text-align:center">±дні</th><th style="text-align:right">Корегування</th>':''}
-      <th style="text-align:right">1–5</th><th style="text-align:right">10–15</th><th style="text-align:right">Всього</th>
+      <th style="text-align:right">${payLabel1(rows)}</th><th style="text-align:right">${payLabel2(rows)}</th><th style="text-align:right">Всього</th>
     </tr></thead><tbody>`;
   rows.forEach(r=>{
     if(r.total==null){
