@@ -1838,15 +1838,36 @@ async function appendPayoutsFromFinance(empId){
     if(!row || row.payout1==null) return;
     const res=document.getElementById('sal-result-'+empId);
     if(!res) return;
-    const block=document.createElement('div');
-    block.className='sal-result';
-    block.style.marginTop='6px';
-    let html='<div class="sal-result-row"><span>Виплата 1 (1–5): аванс</span><span>'+fmtFull(row.payout1)+'</span></div>';
+    const isSales=row.pay_schedule==='sales';
+    const d1=isSales?'1-ше число':'15-те число';
+    const d2=isSales?'15-те число':'1-ше наст. місяця';
+    const b=document.createElement('div');
+    b.style.marginTop='10px';
+    let h='<div class="sal-result" style="border:2px solid #b84e30">'
+      +'<div class="sal-result-row" style="border:none"><span style="font-weight:700;color:#b84e30">💵 ВИПЛАТА 1 — '+d1+'</span><span style="font-weight:700;font-size:.95rem">'+fmtFull(row.payout1)+'</span></div>'
+      +'<div style="font-size:.68rem;color:#8a7060;padding-top:2px">'+(isSales?'Аванс (ставка), без бонусів':'Аванс — половина окладу')+'</div>'
+      +'</div>';
     if(row.payout2!=null){
-      html+='<div class="sal-result-row green"><span>Виплата 2 (15–20): залишок+%</span><span>'+fmtFull(row.payout2)+'</span></div>';
+      h+='<div class="sal-result" style="border:2px solid #2e7d52;margin-top:8px">'
+        +'<div class="sal-result-row" style="border:none"><span style="font-weight:700;color:#2e7d52">💰 ВИПЛАТА 2 — '+d2+'</span><span style="font-weight:700;font-size:.95rem;color:#2e7d52">'+fmtFull(row.payout2)+'</span></div>';
+      if(isSales){
+        h+='<div class="sal-result-row"><span>Ставка</span><span>'+fmtFull(row.rate)+'</span></div>'
+         +'<div class="sal-result-row"><span>− аванс (виплата 1)</span><span style="color:#ef5350">−'+fmtFull(row.payout1)+'</span></div>'
+         +'<div class="sal-result-row"><span>Бонус '+row.bonus_pct+'%</span><span style="color:#2e7d52">+'+fmtFull(row.bonus)+'</span></div>';
+        if(row.overtime>0) h+='<div class="sal-result-row"><span>Переробка</span><span style="color:#2e7d52">+'+fmtFull(row.overtime)+'</span></div>';
+        if(row.senior_bonus>0) h+='<div class="sal-result-row"><span>Доплата</span><span style="color:#2e7d52">+'+fmtFull(row.senior_bonus)+'</span></div>';
+        if(row.penalty>0) h+='<div class="sal-result-row"><span>Штраф</span><span style="color:#ef5350">−'+fmtFull(row.penalty)+'</span></div>';
+      } else {
+        h+='<div class="sal-result-row"><span>Залишок ставки + допки</span><span>'+fmtFull(row.payout2)+'</span></div>';
+      }
+      h+='</div>';
     } else {
-      html+='<div class="sal-result-row"><span>Виплата 2 (15–20)</span><span style="color:#aaa">після введення обороту</span></div>';
+      h+='<div class="sal-result" style="margin-top:8px"><div class="sal-result-row" style="border:none"><span>💰 ВИПЛАТА 2 — '+d2+'</span><span style="color:#aaa">після введення обороту</span></div></div>';
     }
+    b.innerHTML=h;
+    res.appendChild(b);
+  }catch(e){}
+}
     block.innerHTML=html;
     res.appendChild(block);
   }catch(e){}
