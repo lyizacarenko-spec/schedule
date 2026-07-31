@@ -2577,7 +2577,13 @@ async function saveWhDay(){
 let hrMap = {};   // "empId_date" -> {hours}
 function isHourly(empId){ return schemeMap[empId]?.scheme_type === 'hourly'; }
 function hrRate(empId){ return parseFloat(schemeMap[empId]?.base_rate)||150; }
-
+// ══ СКЛАД — гібрид начальника складу (фікс + фасовка) ══
+function isWhHybrid(empId){ return schemeMap[empId]?.scheme_type === 'warehouse_hybrid'; }
+function fasovkaDayAmount(r){
+  if(!r) return 0;
+  return (r.glass||0)*1 + (r.plastic||0)*1.5;
+}
+function whHybBaseRate(empId){ return parseFloat(schemeMap[empId]?.base_rate)||40000; }
 // ══ INIT ══════════════════════════════════════════════
 (async()=>{
   try{ await loadAll(); }
