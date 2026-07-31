@@ -1841,9 +1841,13 @@ async function appendPayoutsFromFinance(empId){
     const block=document.createElement('div');
     block.className='sal-result';
     block.style.marginTop='6px';
-    block.innerHTML=
-      '<div class="sal-result-row"><span>Виплата 1 (1–5): аванс</span><span>'+fmtFull(row.payout1)+'</span></div>'+
-      '<div class="sal-result-row green"><span>Виплата 2 (15–20): залишок+%</span><span>'+fmtFull(row.payout2)+'</span></div>';
+    let html='<div class="sal-result-row"><span>Виплата 1 (1–5): аванс</span><span>'+fmtFull(row.payout1)+'</span></div>';
+    if(row.payout2!=null){
+      html+='<div class="sal-result-row green"><span>Виплата 2 (15–20): залишок+%</span><span>'+fmtFull(row.payout2)+'</span></div>';
+    } else {
+      html+='<div class="sal-result-row"><span>Виплата 2 (15–20)</span><span style="color:#aaa">після введення обороту</span></div>';
+    }
+    block.innerHTML=html;
     res.appendChild(block);
   }catch(e){}
 }
