@@ -1712,9 +1712,14 @@ function calcFrate(empId){
   const dayAdjust=diff*dayPrice;
   const list=adjMap[empId]||[];
   const adjTotal=list.reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
-  const total=base+dayAdjust+adjTotal;
-  const payout2=base/2;              // 10-15 фікс
-  const payout1=total-payout2;       // 1-5 з допками
+// новачок (прийнятий у цьому місяці) → відпрацьовані дні × ціна дня
+  const emp0=employees.find(e=>e.id===empId);
+  const sd=emp0?.start_date ? String(emp0.start_date).slice(0,10) : null;
+  const isNewStaff = sd && parseInt(sd.slice(0,4))===Y && parseInt(sd.slice(5,7))===M;
+  const total = isNewStaff ? (worked*dayPrice+adjTotal) : (base+dayAdjust+adjTotal);
+  let payout1=base/2;                       // аванс 15-го
+  if(payout1>total) payout1=Math.max(0,total);
+  const payout2=Math.max(0,total-payout1);  // залишок 1-го наст. місяця
   if(res) res.innerHTML=`<div class="sal-result">
     <div class="sal-result-row"><span>Оклад</span><span>${fmtFull(base)}</span></div>
     <div class="sal-result-row"><span>Відпрацьовано / норма</span><span>${worked} / ${targetDays}${normType==='month_workdays'?' (будні місяця)':''}</span></div>
@@ -1722,8 +1727,8 @@ function calcFrate(empId){
     ${diff>0?`<div class="sal-result-row"><span>Переробка +${diff} дн.</span><span style="color:#2e7d52">+${fmtFull(dayAdjust)}</span></div>`:''}
     ${diff<0?`<div class="sal-result-row"><span>Недопрацьовано ${-diff} дн.</span><span style="color:#ef5350">−${fmtFull(-dayAdjust)}</span></div>`:''}
     ${list.map(a=>{const amt=parseFloat(a.amount)||0;return `<div class="sal-result-row"><span>${a.type}${a.comment?' ('+a.comment+')':''}</span><span style="color:${amt>=0?'#2e7d52':'#ef5350'}">${amt>=0?'+':''}${fmtFull(amt)}</span></div>`;}).join('')}
-    <div class="sal-result-row"><span>Виплата 1 (1–5) + допки</span><span>${fmtFull(payout1)}</span></div>
-    <div class="sal-result-row"><span>Виплата 2 (10–15)</span><span>${fmtFull(payout2)}</span></div>
+    <div class="sal-result-row"><span>Виплата 1 (15-те): аванс</span><span>${fmtFull(payout1)}</span></div>
+    <div class="sal-result-row"><span>Виплата 2 (1-ше наст.): залишок</span><span>${fmtFull(payout2)}</span></div>
     <div class="sal-result-row green"><span>💰 Всього за місяць</span><span>${fmtFull(total)}</span></div>
   </div>`;
 }
