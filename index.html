@@ -1315,9 +1315,10 @@ function openMgrCard(empId){
   const orderMode = isOrderDept(emp.dept_code);
   const levelPart = isSalesDept(emp.dept_code) && LEVEL_LABEL[emp.level] ? ` · ${LEVEL_LABEL[emp.level]}` : '';
   // ставочник: несейлз-відділ або керівна роль — оклад + премія/штраф
-  const isPieceWh = isPieceWarehouse(emp.id);
+ const isPieceWh = isPieceWarehouse(emp.id);
   const isHr = isHourly(emp.id);
-  const isFixedRate = !isPieceWh && !isHr && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
+  const isWhHyb = isWhHybrid(emp.id);
+  const isFixedRate = !isPieceWh && !isHr && !isWhHyb && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
   const scheme = schemeMap[emp.id] || {};
 
   document.getElementById('mgr-card-content').innerHTML=`
