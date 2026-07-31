@@ -1447,6 +1447,10 @@ function openMgrCard(empId){
   if(isPieceWh||isHr){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
   }
+// Продажі/відмови: показуємо виплати одразу, без «Розрахувати»
+  if(canCalcSalary && ropUnlocked){
+    appendPayoutsFromFinance(emp.id);
+  }
 }
 function closeMgrCard(e){ if(e&&e.target.id!=='mgr-card-ov')return; document.getElementById('mgr-card-ov').classList.remove('open'); }
 function closeMgrCardForce(){ document.getElementById('mgr-card-ov').classList.remove('open'); }
