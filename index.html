@@ -2247,6 +2247,16 @@ function financeTable(rows, detailed){
     </tr></thead><tbody>`;
   rows.forEach(r=>{
     if(r.total==null){
+      if(r.payout1!=null){
+        h+=`<tr style="border-top:1px solid #3a2818">
+          <td style="padding:8px 5px;color:#e8dcc8">${r.name} <span style="font-size:.62rem;color:#c08040">аванс</span></td>
+          ${detailed?`<td style="text-align:center;color:#a09070">—</td><td style="text-align:center;color:#c0a878">${r.worked_days||0}</td><td style="text-align:center;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td>`:''}
+          <td style="text-align:right;color:#c0a878">${fmtUAH(r.payout1)}</td>
+          <td style="text-align:right;color:#6a5040">—</td>
+          <td style="text-align:right;color:#6a5040">—</td>
+        </tr>`;
+        return;
+      }
       h+=`<tr style="border-top:1px solid #3a2818;opacity:.5"><td style="padding:8px 5px;color:#c0a878">${r.name}</td><td colspan="${detailed?6:3}" style="text-align:right;color:#8a7050;font-size:.72rem">${r.note||'—'}</td></tr>`;
       return;
     }
