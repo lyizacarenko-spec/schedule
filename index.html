@@ -2281,21 +2281,49 @@ function financeTable(rows, detailed){
     <thead><tr style="color:#8a7050;text-align:left">
       <th style="padding:7px 5px">Співробітник</th>
       ${detailed?'<th style="text-align:center">Оклад</th><th style="text-align:center">Змін</th><th style="text-align:center">±дні</th><th style="text-align:right">Корегування</th>':''}
-      <th style="text-align:right">${payLabel1(rows)}</th><th style="text-align:right">${payLabel2(rows)}</th><th style="text-align:right">Всього</th>
+      <th style="text-align:right">${payLabel1(rows)}</th>
+      <th style="text-align:center;width:34px">✓</th>
+      <th style="text-align:right">${payLabel2(rows)}</th>
+      <th style="text-align:center;width:34px">✓</th>
+      <th style="text-align:right">Всього</th>
     </tr></thead><tbody>`;
+  const payCell=(r,no)=>{
+    const val = no===1 ? (r.pay1!=null?r.pay1:r.payout1) : (r.pay2!=null?r.pay2:r.payout2);
+    const ovr = no===1 ? r.override1 : r.override2;
+    if(val==null) return '<td style="text-align:right;color:#6a5040">—</td>';
+    return `<td style="text-align:right">
+      <input type="number" value="${Math.round(val*100)/100}" step="0.01"
+        onchange="savePayout(${r.employee_id},${no},this.value)"
+        title="${ovr!=null?'Ручна сума (бухгалтер)':'Розрахована сума'}"
+        style="width:92px;text-align:right;background:${ovr!=null?'#3a2a14':'transparent'};border:1px solid ${ovr!=null?'#8a6030':'#3a2818'};color:${ovr!=null?'#f0c040':'#c0a878'};border-radius:5px;padding:3px 6px;font-size:.78rem">
+    </td>`;
+  };
+  const chkCell=(r,no)=>{
+    const val = no===1 ? (r.pay1!=null?r.pay1:r.payout1) : (r.pay2!=null?r.pay2:r.payout2);
+    if(val==null) return '<td></td>';
+    const on = no===1 ? r.paid1 : r.paid2;
+    return `<td style="text-align:center">
+      <input type="checkbox" ${on?'checked':''}
+        onchange="togglePaid(${r.employee_id},${no},this.checked)"
+        title="Позначити як виплачено"
+        style="width:17px;height:17px;cursor:pointer;accent-color:#2e7d52">
+    </td>`;
+  };
   rows.forEach(r=>{
+    const bothPaid = r.paid1 && (r.payout2==null || r.paid2);
+    const rowBg = bothPaid ? 'background:#16250f' : '';
     if(r.total==null){
       if(r.payout1!=null){
-        h+=`<tr style="border-top:1px solid #3a2818">
+        h+=`<tr style="border-top:1px solid #3a2818;${rowBg}">
           <td style="padding:8px 5px;color:#e8dcc8">${r.name} <span style="font-size:.62rem;color:#c08040">аванс</span></td>
           ${detailed?`<td style="text-align:center;color:#a09070">—</td><td style="text-align:center;color:#c0a878">${r.worked_days||0}</td><td style="text-align:center;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td>`:''}
-          <td style="text-align:right;color:#c0a878">${fmtUAH(r.payout1)}</td>
-          <td style="text-align:right;color:#6a5040">—</td>
+          ${payCell(r,1)}${chkCell(r,1)}
+          <td style="text-align:right;color:#6a5040">—</td><td></td>
           <td style="text-align:right;color:#6a5040">—</td>
         </tr>`;
         return;
       }
-      h+=`<tr style="border-top:1px solid #3a2818;opacity:.5"><td style="padding:8px 5px;color:#c0a878">${r.name}</td><td colspan="${detailed?6:3}" style="text-align:right;color:#8a7050;font-size:.72rem">${r.note||'—'}</td></tr>`;
+      h+=`<tr style="border-top:1px solid #3a2818;opacity:.5"><td style="padding:8px 5px;color:#c0a878">${r.name}</td><td colspan="${detailed?8:5}" style="text-align:right;color:#8a7050;font-size:.72rem">${r.note||'—'}</td></tr>`;
       return;
     }
     const diff=r.diff_days||0;
@@ -2315,27 +2343,56 @@ function financeTable(rows, detailed){
     else if(isHrRow) baseCol=r.hours_total+'г×'+r.base_rate;
     else if(isSales||isOrderRow) baseCol=fmtUAH(r.rate);
     else baseCol=fmtUAH(r.base_rate);
-    // для продажів колонка "Корегування" показує бонус, а tooltip — деталі
     let adjCol, adjCellTitle=adjTitle;
     if(isSales||isOrderRow){
       adjCol=`+${fmtUAH(r.bonus)}`;
-      adjCellTitle=`Ставка: ${r.rate}\nБонус ${r.bonus_pct}%: ${Math.round(r.bonus)}\nОборот: ${r.fact}\nПовернення: ${r.returns_pct}%\n${r.overtime?'Переробка: '+r.overtime+'\n':''}${r.senior_bonus?'Доплата: '+r.senior_bonus+'\n':''}${r.penalty?'Штраф: '+r.penalty:''}`;
+      adjCellTitle=`Ставка: ${r.rate}\nБонус ${r.bonus_pct}%: ${Math.round(r.bonus)}\nОборот: ${r.fact}\nПовернення: ${r.returns_pct}%`;
     } else {
       adjCol=adj?((adj>0?'+':'')+fmtUAH(adj)):'—';
     }
-    h+=`<tr style="border-top:1px solid #3a2818">
-      <td style="padding:8px 5px;color:#e8dcc8">${r.name}${tag}</td>
+    h+=`<tr style="border-top:1px solid #3a2818;${rowBg}">
+      <td style="padding:8px 5px;color:#e8dcc8">${r.name}${tag}${bothPaid?' <span style="font-size:.6rem;color:#7ac070">✓ виплачено</span>':''}</td>
       ${detailed?`<td style="text-align:center;color:#a09070">${baseCol}</td>
       <td style="text-align:center;color:#c0a878">${r.worked_days}</td>
       <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${(isPiece||isHrRow||isSales||isOrderRow)?'—':(diff>0?'+'+diff:diff<0?diff:'—')}</td>
       <td style="text-align:right;color:${(isSales||isOrderRow)?'#7ac070':adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjCellTitle}">${adjCol}</td>`:''}
-      <td style="text-align:right;color:#c0a878">${fmtUAH(r.payout1!=null?r.payout1:r.remainder)}</td>
-      <td style="text-align:right;color:#c0a878">${fmtUAH(r.payout2!=null?r.payout2:r.advance)}</td>
+      ${payCell(r,1)}${chkCell(r,1)}
+      ${payCell(r,2)}${chkCell(r,2)}
       <td style="text-align:right;color:#f0c040;font-weight:700">${fmtUAH2(r.total)}</td>
     </tr>`;
   });
   h+=`</tbody></table>`;
   return h;
+}
+
+// Галочка «виплачено» + ручна сума (бухгалтер)
+async function togglePaid(empId,no,checked){
+  try{
+    await api('/api/payout-status',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:financeYear, calc_month:financeMonth,
+      payout_no:no, paid:checked
+    })});
+    const row=(financeData?.rows||[]).find(r=>r.employee_id===empId);
+    if(row){ if(no===1) row.paid1=checked; else row.paid2=checked; }
+    renderFinance();
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+
+async function savePayout(empId,no,value){
+  const v = value===''?null:parseFloat(value);
+  const row=(financeData?.rows||[]).find(r=>r.employee_id===empId);
+  const paid = row ? (no===1?row.paid1:row.paid2) : false;
+  try{
+    await api('/api/payout-status',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:financeYear, calc_month:financeMonth,
+      payout_no:no, paid, amount_override:v
+    })});
+    if(row){
+      if(no===1){ row.override1=v; row.pay1=v!=null?v:row.payout1; }
+      else { row.override2=v; row.pay2=v!=null?v:row.payout2; }
+    }
+    renderFinance();
+  }catch(e){ alert('Помилка: '+e.message); }
 }
 
 // ── Середня за період ──
