@@ -2578,7 +2578,39 @@ async function saveWhDay(){
     setSave(`Збережено · ${fmtFull(whDayAmount(r))} ✓`,true);
   }catch(e){ alert('Помилка: '+e.message); }
 }
-
+// ══ ФАСОВКА (гібрид начсклада) ════════════════════════
+let fasEmpId=null, fasDate=null;
+function openFasModal(empId, date){
+  fasEmpId=empId; fasDate=date;
+  const emp=employees.find(e=>e.id===empId);
+  const rec=whMap[`${empId}_${date}`]||{};
+  document.getElementById('fas-modal-title').textContent=`🫙 ${emp?.name||''}`;
+  document.getElementById('fas-modal-sub').textContent=`${date.slice(8)}.${date.slice(5,7)}.${date.slice(0,4)} · скло 1 / пластик 1.5`;
+  document.getElementById('fas-glass').value=rec.glass||'';
+  document.getElementById('fas-plastic').value=rec.plastic||'';
+  fasRecalc();
+  document.getElementById('fas-modal-ov').classList.add('open');
+}
+function closeFasModal(){ document.getElementById('fas-modal-ov').classList.remove('open'); }
+function fasRecalc(){
+  const g=parseFloat(document.getElementById('fas-glass').value)||0;
+  const p=parseFloat(document.getElementById('fas-plastic').value)||0;
+  document.getElementById('fas-day-total').textContent=fmtFull(g*1+p*1.5);
+}
+async function saveFasDay(){
+  const glass=parseInt(document.getElementById('fas-glass').value)||0;
+  const plastic=parseInt(document.getElementById('fas-plastic').value)||0;
+  const body={ employee_id:fasEmpId, work_date:fasDate,
+    pack6:0,pack7:0,pack8:0,pack9:0, glass, plastic, exit_rate:0 };
+  setSave('Збереження...',false);
+  try{
+    const r=await api('/api/warehouse/daily',{method:'PUT',body:JSON.stringify(body)});
+    whMap[`${fasEmpId}_${fasDate}`]=r;
+    closeFasModal();
+    renderAll();
+    setSave(`Збережено · ${fmtFull(glass*1+plastic*1.5)} ✓`,true);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
 // ══ СКЛАД — вантажники (почасова) ════════════════════
 let hrMap = {};   // "empId_date" -> {hours}
 function isHourly(empId){ return schemeMap[empId]?.scheme_type === 'hourly'; }
