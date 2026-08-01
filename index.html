@@ -2780,6 +2780,65 @@ function fasovkaDayAmount(r){
 }
 function whHybBaseRate(empId){ return parseFloat(schemeMap[empId]?.base_rate)||40000; }
 // ══ ГАРЯЧІ ПРОДАЖІ ══
+  // ══ РОП — мотивація керівників ══
+const ROP_DEPTS_CFG = {
+  rzpk:   {rate:15000, kpi:5000, planBonus:10000, ownPct:5,  mode:'prop'},
+  refuse: {rate:15000, kpi:5000, planBonus:5000,  ownPct:5,  mode:'prop'},
+  hot:    {rate:15000, kpi:7500, planBonus:0,     ownPct:0,  mode:'scale'},
+};
+function isRopMotiv(emp){ return emp.role==='rop' && !!ROP_DEPTS_CFG[emp.dept_code]; }
+let ropData = {};   // empId -> рядок rop_salary
+
+async function loadRopData(empId){
+  try{
+    const rows = await api(`/api/rop-salary?year=${Y}&month=${M}&employee_id=${empId}`);
+    if(rows.length) ropData[empId]=rows[0];
+  }catch(e){}
+}
+
+async function saveRopSalary(empId){
+  const g=id=>parseFloat(document.getElementById(id)?.value)||0;
+  const c=id=>!!document.getElementById(id)?.checked;
+  try{
+    const r=await api('/api/rop-salary',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:Y, calc_month:M,
+      plan_target:g('rop-ptarget-'+empId),
+      plan_fact:g('rop-pfact-'+empId),
+      srch_ok:c('rop-srch-'+empId),
+      apr_ok:c('rop-apr-'+empId),
+      own_sum:g('rop-own-'+empId),
+      own_hot:g('rop-ownhot-'+empId),
+      own_cold:g('rop-owncold-'+empId),
+      bonus:g('rop-bonus-'+empId),
+      penalty:g('rop-penalty-'+empId)
+    })});
+    ropData[empId]=r;
+    setSave('Збережено ✓',true);
+    showRopResult(empId);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+
+async function showRopResult(empId){
+  try{
+    const d=await api(`/api/finance?year=${Y}&month=${M}`);
+    const row=(d.rows||[]).find(r=>r.employee_id===empId);
+    const el=document.getElementById('rop-result-'+empId);
+    if(!el||!row||row.scheme_type!=='rop') return;
+    const isHotRop=row.dept_code==='hot';
+    el.innerHTML=`<div class="sal-result">
+      <div class="sal-result-row"><span>Ставка</span><span>${fmtFull(row.rate)}</span></div>
+      <div class="sal-result-row"><span>Виконання плану</span><span>${row.plan_pct}%</span></div>
+      <div class="sal-result-row"><span>СРЧ ${row.srch_ok?'✅':'❌'} · Апрув ${row.apr_ok?'✅':'❌'}</span><span style="color:${row.pay_kpi?'#2e7d52':'#aaa'}">${row.pay_kpi?'+'+fmtFull(row.pay_kpi):'0,00 ₴'}</span></div>
+      <div class="sal-result-row"><span>${isHotRop?'Бонус за перевиконання':'Доплата за план'}</span><span style="color:${row.pay_plan?'#2e7d52':'#aaa'}">${row.pay_plan?'+'+fmtFull(row.pay_plan):'0,00 ₴'}</span></div>
+      ${row.pay_own?`<div class="sal-result-row"><span>${isHotRop?'Особисті (1.5% + 5%)':'Особисті замовлення 5%'}</span><span style="color:#2e7d52">+${fmtFull(row.pay_own)}</span></div>`:''}
+      ${row.bonus>0?`<div class="sal-result-row"><span>Доплата</span><span style="color:#2e7d52">+${fmtFull(row.bonus)}</span></div>`:''}
+      ${row.penalty>0?`<div class="sal-result-row"><span>Штраф</span><span style="color:#ef5350">−${fmtFull(row.penalty)}</span></div>`:''}
+      <div class="sal-result-row"><span>Виплата 1 (1-ше)</span><span>${fmtFull(row.payout1)}</span></div>
+      <div class="sal-result-row"><span>Виплата 2 (15-те)</span><span>${fmtFull(row.payout2)}</span></div>
+      <div class="sal-result-row green"><span>💰 Всього за місяць</span><span>${fmtFull(row.total)}</span></div>
+    </div>`;
+  }catch(e){}
+}
 function isHotDept(deptCode){ return deptCode==='hot'; }
 function isInstaMgr(name){ return name==='Желюбовська Анастасія' || name==='Галаєва Анна'; }
 let hotPeriods = {};  // "empId_periodNo" -> дані періоду
