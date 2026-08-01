@@ -2649,7 +2649,57 @@ function fasovkaDayAmount(r){
   return (r.glass||0)*1 + (r.plastic||0)*1.5;
 }
 function whHybBaseRate(empId){ return parseFloat(schemeMap[empId]?.base_rate)||40000; }
-// ══ INIT ══════════════════════════════════════════════
+// ══ ГАРЯЧІ ПРОДАЖІ ══
+function isHotDept(deptCode){ return deptCode==='hot'; }
+function isInstaMgr(name){ return name==='Желюбовська Анастасія' || name==='Галаєва Анна'; }
+let hotPeriods = {};  // "empId_periodNo" -> дані періоду
+async function loadHotPeriods(empId){
+  try{
+    const rows = await api(`/api/salary-period?year=${Y}&month=${M}&employee_id=${empId}`);
+    rows.forEach(r=>{ hotPeriods[`${empId}_${r.period_no}`]=r; });
+  }catch(e){}
+}
+
+async function saveHotPeriod(empId,no){
+  const g=id=>parseFloat(document.getElementById(id)?.value)||0;
+  try{
+    const r=await api('/api/salary-period',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:Y, calc_month:M, period_no:no,
+      sum_office:g(`hot-office-${empId}-${no}`),
+      sum_pasta:g(`hot-pasta-${empId}-${no}`),
+      sum_office2:g(`hot-office2-${empId}-${no}`),
+      sum_action:g(`hot-action-${empId}-${no}`),
+      srch_action:g(`hot-srch-${empId}-${no}`),
+      bonus:g(`hot-bonus-${empId}-${no}`),
+      penalty:g(`hot-penalty-${empId}-${no}`)
+    })});
+    hotPeriods[`${empId}_${no}`]=r;
+    setSave(`Період ${no} збережено ✓`,true);
+    showHotResult(empId,no);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+
+async function showHotResult(empId,no){
+  try{
+    const d=await api(`/api/finance?year=${Y}&month=${M}`);
+    const row=(d.rows||[]).find(r=>r.employee_id===empId);
+    if(!row||row.scheme_type!=='hot') return;
+    const c = no===1 ? row.period1 : row.period2;
+    const el=document.getElementById(`hot-result-${empId}-${no}`);
+    if(!el||!c) return;
+    el.innerHTML=`<div class="sal-result">
+      <div class="sal-result-row"><span>Зміни / понаднормово</span><span>${c.shifts} зм · ${c.extra_hours} год</span></div>
+      <div class="sal-result-row"><span>Ставка</span><span>${fmtFull(c.rate)}</span></div>
+      ${c.sum_office>0?`<div class="sal-result-row"><span>ОФІС 1,3,4,5 · 2% від ${fmtM(c.sum_office)}</span><span style="color:#2e7d52">+${fmtFull(c.pay_office)}</span></div>`:''}
+      ${c.sum_pasta>0?`<div class="sal-result-row"><span>Паста · 2% від ${fmtM(c.sum_pasta)}</span><span style="color:#2e7d52">+${fmtFull(c.pay_pasta)}</span></div>`:''}
+      ${c.sum_office2>0?`<div class="sal-result-row"><span>ОФІС 2 · 5% від ${fmtM(c.sum_office2)}</span><span style="color:#2e7d52">+${fmtFull(c.pay_office2)}</span></div>`:''}
+      ${c.sum_action>0?`<div class="sal-result-row"><span>Акція 230 · ${c.action_pct}% (СРЧ ${c.srch_action})</span><span style="color:#2e7d52">+${fmtFull(c.pay_action)}</span></div>`:''}
+      ${c.bonus>0?`<div class="sal-result-row"><span>Доплата</span><span style="color:#2e7d52">+${fmtFull(c.bonus)}</span></div>`:''}
+      ${c.penalty>0?`<div class="sal-result-row"><span>Штраф</span><span style="color:#ef5350">−${fmtFull(c.penalty)}</span></div>`:''}
+      <div class="sal-result-row green"><span>💰 До виплати ${no===1?'15-го':'1-го наст.'}</span><span>${fmtFull(c.total)}</span></div>
+    </div>`;
+  }catch(e){}
+}// ══ INIT ══════════════════════════════════════════════
 (async()=>{
   try{ await loadAll(); }
   catch(e){
