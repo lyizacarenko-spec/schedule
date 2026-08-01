@@ -1390,6 +1390,7 @@ function openMgrCard(empId){
   const isWhHyb = isWhHybrid(emp.id);
   const isHot = isHotDept(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role);
   const salaryAllowed = canSeeSalary(emp);
+  const isRop = isRopMotiv(emp);
   const isFixedRate = !isPieceWh && !isHr && !isWhHyb && !isHot && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
   const scheme = schemeMap[emp.id] || {};
 
