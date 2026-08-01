@@ -1642,6 +1642,26 @@ function openMgrCard(empId){
     appendPayoutsFromFinance(emp.id);
   }
   // Гарячі: підвантажуємо збережені суми і показуємо розрахунок
+  if(salaryAllowed && isRop && ropUnlocked){
+    loadRopData(emp.id).then(()=>{
+      const p=ropData[emp.id];
+      if(p){
+        const set=(id,v)=>{const el=document.getElementById(id); if(el&&v&&parseFloat(v)) el.value=v;};
+        set(`rop-ptarget-${emp.id}`,p.plan_target);
+        set(`rop-pfact-${emp.id}`,p.plan_fact);
+        set(`rop-own-${emp.id}`,p.own_sum);
+        set(`rop-ownhot-${emp.id}`,p.own_hot);
+        set(`rop-owncold-${emp.id}`,p.own_cold);
+        set(`rop-bonus-${emp.id}`,p.bonus);
+        set(`rop-penalty-${emp.id}`,p.penalty);
+        const ck=(id,v)=>{const el=document.getElementById(id); if(el) el.checked=!!v;};
+        ck(`rop-srch-${emp.id}`,p.srch_ok);
+        ck(`rop-apr-${emp.id}`,p.apr_ok);
+      }
+      showRopResult(emp.id);
+      loadAdjustments(emp.id).then(()=>renderAdjList(emp.id));
+    });
+  }
   if(salaryAllowed && isHot && ropUnlocked){
     loadHotPeriods(emp.id).then(()=>{
       [1,2].forEach(no=>{
