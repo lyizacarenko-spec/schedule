@@ -225,7 +225,23 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 </style>
 </head>
 <body>
-
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="position:fixed;inset:0;z-index:9999;background:#f7f2ec;display:flex;align-items:center;justify-content:center">
+  <div style="background:#fff;border:1px solid #d4cdc4;border-radius:14px;padding:32px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.12)">
+    <div style="font-size:1.3rem;font-weight:700;color:#2c2218;margin-bottom:4px">🐟 Ikorka<span style="color:#b84e30">Shop</span></div>
+    <div style="font-size:.78rem;color:#8a7060;margin-bottom:20px">Вхід у систему графіка</div>
+    <label style="font-size:.72rem;color:#7a6050">Логін</label>
+    <input type="text" id="login-user" autocomplete="username"
+      style="width:100%;background:#f7f2ec;border:1px solid #c8c0b4;border-radius:8px;padding:9px 12px;font-size:.9rem;margin:4px 0 12px;outline:none"
+      onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+    <label style="font-size:.72rem;color:#7a6050">Пароль</label>
+    <input type="password" id="login-pass" autocomplete="current-password"
+      style="width:100%;background:#f7f2ec;border:1px solid #c8c0b4;border-radius:8px;padding:9px 12px;font-size:.9rem;margin:4px 0 16px;outline:none"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()" style="width:100%;background:#b84e30;color:#fff;border-radius:8px;padding:11px;font-weight:700;font-size:.9rem">Увійти</button>
+    <div id="login-err" style="color:#ef5350;font-size:.75rem;margin-top:10px;min-height:18px;text-align:center"></div>
+  </div>
+</div>
 <div class="topbar">
   <div class="logo">🐟 Ikorka<span>Shop</span></div>
   <div class="month-nav">
