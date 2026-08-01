@@ -1525,8 +1525,28 @@ function openMgrCard(empId){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
   }
 // Продажі/відмови: показуємо виплати одразу, без «Розрахувати»
-  if(canCalcSalary && ropUnlocked){
+  if(canCalcSalary && !isHot && ropUnlocked){
     appendPayoutsFromFinance(emp.id);
+  }
+  // Гарячі: підвантажуємо збережені суми і показуємо розрахунок
+  if(isHot && ropUnlocked){
+    loadHotPeriods(emp.id).then(()=>{
+      [1,2].forEach(no=>{
+        const p=hotPeriods[`${emp.id}_${no}`];
+        if(p){
+          const set=(id,v)=>{const el=document.getElementById(id); if(el&&v&&parseFloat(v)) el.value=v;};
+          set(`hot-office-${emp.id}-${no}`,p.sum_office);
+          set(`hot-pasta-${emp.id}-${no}`,p.sum_pasta);
+          set(`hot-office2-${emp.id}-${no}`,p.sum_office2);
+          set(`hot-action-${emp.id}-${no}`,p.sum_action);
+          set(`hot-srch-${emp.id}-${no}`,p.srch_action);
+          set(`hot-bonus-${emp.id}-${no}`,p.bonus);
+          set(`hot-penalty-${emp.id}-${no}`,p.penalty);
+        }
+        showHotResult(emp.id,no);
+      });
+      loadAdjustments(emp.id).then(()=>renderAdjList(emp.id));
+    });
   }
 }
 function closeMgrCard(e){ if(e&&e.target.id!=='mgr-card-ov')return; document.getElementById('mgr-card-ov').classList.remove('open'); }
