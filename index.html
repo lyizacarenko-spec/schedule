@@ -1587,15 +1587,15 @@ function openMgrCard(empId){
       if(scheme.base_rate) calcFrate(emp.id);
     });
   }
-  if(isPieceWh||isHr||isWhHyb){
+  if(salaryAllowed && (isPieceWh||isHr||isWhHyb)){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
   }
 // Продажі/відмови: показуємо виплати одразу, без «Розрахувати»
-  if(canCalcSalary && !isHot && ropUnlocked){
+  if(salaryAllowed && canCalcSalary && !isHot && ropUnlocked){
     appendPayoutsFromFinance(emp.id);
   }
   // Гарячі: підвантажуємо збережені суми і показуємо розрахунок
-  if(isHot && ropUnlocked){
+  if(salaryAllowed && isHot && ropUnlocked){
     loadHotPeriods(emp.id).then(()=>{
       [1,2].forEach(no=>{
         const p=hotPeriods[`${emp.id}_${no}`];
