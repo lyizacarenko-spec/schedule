@@ -1318,7 +1318,8 @@ function openMgrCard(empId){
  const isPieceWh = isPieceWarehouse(emp.id);
   const isHr = isHourly(emp.id);
   const isWhHyb = isWhHybrid(emp.id);
-  const isFixedRate = !isPieceWh && !isHr && !isWhHyb && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
+  const isHot = isHotDept(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role);
+  const isFixedRate = !isPieceWh && !isHr && !isWhHyb && !isHot && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
   const scheme = schemeMap[emp.id] || {};
 
   document.getElementById('mgr-card-content').innerHTML=`
