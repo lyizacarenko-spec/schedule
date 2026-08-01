@@ -1581,7 +1581,7 @@ function openMgrCard(empId){
     </div>
   `;
   document.getElementById('mgr-card-ov').classList.add('open');
-  if(isFixedRate && ropUnlocked){
+  if(salaryAllowed && isFixedRate && ropUnlocked){
     loadAdjustments(emp.id).then(()=>{
       renderAdjList(emp.id);
       if(scheme.base_rate) calcFrate(emp.id);
