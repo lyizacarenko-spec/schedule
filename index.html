@@ -1342,7 +1342,45 @@ function openMgrCard(empId){
     </div>
     <div class="sal-block">
       <h4>💰 Розрахунок ЗП — ${MONTH_UA[M]} ${Y}</h4>
-      ${ isPieceWh ? (()=>{
+      ${ isHot ? `
+      <div id="rop-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
+        <div style="text-align:center;padding:8px 0 12px">
+          <div style="font-size:.78rem;color:#8a7060;margin-bottom:8px">🔒 Доступ за PIN</div>
+          <div style="display:flex;gap:6px;justify-content:center">
+            <input type="password" id="rop-pin-input" placeholder="PIN" maxlength="4"
+              style="width:80px;background:#ede8e0;border:1px solid #c8c0b4;border-radius:6px;padding:6px 8px;font-size:.85rem;text-align:center;outline:none"
+              onkeydown="if(event.key==='Enter')checkRopPin()">
+            <button onclick="checkRopPin()" style="background:#b84e30;color:#fff;border-radius:6px;padding:6px 12px;font-size:.8rem;font-weight:600">Увійти</button>
+          </div>
+        </div>
+      </div>
+      <div id="sal-unlock-block" style="${ropUnlocked?'display:block':'display:none'}">
+        <div style="font-size:.75rem;color:#8a7060;margin-bottom:10px">
+          ${isInstaMgr(emp.name)?'📱 Інста · ставка 450/зміна':'📞 Дзвінки · 350/зміна + 50 за годину понад 7'}
+        </div>
+        ${[1,2].map(no=>`
+        <div style="border:1px solid #d4cdc4;border-radius:8px;padding:10px;margin-bottom:10px;background:#fff">
+          <div style="font-size:.75rem;font-weight:700;color:#b84e30;margin-bottom:8px">
+            ${no===1?'📅 Період 1 (1–14) · виплата 15-го':'📅 Період 2 (15–кінець) · виплата 1-го наст.'}
+          </div>
+          <div class="sal-row">
+            <div class="sal-field"><label>ОФІС 1,3,4,5 (2%)</label><input type="number" id="hot-office-${emp.id}-${no}" placeholder="0"></div>
+            <div class="sal-field"><label>Паста (2%)</label><input type="number" id="hot-pasta-${emp.id}-${no}" placeholder="0"></div>
+          </div>
+          <div class="sal-row">
+            <div class="sal-field"><label>ОФІС 2 — відмови/недзвін (5%)</label><input type="number" id="hot-office2-${emp.id}-${no}" placeholder="0"></div>
+            <div class="sal-field"><label>Акція 230</label><input type="number" id="hot-action-${emp.id}-${no}" placeholder="0"></div>
+          </div>
+          <div class="sal-row">
+            <div class="sal-field"><label>СРЧ акції (≥1000 → 2.5%)</label><input type="number" id="hot-srch-${emp.id}-${no}" placeholder="0"></div>
+            <div class="sal-field"><label>Доплата</label><input type="number" id="hot-bonus-${emp.id}-${no}" placeholder="0"></div>
+            <div class="sal-field"><label>Штраф</label><input type="number" id="hot-penalty-${emp.id}-${no}" placeholder="0"></div>
+          </div>
+          <button onclick="saveHotPeriod(${emp.id},${no})" style="width:100%;padding:7px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.8rem;margin-top:4px">💾 Зберегти період ${no}</button>
+          <div id="hot-result-${emp.id}-${no}" style="margin-top:8px"></div>
+        </div>`).join('')}
+        ${adjBlockHtml(emp.id)}
+      </div>` : isPieceWh ? (()=>{
         let whTotal=0, whDays=0;
         getDays(Y,M).forEach(d=>{ const r=whMap[`${emp.id}_${d.date}`]; if(r){ whTotal+=whDayAmount(r); whDays++; } });
         return `<div style="font-size:.78rem;color:#8a7060;margin-bottom:10px">Відрядна оплата (упаковка + фасовка + вихід). Клікай на дні у графіку, щоб вносити.</div>
