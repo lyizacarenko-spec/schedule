@@ -484,6 +484,8 @@ function logout(){
 function applyPermissions(){
   const btnFin=document.getElementById('btn-finance');
   if(btnFin) btnFin.style.display = ME?.can_finance ? '' : 'none';
+  const btnUsers=document.getElementById('btn-users');
+  if(btnUsers) btnUsers.style.display = ME?.role==='owner' ? '' : 'none';
   const uBox=document.getElementById('user-box');
   if(uBox) uBox.textContent = ME ? ME.full_name : '';
 }
