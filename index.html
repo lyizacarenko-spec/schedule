@@ -3020,6 +3020,58 @@ async function showHotResult(empId,no){
     </div>
   </div>
 </div>
+  <!-- CHANGE PASSWORD MODAL -->
+<div class="modal-ov" id="pass-modal-ov">
+  <div class="modal" style="max-width:340px">
+    <h3>🔑 Зміна пароля</h3>
+    <label>Поточний пароль</label>
+    <input type="password" id="pass-old">
+    <label>Новий пароль (мін. 5 символів)</label>
+    <input type="password" id="pass-new">
+    <label>Повторіть новий</label>
+    <input type="password" id="pass-new2">
+    <div id="pass-err" style="color:#ef5350;font-size:.75rem;min-height:18px;margin-bottom:8px"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closePassModal()">Скасувати</button>
+      <button class="btn-save" onclick="savePassword()">Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<!-- USERS MODAL -->
+<div class="modal-ov" id="users-modal-ov">
+  <div class="modal" style="max-width:720px">
+    <h3>👥 Користувачі</h3>
+    <div id="users-list" style="max-height:400px;overflow-y:auto;margin-bottom:14px"></div>
+    <div style="border-top:1px solid #d4cdc4;padding-top:12px">
+      <div style="font-size:.78rem;font-weight:700;color:#b84e30;margin-bottom:8px">➕ Новий користувач</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label style="font-size:.68rem">Логін</label><input type="text" id="nu-login" placeholder="ivanov"></div>
+        <div><label style="font-size:.68rem">Пароль</label><input type="text" id="nu-pass" placeholder="тимчасовий"></div>
+      </div>
+      <label style="font-size:.68rem">ПІБ</label><input type="text" id="nu-name" placeholder="Іванов Іван">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label style="font-size:.68rem">Роль</label>
+          <select id="nu-role" onchange="nuRoleChange()">
+            <option value="schedule">Тільки графік</option>
+            <option value="rop">РОП / керівник відділу</option>
+            <option value="commerce">Комерційний (кілька відділів)</option>
+            <option value="owner">Повний доступ</option>
+          </select></div>
+        <div><label style="font-size:.68rem">Відділи ЗП (через кому)</label>
+          <input type="text" id="nu-depts" placeholder="rzpk,hot"></div>
+      </div>
+      <div style="font-size:.65rem;color:#8a7060;margin-bottom:8px">
+        Коди: rzpk, hot, refuse, warehouse, logistics, marketing, admin, accounting, it, management, training
+      </div>
+      <button onclick="createUser()" style="width:100%;background:#2e7d52;color:#fff;border-radius:7px;padding:9px;font-weight:600;font-size:.82rem">Створити</button>
+      <div id="nu-err" style="color:#ef5350;font-size:.75rem;min-height:18px;margin-top:6px"></div>
+    </div>
+    <div class="modal-btns" style="margin-top:10px">
+      <button class="btn-cancel" onclick="closeUsersModal()">Закрити</button>
+    </div>
+  </div>
+</div>
 <!-- HOURLY DAY MODAL -->
 <div class="modal-ov" id="hr-modal-ov">
   <div class="modal" style="max-width:340px">
