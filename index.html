@@ -1414,7 +1414,48 @@ function openMgrCard(empId){
     </div>
     <div class="sal-block" style="${salaryAllowed?'':'display:none'}">
       <h4>💰 Розрахунок ЗП — ${MONTH_UA[M]} ${Y}</h4>
-     ${ !salaryAllowed ? '' : isHot ? `
+     ${ !salaryAllowed ? '' : isRop ? `
+      <div id="rop-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
+        <div style="text-align:center;padding:8px 0 12px">
+          <div style="font-size:.78rem;color:#8a7060;margin-bottom:8px">🔒 Доступ за PIN</div>
+          <div style="display:flex;gap:6px;justify-content:center">
+            <input type="password" id="rop-pin-input" placeholder="PIN" maxlength="4"
+              style="width:80px;background:#ede8e0;border:1px solid #c8c0b4;border-radius:6px;padding:6px 8px;font-size:.85rem;text-align:center;outline:none"
+              onkeydown="if(event.key==='Enter')checkRopPin()">
+            <button onclick="checkRopPin()" style="background:#b84e30;color:#fff;border-radius:6px;padding:6px 12px;font-size:.8rem;font-weight:600">Увійти</button>
+          </div>
+        </div>
+      </div>
+      <div id="sal-unlock-block" style="${ropUnlocked?'display:block':'display:none'}">
+        <div style="font-size:.75rem;color:#8a7060;margin-bottom:10px">
+          👔 Мотивація РОПа · ставка ${fmtM(ROP_DEPTS_CFG[emp.dept_code].rate)} + KPI ${fmtM(ROP_DEPTS_CFG[emp.dept_code].kpi)}×2
+        </div>
+        <div class="sal-row">
+          <div class="sal-field"><label>План відділу (ціль)</label><input type="number" id="rop-ptarget-${emp.id}" placeholder="5000000"></div>
+          <div class="sal-field"><label>Факт відділу</label><input type="number" id="rop-pfact-${emp.id}" placeholder="0"></div>
+        </div>
+        <div style="display:flex;gap:16px;margin:8px 0">
+          <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
+            <input type="checkbox" id="rop-srch-${emp.id}" style="width:auto"> СРЧ виконано (+${fmtM(ROP_DEPTS_CFG[emp.dept_code].kpi)})</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
+            <input type="checkbox" id="rop-apr-${emp.id}" style="width:auto"> Апрув виконано (+${fmtM(ROP_DEPTS_CFG[emp.dept_code].kpi)})</label>
+        </div>
+        ${emp.dept_code==='hot'?`
+        <div class="sal-row">
+          <div class="sal-field"><label>Особисті: гаряча база (1.5%)</label><input type="number" id="rop-ownhot-${emp.id}" placeholder="0"></div>
+          <div class="sal-field"><label>Постійні клієнти (5%)</label><input type="number" id="rop-owncold-${emp.id}" placeholder="0"></div>
+        </div>`:`
+        <div class="sal-row">
+          <div class="sal-field"><label>Сума особистих замовлень (5%)</label><input type="number" id="rop-own-${emp.id}" placeholder="0"></div>
+        </div>`}
+        <div class="sal-row">
+          <div class="sal-field"><label>Доплата</label><input type="number" id="rop-bonus-${emp.id}" placeholder="0"></div>
+          <div class="sal-field"><label>Штраф</label><input type="number" id="rop-penalty-${emp.id}" placeholder="0"></div>
+        </div>
+        <button onclick="saveRopSalary(${emp.id})" style="width:100%;padding:9px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px">💾 Зберегти та розрахувати</button>
+        <div id="rop-result-${emp.id}" style="margin-top:10px"></div>
+        ${adjBlockHtml(emp.id)}
+      </div>` : isHot ? `
       <div id="rop-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
         <div style="text-align:center;padding:8px 0 12px">
           <div style="font-size:.78rem;color:#8a7060;margin-bottom:8px">🔒 Доступ за PIN</div>
