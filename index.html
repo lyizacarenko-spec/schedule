@@ -660,7 +660,24 @@ function renderStats(){
 
 // ФІЛЬТР ПРИСУТНОСТІ ТИМЧАСОВО ВИМКНЕНО (щоб ніхто не зникав).
 // Показуємо всіх активних співробітників відділу.
+// Чи показувати співробітника в поточному місяці (Y, M):
+//  • ще не прийнятий (start_date пізніше кінця місяця) → приховати
+//  • звільнений у попередніх місяцях → приховати
+//  • дата прийому не задана → показуємо завжди
 function isVisibleThisMonth(emp){
+  const mStart = `${Y}-${String(M).padStart(2,'0')}-01`;
+  const lastDay = new Date(Y, M, 0).getDate();
+  const mEnd = `${Y}-${String(M).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  // ще не прийнятий
+  if(emp.start_date){
+    const sd = String(emp.start_date).slice(0,10);
+    if(sd > mEnd) return false;
+  }
+  // звільнений раніше цього місяця
+  if(emp.fired_date){
+    const fd = String(emp.fired_date).slice(0,10);
+    if(fd < mStart) return false;
+  }
   return true;
 }
 
