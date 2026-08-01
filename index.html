@@ -2823,8 +2823,18 @@ async function showHotResult(empId,no){
       <div class="sal-result-row green"><span>💰 До виплати ${no===1?'15-го':'1-го наст.'}</span><span>${fmtFull(c.total)}</span></div>
     </div>`;
   }catch(e){}
-}// ══ INIT ══════════════════════════════════════════════
+}
+
+// ══ INIT ═══════════════════════════
 (async()=>{
+  // перевіряємо збережений токен
+  if(AUTH_TOKEN){
+    try{
+      ME = await api('/api/me');
+      document.getElementById('login-screen').style.display='none';
+      applyPermissions();
+    }catch(e){ logout(); return; }
+  } else { return; }   // не увійшли — показуємо екран входу
   try{ await loadAll(); }
   catch(e){
     document.getElementById('table-area').innerHTML=
