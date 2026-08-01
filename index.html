@@ -439,10 +439,57 @@ function getDays(y,m){
 }
 
 // ══ API ══════════════════════════════════════════════
+let AUTH_TOKEN = localStorage.getItem('ikorka_token') || null;
+let ME = null;
+
 async function api(path,opts={}){
-  const r=await fetch(API+path,{headers:{'Content-Type':'application/json'},...opts});
+  const headers={'Content-Type':'application/json'};
+  if(AUTH_TOKEN) headers['Authorization']='Bearer '+AUTH_TOKEN;
+  const r=await fetch(API+path,{headers,...opts});
+  if(r.status===401){ logout(); throw new Error('Потрібен вхід'); }
   if(!r.ok) throw new Error(await r.text());
   return r.json();
+}
+
+async function doLogin(){
+  const login=document.getElementById('login-user').value.trim();
+  const password=document.getElementById('login-pass').value;
+  const err=document.getElementById('login-err');
+  err.textContent='';
+  if(!login||!password){ err.textContent='Введіть логін і пароль'; return; }
+  try{
+    const r=await fetch(API+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({login,password})});
+    const d=await r.json();
+    if(!r.ok){ err.textContent=d.error||'Помилка входу'; return; }
+    AUTH_TOKEN=d.token; ME=d.user;
+    localStorage.setItem('ikorka_token',d.token);
+    document.getElementById('login-screen').style.display='none';
+    applyPermissions();
+    await loadAll();
+  }catch(e){ err.textContent='Помилка: '+e.message; }
+}
+
+function logout(){
+  AUTH_TOKEN=null; ME=null;
+  localStorage.removeItem('ikorka_token');
+  document.getElementById('login-screen').style.display='flex';
+}
+
+// Приховати те, до чого немає доступу
+function applyPermissions(){
+  const btnFin=document.getElementById('btn-finance');
+  if(btnFin) btnFin.style.display = ME?.can_finance ? '' : 'none';
+  const uBox=document.getElementById('user-box');
+  if(uBox) uBox.textContent = ME ? ME.full_name : '';
+}
+
+// Чи можна дивитись/вводити ЗП цього співробітника
+function canSeeSalary(emp){
+  if(!ME||!ME.can_salary) return false;
+  if(ME.only_employee_id) return ME.only_employee_id===emp.id;
+  if(!ME.dept_codes) return true;
+  return ME.dept_codes.includes(emp.dept_code);
 }
 
 async function loadAll(){
