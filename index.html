@@ -2827,7 +2827,92 @@ async function showHotResult(empId,no){
     </div>`;
   }catch(e){}
 }
+// ══ ПАРОЛЬ І КОРИСТУВАЧІ ══════════════════════════════
+function openPassModal(){
+  ['pass-old','pass-new','pass-new2'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pass-err').textContent='';
+  document.getElementById('pass-modal-ov').classList.add('open');
+}
+function closePassModal(){ document.getElementById('pass-modal-ov').classList.remove('open'); }
+async function savePassword(){
+  const o=document.getElementById('pass-old').value;
+  const n=document.getElementById('pass-new').value;
+  const n2=document.getElementById('pass-new2').value;
+  const err=document.getElementById('pass-err');
+  if(n.length<5){ err.textContent='Новий пароль — мінімум 5 символів'; return; }
+  if(n!==n2){ err.textContent='Паролі не збігаються'; return; }
+  try{
+    await api('/api/change-password',{method:'POST',body:JSON.stringify({old_password:o,new_password:n})});
+    closePassModal();
+    setSave('Пароль змінено ✓',true);
+  }catch(e){ err.textContent=String(e.message).replace(/[{}"]/g,'').replace('error:',''); }
+}
 
+function nuRoleChange(){
+  const r=document.getElementById('nu-role').value;
+  const d=document.getElementById('nu-depts');
+  d.disabled = (r==='owner'||r==='schedule');
+  if(d.disabled) d.value='';
+}
+async function openUsersModal(){
+  document.getElementById('users-modal-ov').classList.add('open');
+  await renderUsers();
+}
+function closeUsersModal(){ document.getElementById('users-modal-ov').classList.remove('open'); }
+async function renderUsers(){
+  const el=document.getElementById('users-list');
+  el.innerHTML='<div style="color:#8a7060;font-size:.78rem">Завантаження...</div>';
+  try{
+    const list=await api('/api/users');
+    const ROLE={owner:'Повний',commerce:'Комерційний',rop:'РОП',head:'Керівник',special:'Обмежений',schedule:'Графік'};
+    el.innerHTML=list.map(u=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #ede8e0;font-size:.78rem;${u.is_active?'':'opacity:.45'}">
+        <div style="flex:1">
+          <div style="font-weight:600;color:#2c2218">${u.full_name}</div>
+          <div style="font-size:.68rem;color:#8a7060">${u.login} · ${ROLE[u.role]||u.role}${u.dept_codes?' · '+u.dept_codes:''}${u.can_finance?' · 💰Фінанси':''}</div>
+        </div>
+        <button onclick="resetPass(${u.id},'${u.login}')" style="background:#e8e0d4;color:#7a6050;border-radius:5px;padding:3px 8px;font-size:.68rem">Скинути пароль</button>
+        <button onclick="toggleUser(${u.id},${!u.is_active})" style="background:${u.is_active?'#f0d4d4':'#d4edd8'};color:${u.is_active?'#b71c1c':'#1a5c30'};border-radius:5px;padding:3px 8px;font-size:.68rem">${u.is_active?'Вимкнути':'Увімкнути'}</button>
+      </div>`).join('');
+  }catch(e){ el.innerHTML='<div style="color:#ef5350;font-size:.78rem">'+e.message+'</div>'; }
+}
+async function resetPass(id,login){
+  const p=prompt(`Новий пароль для ${login}:`);
+  if(!p) return;
+  if(p.length<5){ alert('Мінімум 5 символів'); return; }
+  try{
+    await api('/api/users/'+id,{method:'PATCH',body:JSON.stringify({password:p})});
+    alert(`Пароль для ${login} змінено на: ${p}`);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+async function toggleUser(id,active){
+  try{
+    await api('/api/users/'+id,{method:'PATCH',body:JSON.stringify({is_active:active})});
+    renderUsers();
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+async function createUser(){
+  const err=document.getElementById('nu-err');
+  const login=document.getElementById('nu-login').value.trim();
+  const password=document.getElementById('nu-pass').value.trim();
+  const full_name=document.getElementById('nu-name').value.trim();
+  const role=document.getElementById('nu-role').value;
+  const depts=document.getElementById('nu-depts').value.trim();
+  err.textContent='';
+  if(!login||!password||!full_name){ err.textContent='Заповніть логін, пароль і ПІБ'; return; }
+  if(password.length<5){ err.textContent='Пароль — мінімум 5 символів'; return; }
+  try{
+    await api('/api/users',{method:'POST',body:JSON.stringify({
+      login, password, full_name, role,
+      dept_codes: depts||null,
+      can_finance: role==='owner',
+      can_salary: role!=='schedule'
+    })});
+    ['nu-login','nu-pass','nu-name','nu-depts'].forEach(id=>document.getElementById(id).value='');
+    renderUsers();
+    setSave('Користувача створено ✓',true);
+  }catch(e){ err.textContent=String(e.message).replace(/[{}"]/g,'').replace('error:',''); }
+}
 // ══ INIT ═══════════════════════════
 (async()=>{
   // перевіряємо збережений токен
