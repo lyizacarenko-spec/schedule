@@ -682,7 +682,7 @@ function isVisibleThisMonth(emp){
 }
 
 function getVisEmps(){
-  return employees.filter(e=>e.dept_code===curDept);
+  return employees.filter(e=>e.dept_code===curDept && isVisibleThisMonth(e));
 }
 
 function renderTable(){
