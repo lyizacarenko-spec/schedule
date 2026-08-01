@@ -1406,9 +1406,9 @@ function openMgrCard(empId){
       ${rev>0?`<div class="mgr-stat"><div class="n" style="color:#2e7d52">${fmtM(rev)} ₴</div><div class="l">Виручка</div></div>`:''}
       ${empPlan>0?`<div class="mgr-stat"><div class="n">${fmtM(empPlan)} ₴</div><div class="l">План</div></div>`:''}
     </div>
-    <div class="sal-block">
+    <div class="sal-block" style="${salaryAllowed?'':'display:none'}">
       <h4>💰 Розрахунок ЗП — ${MONTH_UA[M]} ${Y}</h4>
-      ${ isHot ? `
+      ${ !salaryAllowed ? '' : isHot ? ` `
       <div id="rop-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
         <div style="text-align:center;padding:8px 0 12px">
           <div style="font-size:.78rem;color:#8a7060;margin-bottom:8px">🔒 Доступ за PIN</div>
