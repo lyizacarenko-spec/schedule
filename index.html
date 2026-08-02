@@ -3116,6 +3116,20 @@ async function dragEnd(){
   }catch(e){ setSave('Помилка ✗',false); alert('Помилка: '+e.message); }
   setTimeout(()=>{dragMoved=false;},50);
 }
+  async function editPosition(empId){
+  const emp=employees.find(e=>e.id===empId);
+  if(!emp) return;
+  const val=prompt('Посада співробітника:', emp.position||'');
+  if(val===null) return;
+  try{
+    await api('/api/employees/'+empId,{method:'PATCH',body:JSON.stringify({position:val.trim()||null})});
+    emp.position=val.trim()||null;
+    const el=document.getElementById('pos-view-'+empId);
+    if(el) el.textContent=emp.position?' · '+emp.position:'';
+    renderTable();
+    setSave('Посаду збережено ✓',true);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
 // ══ INIT ═══════════════════════════
 (async()=>{
   // перевіряємо збережений токен
