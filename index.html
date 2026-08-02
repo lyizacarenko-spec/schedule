@@ -1415,7 +1415,10 @@ function openMgrCard(empId){
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
         <h3>${emp.name}</h3>
-        <div class="mgr-sub">${emp.dept_name}${levelPart} · ${ROLE_LABEL[emp.role]||'Співробітник'}${POSITIONS[emp.name]?' · '+POSITIONS[emp.name]:''}</div>
+        <div class="mgr-sub">${emp.dept_name}${levelPart} · ${ROLE_LABEL[emp.role]||'Співробітник'}
+          <span id="pos-view-${emp.id}">${emp.position?' · '+emp.position:''}</span>
+          <button onclick="editPosition(${emp.id})" style="background:none;color:#b84e30;font-size:.7rem;cursor:pointer;padding:0 4px">✏️</button>
+        </div>
       </div>
       <button onclick="closeMgrCardForce()" style="background:none;color:#aaa;font-size:1.1rem;cursor:pointer">✕</button>
     </div>
