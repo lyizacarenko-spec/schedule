@@ -818,7 +818,7 @@ function renderTable(){
         const ek=`${emp.id}_${d.date}`;
         empRevTotal+=parseFloat(revDetailMap[ek]?.amount||0);
       });
-      const empPos = POSITIONS[emp.name] || ROLE_LABEL[emp.role] || '';
+      const empPos = emp.position || POSITIONS[emp.name] || ROLE_LABEL[emp.role] || '';
       const empIsDir = ['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name);
       const showLevel = isSalesDept(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role) && emp.level!=='new';
    let row=`<tr data-empid="${emp.id}" data-team="${(emp.team||emp.dept_code).replace(/"/g,'')}">
