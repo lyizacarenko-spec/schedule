@@ -821,8 +821,8 @@ function renderTable(){
       const empPos = POSITIONS[emp.name] || ROLE_LABEL[emp.role] || '';
       const empIsDir = ['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name);
       const showLevel = isSalesDept(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role) && emp.level!=='new';
-      let row=`<tr>
-        <td class="name-td ${empIsDir?'director-name':''}" onclick="openMgrCard(${emp.id})" style="cursor:pointer">
+   let row=`<tr data-empid="${emp.id}" data-team="${(emp.team||emp.dept_code).replace(/"/g,'')}">
+        <td class="name-td ${empIsDir?'director-name':''}" onclick="if(!dragMoved)openMgrCard(${emp.id})" style="cursor:grab;touch-action:none" onmousedown="dragStart(event,${emp.id})" ontouchstart="dragStart(event,${emp.id})">
           <div>${emp.name}${empIsDir?'<span style="font-size:.6rem;color:#64b5f6;margin-left:4px">Директ</span>':''}</div>
           ${empPos?`<div style="font-size:.6rem;color:#a09080;margin-top:1px">${empPos}</div>`:''}
         </td>
@@ -3053,6 +3053,65 @@ async function createUser(){
     renderUsers();
     setSave('Користувача створено ✓',true);
   }catch(e){ err.textContent=String(e.message).replace(/[{}"]/g,'').replace('error:',''); }
+}
+  // ══ DRAG & DROP — перестановка співробітників ══════════
+let dragEmpId=null, dragRow=null, dragMoved=false, dragGhost=null;
+
+function dragStart(e, empId){
+  if(e.type==='mousedown' && e.button!==0) return;
+  dragEmpId=empId; dragMoved=false;
+  dragRow=e.target.closest('tr');
+  if(!dragRow) return;
+  document.addEventListener('mousemove',dragMove);
+  document.addEventListener('mouseup',dragEnd);
+  document.addEventListener('touchmove',dragMove,{passive:false});
+  document.addEventListener('touchend',dragEnd);
+}
+
+function dragMove(e){
+  if(!dragRow) return;
+  const y = e.touches ? e.touches[0].clientY : e.clientY;
+  if(!dragMoved){
+    dragMoved=true;
+    dragRow.style.opacity='.45';
+    dragRow.style.background='#ffe8d8';
+  }
+  e.preventDefault();
+  // знаходимо рядок під курсором у тій самій групі
+  const rows=[...document.querySelectorAll('tr[data-empid]')]
+    .filter(r=>r!==dragRow && r.dataset.team===dragRow.dataset.team);
+  for(const r of rows){
+    const b=r.getBoundingClientRect();
+    if(y>b.top && y<b.bottom){
+      const mid=b.top+b.height/2;
+      if(y<mid) r.parentNode.insertBefore(dragRow,r);
+      else r.parentNode.insertBefore(dragRow,r.nextSibling);
+      break;
+    }
+  }
+}
+
+async function dragEnd(){
+  document.removeEventListener('mousemove',dragMove);
+  document.removeEventListener('mouseup',dragEnd);
+  document.removeEventListener('touchmove',dragMove);
+  document.removeEventListener('touchend',dragEnd);
+  if(!dragRow){ dragEmpId=null; return; }
+  dragRow.style.opacity='';
+  dragRow.style.background='';
+  const moved=dragMoved;
+  dragRow=null; dragEmpId=null;
+  if(!moved) return;
+  // збираємо новий порядок усіх видимих рядків
+  const order=[...document.querySelectorAll('tr[data-empid]')]
+    .map((r,i)=>({id:parseInt(r.dataset.empid), sort_order:i+1}));
+  setSave('Збереження порядку...',false);
+  try{
+    await api('/api/employees/reorder',{method:'PUT',body:JSON.stringify({order})});
+    order.forEach(o=>{ const emp=employees.find(e=>e.id===o.id); if(emp) emp.sort_order=o.sort_order; });
+    setSave('Порядок збережено ✓',true);
+  }catch(e){ setSave('Помилка ✗',false); alert('Помилка: '+e.message); }
+  setTimeout(()=>{dragMoved=false;},50);
 }
 // ══ INIT ═══════════════════════════
 (async()=>{
