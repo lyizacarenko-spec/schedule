@@ -1715,7 +1715,7 @@ function openMgrCard(empId){
       loadAdjustments(emp.id).then(()=>renderAdjList(emp.id));
     });
   }
-  if(salaryAllowed && isHot && ropUnlocked){
+  if(salaryAllowed && isHot && (ropUnlocked||ME.role==='rop')){
     loadHotPeriods(emp.id).then(()=>{
       [1,2].forEach(no=>{
         const p=hotPeriods[`${emp.id}_${no}`];
