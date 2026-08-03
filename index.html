@@ -1687,7 +1687,7 @@ function openMgrCard(empId){
       if(scheme.base_rate) calcFrate(emp.id);
     });
   }
-  if(salaryAllowed && (isPieceWh||isHr||isWhHyb)){
+  iif(salaryAllowed && (isPieceWh||isHr||isHrFix||isWhHyb)){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
   }
 // Продажі/відмови: показуємо виплати одразу, без «Розрахувати»
