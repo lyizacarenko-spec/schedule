@@ -2626,11 +2626,12 @@ function financeTable(rows, detailed){
     const diff=r.diff_days||0;
     const adj=r.adj_total||0;
     const adjTitle=(r.adjustments||[]).map(a=>`${a.type}: ${a.amount}${a.comment?' ('+a.comment+')':''}`).join('\n');
-    const isPiece=r.scheme_type==='piece_warehouse';
+   const isPiece=r.scheme_type==='piece_warehouse';
     const isHrRow=r.scheme_type==='hourly';
     const isHrFixed=r.scheme_type==='hourly_fixed';
     const isSales=r.scheme_type==='percent_plan';
     const isOrderRow=r.scheme_type==='orders_count';
+    const isRopRow=r.scheme_type==='rop';
     let tag='';
     if(isPiece) tag=' <span style="font-size:.62rem;color:#8a7050">відрядн.</span>';
     else if(isHrRow) tag=' <span style="font-size:.62rem;color:#8a7050">почас.</span>';
