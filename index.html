@@ -1485,7 +1485,7 @@ function openMgrCard(empId){
         <div id="rop-result-${emp.id}" style="margin-top:10px"></div>
         ${adjBlockHtml(emp.id)}
       </div>` : isHot ? `
-      <div id="rop-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
+      <div id="rop-pin-block" style="${(ropUnlocked||ME.role==='rop')?'display:none':'display:block'}">
         <div style="text-align:center;padding:8px 0 12px">
           <div style="font-size:.78rem;color:#8a7060;margin-bottom:8px">🔒 Доступ за PIN</div>
           <div style="display:flex;gap:6px;justify-content:center">
@@ -1496,7 +1496,7 @@ function openMgrCard(empId){
           </div>
         </div>
       </div>
-      <div id="sal-unlock-block" style="${ropUnlocked?'display:block':'display:none'}">
+      <div id="rop-pin-block" style="${(ropUnlocked||ME.role==='rop')?'display:none':'display:block'}">
         <div style="font-size:.75rem;color:#8a7060;margin-bottom:10px">
           ${isInstaMgr(emp.name)?'📱 Інста · ставка 450/зміна':'📞 Дзвінки · 350/зміна + 50 за годину понад 7'}
         </div>
