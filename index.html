@@ -2653,7 +2653,7 @@ function financeTable(rows, detailed){
     h+=`<tr style="border-top:1px solid #3a2818;${rowBg}">
       <td style="padding:8px 5px;color:#e8dcc8">${r.name}${tag}${bothPaid?' <span style="font-size:.6rem;color:#7ac070">✓ виплачено</span>':''}</td>
       ${detailed?`<td style="text-align:center;color:#a09070">${baseCol}</td>
-      <td style="text-align:center;color:#c0a878">${r.worked_days}</td>
+      <td style="text-align:center;color:#c0a878">${r.worked_days!=null?r.worked_days:'—'}</td>
       <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${(isPiece||isHrRow||isSales||isOrderRow)?'—':(diff>0?'+'+diff:diff<0?diff:'—')}</td>
       <td style="text-align:right;color:${(isSales||isOrderRow)?'#7ac070':adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjCellTitle}">${adjCol}</td>`:''}
       ${payCell(r,1)}${chkCell(r,1)}
