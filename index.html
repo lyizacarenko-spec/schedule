@@ -2642,7 +2642,7 @@ function financeTable(rows, detailed){
     if(isPiece) baseCol=fmtUAH(r.piece_total);
     else if(isHrRow) baseCol=r.hours_total+'г×'+r.base_rate;
     else if(isHrFixed) baseCol=fmtUAH(r.fixed_amount)+' + '+r.hours_total+'г×'+r.base_rate;
-    else if(isSales||isOrderRow) baseCol=fmtUAH(r.rate);
+    else if(isSales||isOrderRow||isRopRow) baseCol=fmtUAH(r.rate);
     else baseCol=fmtUAH(r.base_rate);
     let adjCol, adjCellTitle=adjTitle;
     if(isSales||isOrderRow){
