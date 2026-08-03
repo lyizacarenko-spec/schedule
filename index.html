@@ -1920,6 +1920,20 @@ async function saveFrate(empId){
   }catch(e){ alert('Помилка: '+e.message); }
 }
 
+async function saveHrFixed(empId){
+  const fixedAmount=parseFloat(document.getElementById('hrfix-fixed-'+empId).value)||0;
+  const rate=parseFloat(document.getElementById('hrfix-rate-'+empId).value)||150;
+  setSave('Збереження...',false);
+  try{
+    const sc=await api('/api/salary-schemes',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, scheme_type:'hourly_fixed', base_rate:rate, fixed_amount:fixedAmount
+    })});
+    schemeMap[empId]=sc;
+    openMgrCard(empId);
+    setSave('Збережено ✓',true);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+
 // завантажити корегування співробітника за поточний місяць
 async function loadAdjustments(empId){
   try{
