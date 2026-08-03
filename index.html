@@ -2864,6 +2864,7 @@ async function saveFasDay(){
 // ══ СКЛАД — вантажники (почасова) ════════════════════
 let hrMap = {};   // "empId_date" -> {hours}
 function isHourly(empId){ return schemeMap[empId]?.scheme_type === 'hourly'; }
+function isHrFixed(empId){ return schemeMap[empId]?.scheme_type === 'hourly_fixed'; }
 function hrRate(empId){ return parseFloat(schemeMap[empId]?.base_rate)||150; }
 // ══ СКЛАД — гібрид начальника складу (фікс + фасовка) ══
 function isWhHybrid(empId){ return schemeMap[empId]?.scheme_type === 'warehouse_hybrid'; }
