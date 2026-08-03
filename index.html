@@ -1543,6 +1543,30 @@ function openMgrCard(empId){
         </div>
        ${adjBlockHtml(emp.id)}
         <div id="frate-result-${emp.id}" style="margin-top:8px"></div>`;
+      })() : isHrFix ? (()=>{
+        const rate=hrRate(emp.id);
+        const fixedAmount=parseFloat(scheme.fixed_amount)||5000;
+        let hoursSum=0;
+        getDays(Y,M).forEach(d=>{ const r=hrMap[`${emp.id}_${d.date}`]; if(r&&parseFloat(r.hours)>0) hoursSum+=parseFloat(r.hours); });
+        const hourPay=hoursSum*rate;
+        const total=fixedAmount+hourPay;
+        const payout1=fixedAmount/2, payout2=total-payout1;
+        return `<div style="font-size:.78rem;color:#8a7060;margin-bottom:10px">Фікс ${fmtM(fixedAmount)} (незалежно від графіка) + почасова ${rate} грн/год. Клікай на дні у графіку → «⏱ Години».</div>
+        <div class="sal-row">
+          <div class="sal-field"><label>Фікс (грн/міс)</label><input type="number" id="hrfix-fixed-${emp.id}" placeholder="5000" value="${fixedAmount}"></div>
+          <div class="sal-field"><label>Ставка (грн/год)</label><input type="number" id="hrfix-rate-${emp.id}" placeholder="150" value="${rate}"></div>
+        </div>
+        <button onclick="saveHrFixed(${emp.id})" style="width:100%;padding:8px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px">💾 Зберегти</button>
+        <div class="sal-result" style="margin-top:10px">
+          <div class="sal-result-row"><span>Фікс (завжди)</span><span>${fmtFull(fixedAmount)}</span></div>
+          <div class="sal-result-row"><span>Годин</span><span>${hoursSum} год</span></div>
+          <div class="sal-result-row"><span>💰 Години за ${MONTH_UA[M]}</span><span>${fmtFull(hourPay)}</span></div>
+          <div class="sal-result-row"><span>Виплата 1 (15-те): аванс</span><span>${fmtFull(payout1)}</span></div>
+          <div class="sal-result-row"><span>Виплата 2 (1-ше наст.): залишок</span><span>${fmtFull(payout2)}</span></div>
+          <div class="sal-result-row green"><span>💰 Всього за місяць</span><span>${fmtFull(total)}</span></div>
+        </div>
+        ${adjBlockHtml(emp.id)}
+        <div id="frate-result-${emp.id}" style="margin-top:8px"></div>`;
       })() : isWhHyb ? (()=>{
         const base=whHybBaseRate(emp.id);
         const dayPrice=base/22;
