@@ -468,6 +468,7 @@ async function doLogin(){
     const d=await r.json();
     if(!r.ok){ err.textContent=d.error||'Помилка входу'; return; }
     AUTH_TOKEN=d.token; ME=d.user;
+    console.log('[DEBUG] ME after login:', ME, 'can_finance=', ME?.can_finance, 'url=', location.search);
     localStorage.setItem('ikorka_token',d.token);
     document.getElementById('login-screen').style.display='none';
     applyPermissions();
