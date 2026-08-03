@@ -471,6 +471,7 @@ async function doLogin(){
     localStorage.setItem('ikorka_token',d.token);
     document.getElementById('login-screen').style.display='none';
     applyPermissions();
+    maybeOpenFinanceFromUrl();
     await loadAll();
   }catch(e){ err.textContent='Помилка: '+e.message; }
 }
@@ -489,6 +490,12 @@ function applyPermissions(){
   if(btnUsers) btnUsers.style.display = ME?.role==='owner' ? '' : 'none';
   const uBox=document.getElementById('user-box');
   if(uBox) uBox.textContent = ME ? ME.full_name : '';
+}
+
+// Автовідкриття вкладки «Фінанси» за URL-параметром ?view=finance
+function maybeOpenFinanceFromUrl(){
+  const params=new URLSearchParams(location.search);
+  if(params.get('view')==='finance' && ME?.can_finance) openFinance();
 }
 
 // Чи можна дивитись/вводити ЗП цього співробітника
@@ -3138,6 +3145,7 @@ async function dragEnd(){
       ME = await api('/api/me');
       document.getElementById('login-screen').style.display='none';
       applyPermissions();
+      maybeOpenFinanceFromUrl();
     }catch(e){ logout(); return; }
   } else { return; }   // не увійшли — показуємо екран входу
   try{ await loadAll(); }
