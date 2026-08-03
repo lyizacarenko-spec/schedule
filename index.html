@@ -3004,10 +3004,9 @@ async function saveHotPeriod(empId,no){
 
 async function showHotResult(empId,no){
   try{
-    const d=await api(`/api/finance?year=${Y}&month=${M}`);
-    const row=(d.rows||[]).find(r=>r.employee_id===empId);
-    if(!row||row.scheme_type!=='hot') return;
-    const c = no===1 ? row.period1 : row.period2;
+    const d=await api(`/api/hot-calc?employee_id=${empId}&year=${Y}&month=${M}`);
+    if(!d) return;
+    const c = no===1 ? d.period1 : d.period2;
     const el=document.getElementById(`hot-result-${empId}-${no}`);
     if(!el||!c) return;
     el.innerHTML=`<div class="sal-result">
