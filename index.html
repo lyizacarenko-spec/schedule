@@ -2675,11 +2675,11 @@ function renderFinance(){
 // Підписи колонок виплат залежно від типу відділу
 function payLabel1(rows){
   const s=(rows||[]).find(r=>r.pay_schedule)?.pay_schedule;
-  return s==='sales' ? '1-ше (аванс)' : '15-те (аванс)';
+  return s==='sales' ? '1-ше наст. (аванс)' : '15-те (аванс)';
 }
 function payLabel2(rows){
   const s=(rows||[]).find(r=>r.pay_schedule)?.pay_schedule;
-  return s==='sales' ? '15-те (залишок+%)' : '1-ше наст. (залишок)';
+  return s==='sales' ? '15-те наст. (залишок+%)' : '1-ше наст. (залишок)';
 }
 function financeTable(rows, detailed){
   let h=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
