@@ -1593,6 +1593,28 @@ function openMgrCard(empId){
         </div>
         ${adjBlockHtml(emp.id)}
         <div id="frate-result-${emp.id}" style="margin-top:8px"></div>`;
+      })() : isMentorCard ? (()=>{
+        const base=parseFloat(scheme.base_rate)||0;
+        const avgScore=parseFloat(mentorData[emp.id]?.avg_score)||0;
+        const groupIe=parseFloat(mentorData[emp.id]?.group_ie)||0;
+        return `<div style="font-size:.78rem;color:#8a7060;margin-bottom:10px">Ставка (як у ставочника) + бонус за якість тесту + бонус за ІЕ групи</div>
+        <div class="sal-row">
+          <div class="sal-field"><label>Оклад (грн/міс)</label><input type="number" id="mentor-base-${emp.id}" placeholder="20000" value="${base||''}"></div>
+          <div class="sal-field"><label>Тип норми</label>
+            <select id="mentor-normtype-${emp.id}">
+              <option value="month_workdays" ${scheme.norm_type==='month_workdays'?'selected':''}>Будні місяця</option>
+              <option value="fixed" ${scheme.norm_type==='fixed'?'selected':''}>Фікс. 22</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="saveMentorBase(${emp.id})" style="width:100%;padding:8px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px;margin-bottom:12px">💾 Зберегти оклад</button>
+        <div class="sal-row">
+          <div class="sal-field"><label>Середній бал тесту</label><input type="number" id="mentor-score-${emp.id}" placeholder="0" value="${avgScore||''}"></div>
+          <div class="sal-field"><label>ІЕ групи</label><input type="number" step="0.01" id="mentor-ie-${emp.id}" placeholder="0" value="${groupIe||''}"></div>
+        </div>
+        <button onclick="saveMentorScores(${emp.id})" style="width:100%;padding:8px;background:#b84e30;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px">💾 Зберегти бали</button>
+        ${adjBlockHtml(emp.id)}
+        <div id="mentor-result-${emp.id}" style="margin-top:8px"></div>`;
       })() : (isFixedRate ? `
       <div id="frate-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
         <div style="text-align:center;padding:8px 0 12px">
