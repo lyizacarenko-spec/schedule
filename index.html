@@ -1414,11 +1414,11 @@ function openMgrCard(empId){
   const isHr = isHourly(emp.id);
   const isHrFix = isHrFixed(emp.id);
   const isWhHyb = isWhHybrid(emp.id);
+  const isMentorCard = isMentorScheme(emp.id);
   const isHot = isHotDept(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role);
   const salaryAllowed = canSeeSalary(emp);
   const isRop = isRopMotiv(emp);
-  const isFixedRate = !isPieceWh && !isHr && !isHrFix && !isWhHyb && !isHot && !isRop && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
-  const scheme = schemeMap[emp.id] || {};
+  const isFixedRate = !isPieceWh && !isHr && !isHrFix && !isWhHyb && !isMentorCard && !isHot && !isRop && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
 
   document.getElementById('mgr-card-content').innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
