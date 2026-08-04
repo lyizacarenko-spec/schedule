@@ -853,7 +853,7 @@ function renderTable(){
         empRevTotal=whMonth;
       }
       // для вантажника — години × ставка за місяць
-      if(isHourly(emp.id)){
+      if(isHourly(emp.id)||isHrFixed(emp.id)){
         let hrMonth=0;
         days.forEach(d=>{ const r=hrMap[`${emp.id}_${d.date}`]; if(r) hrMonth+=(parseFloat(r.hours)||0)*hrRate(emp.id); });
         empRevTotal=hrMonth;
