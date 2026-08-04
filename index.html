@@ -1419,6 +1419,7 @@ function openMgrCard(empId){
   const salaryAllowed = canSeeSalary(emp);
   const isRop = isRopMotiv(emp);
   const isFixedRate = !isPieceWh && !isHr && !isHrFix && !isWhHyb && !isMentorCard && !isHot && !isRop && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
+  const scheme = schemeMap[emp.id] || {};
 
   document.getElementById('mgr-card-content').innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
