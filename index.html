@@ -1091,27 +1091,31 @@ async function savePlans(){
   setSave('Збереження...',false);
   try{
     for(const dept of visDepts){
-      let lvlSum=0;
       const s=statsData.find(x=>x.dept_code===dept.code)||{plan_breakdown:{}};
       const bd=s.plan_breakdown||{};
-      for(const lvl of ['top','mid','jun']){
-        const el=document.getElementById(`plan-${dept.id}-${lvl}`);
-        if(!el) continue;
-        const amt=parseFloat(el.value)||0;
-        lvlSum+=amt*(bd[lvl]?.cnt||0);
-        await api('/api/plans',{method:'PUT',body:JSON.stringify({
-          department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:amt
-        })});
-      }
       const deptTotalEl=document.getElementById(`plan-dept-total-${dept.id}`);
       const deptTotal=parseFloat(deptTotalEl?.value)||0;
-      if(deptTotal>0 && lvlSum===0){
+      const deptTotalOrig=parseFloat(deptTotalEl?.dataset.orig)||0;
+      const totalWasEdited = Math.round(deptTotal) !== Math.round(deptTotalOrig);
+
+      if(totalWasEdited && deptTotal>0){
+        // Редагували загальну суму — перерозподіляємо порівну на всіх, ІГНОРУЮЧИ старі поля по рівнях
         const cnt=Object.values(bd).reduce((a,b)=>a+(b.cnt||0),0)||1;
         const perPerson=Math.round(deptTotal/cnt);
         for(const lvl of ['top','mid','jun']){
           if(!(bd[lvl]?.cnt>0)) continue;
           await api('/api/plans',{method:'PUT',body:JSON.stringify({
             department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:perPerson
+          })});
+        }
+      } else {
+        // Редагували по рівнях (або нічого не міняли) — зберігаємо як є
+        for(const lvl of ['top','mid','jun']){
+          const el=document.getElementById(`plan-${dept.id}-${lvl}`);
+          if(!el) continue;
+          const amt=parseFloat(el.value)||0;
+          await api('/api/plans',{method:'PUT',body:JSON.stringify({
+            department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:amt
           })});
         }
       }
