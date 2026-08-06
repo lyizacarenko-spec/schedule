@@ -1745,6 +1745,10 @@ function openMgrCard(empId){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
     loadMentorData(emp.id).then(()=>{ calcMentor(emp.id); });
   }
+  if(salaryAllowed && isRecruiterCard && ropUnlocked){
+    loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
+    loadRecruiterData(emp.id).then(()=>{ calcRecruiter(emp.id); });
+  }
   if(salaryAllowed && (isPieceWh||isHr||isHrFix||isWhHyb)){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
   }
