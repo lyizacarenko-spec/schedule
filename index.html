@@ -1472,11 +1472,11 @@ function openMgrCard(empId){
         </div>
         ${emp.dept_code==='hot'?`
         <div class="sal-row">
-          <div class="sal-field"><label>Особисті: гаряча база (1.5%)</label><input type="number" id="rop-ownhot-${emp.id}" placeholder="0"></div>
+          <div class="sal-field"><label>Особисті: гаряча база (2%)</label><input type="number" id="rop-ownhot-${emp.id}" placeholder="0"></div>
           <div class="sal-field"><label>Постійні клієнти (5%)</label><input type="number" id="rop-owncold-${emp.id}" placeholder="0"></div>
         </div>`:`
         <div class="sal-row">
-          <div class="sal-field"><label>Сума особистих замовлень (5%)</label><input type="number" id="rop-own-${emp.id}" placeholder="0"></div>
+          <div class="sal-field"><label>Сума особистих замовлень (${emp.dept_code==='refuse'?'7':'5'}%)</label><input type="number" id="rop-own-${emp.id}" placeholder="0"></div>
         </div>`}
         <div class="sal-row">
           <div class="sal-field"><label>Доплата</label><input type="number" id="rop-bonus-${emp.id}" placeholder="0"></div>
