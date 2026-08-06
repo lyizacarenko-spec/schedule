@@ -1419,6 +1419,7 @@ function openMgrCard(empId){
   const isHrFix = isHrFixed(emp.id);
   const isWhHyb = isWhHybrid(emp.id);
   const isMentorCard = isMentorScheme(emp.id);
+  const isRecruiterCard = isRecruiterScheme(emp.id);
   const isHot = isHotDept(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role);
   const salaryAllowed = canSeeSalary(emp);
   const isRop = isRopMotiv(emp);
