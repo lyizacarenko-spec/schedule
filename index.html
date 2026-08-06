@@ -1034,7 +1034,7 @@ function openPlanModal(deptCode){
 
       <div style="margin-bottom:12px">
         <div style="font-size:.72rem;color:#8a7060;margin-bottom:4px">Загальний план відділу на місяць (грн)</div>
-        <input type="number" id="plan-dept-total-${dept.id}" value="${total||''}"
+        <input type="number" id="plan-dept-total-${dept.id}" value="${total||''}" data-orig="${total||0}"
           placeholder="наприклад 5400000"
           style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:8px 12px;font-size:.92rem;outline:none;margin-bottom:4px"
           oninput="updatePlanTotal('${dept.id}')">
