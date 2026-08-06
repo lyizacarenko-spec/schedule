@@ -3076,7 +3076,7 @@ async function showRopResult(empId){
       <div class="sal-result-row"><span>Виконання плану</span><span>${row.plan_pct}%</span></div>
       <div class="sal-result-row"><span>СРЧ ${row.srch_ok?'✅':'❌'} · Апрув ${row.apr_ok?'✅':'❌'}</span><span style="color:${row.pay_kpi?'#2e7d52':'#aaa'}">${row.pay_kpi?'+'+fmtFull(row.pay_kpi):'0,00 ₴'}</span></div>
       <div class="sal-result-row"><span>${isHotRop?'Бонус за перевиконання':'Доплата за план'}</span><span style="color:${row.pay_plan?'#2e7d52':'#aaa'}">${row.pay_plan?'+'+fmtFull(row.pay_plan):'0,00 ₴'}</span></div>
-      ${row.pay_own?`<div class="sal-result-row"><span>${isHotRop?'Особисті (1.5% + 5%)':'Особисті замовлення 5%'}</span><span style="color:#2e7d52">+${fmtFull(row.pay_own)}</span></div>`:''}
+    ${row.pay_own?`<div class="sal-result-row"><span>${isHotRop?'Особисті (2% + 5%)':(row.dept_code==='refuse'?'Особисті замовлення 7%':'Особисті замовлення 5%')}</span><span style="color:#2e7d52">+${fmtFull(row.pay_own)}</span></div>`:''}
       ${row.bonus>0?`<div class="sal-result-row"><span>Доплата</span><span style="color:#2e7d52">+${fmtFull(row.bonus)}</span></div>`:''}
       ${row.penalty>0?`<div class="sal-result-row"><span>Штраф</span><span style="color:#ef5350">−${fmtFull(row.penalty)}</span></div>`:''}
       <div class="sal-result-row"><span>Виплата 1 (1-ше)</span><span>${fmtFull(row.payout1)}</span></div>
