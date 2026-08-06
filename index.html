@@ -1620,7 +1620,7 @@ function openMgrCard(empId){
           <div class="sal-field"><label>Кандидатів у продажі (×600)</label><input type="number" id="recr-sales-${emp.id}" placeholder="0" value="${salesCand||''}"></div>
         </div>
         <div class="sal-row">
-          <div class="sal-field"><label>Доплата адмін-блок (грн)</label><input type="number" id="recr-admin-${emp.id}" placeholder="0" value="${adminBonus||''}"></div>
+          <div class="sal-field"><label>Доплата за кандидата адмін-блок (грн)</label><input type="number" id="recr-admin-${emp.id}" placeholder="0" value="${adminBonus||''}"></div>
         </div>
         <button onclick="saveRecruiterCandidates(${emp.id})" style="width:100%;padding:8px;background:#b84e30;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px">💾 Зберегти кандидатів</button>
         ${adjBlockHtml(emp.id)}
