@@ -2172,6 +2172,77 @@ function calcMentor(empId){
     <div class="sal-result-row green"><span>💰 Всього за місяць</span><span>${fmtFull(total)}</span></div>
   </div>`;
 }
+// ══ РЕКРУТЕР (Саєнко Аліна) ═══════════════════════════
+let recruiterData = {};   // empId -> {train_candidates, sales_candidates, admin_bonus}
+async function loadRecruiterData(empId){
+  try{
+    const rows = await api(`/api/recruiter-salary?year=${Y}&month=${M}&employee_id=${empId}`);
+    if(rows && rows[0]) recruiterData[empId]=rows[0];
+  }catch(e){}
+}
+async function saveRecruiterBase(empId){
+  const base=parseFloat(document.getElementById('recr-base-'+empId).value)||0;
+  const normType=document.getElementById('recr-normtype-'+empId).value;
+  if(!base){ alert('Введи оклад'); return; }
+  try{
+    const sc=await api('/api/salary-schemes',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, scheme_type:'recruiter', base_rate:base, norm_days:22, norm_type:normType
+    })});
+    schemeMap[empId]=sc;
+    calcRecruiter(empId);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+async function saveRecruiterCandidates(empId){
+  const trainCand=parseInt(document.getElementById('recr-train-'+empId).value)||0;
+  const salesCand=parseInt(document.getElementById('recr-sales-'+empId).value)||0;
+  const adminBonus=parseFloat(document.getElementById('recr-admin-'+empId).value)||0;
+  try{
+    const r=await api('/api/recruiter-salary',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:Y, calc_month:M,
+      train_candidates:trainCand, sales_candidates:salesCand, admin_bonus:adminBonus
+    })});
+    recruiterData[empId]=r;
+    calcRecruiter(empId);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+function calcRecruiter(empId){
+  const res=document.getElementById('recr-result-'+empId);
+  if(!res) return;
+  const base=parseFloat(document.getElementById('recr-base-'+empId)?.value)||0;
+  const normType=document.getElementById('recr-normtype-'+empId)?.value||'month_workdays';
+  if(!base){ res.innerHTML=''; return; }
+  const dayPrice=base/22;
+  const targetDays = normType==='month_workdays' ? monthWeekdaysCount() : 22;
+  const days=getDays(Y,M);
+  const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','8:30-16:30','удаленка','запізн','відробіт'];
+  let worked=0;
+  days.forEach(d=>{ if(WORKS.includes(getStatus(empId,d.date))) worked++; });
+  const diff=worked-targetDays;
+  const dayAdjust=diff*dayPrice;
+  const trainCand=parseInt(document.getElementById('recr-train-'+empId)?.value)||0;
+  const salesCand=parseInt(document.getElementById('recr-sales-'+empId)?.value)||0;
+  const adminBonus=parseFloat(document.getElementById('recr-admin-'+empId)?.value)||0;
+  const trainBonus=trainCand*200;
+  const salesBonus=salesCand*600;
+  const list=adjMap[empId]||[];
+  const adjTotal=list.reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
+  const total=base+dayAdjust+trainBonus+salesBonus+adminBonus+adjTotal;
+  let payout1=base/2;
+  if(payout1>total) payout1=Math.max(0,total);
+  const payout2=Math.max(0,total-payout1);
+  res.innerHTML=`<div class="sal-result">
+    <div class="sal-result-row"><span>Оклад</span><span>${fmtFull(base)}</span></div>
+    <div class="sal-result-row"><span>Відпрацьовано / норма</span><span>${worked} / ${targetDays}</span></div>
+    ${diff!==0?`<div class="sal-result-row"><span>${diff>0?'Переробка +'+diff:'Недопрацьовано '+(-diff)} дн.</span><span style="color:${diff>0?'#2e7d52':'#ef5350'}">${diff>0?'+':''}${fmtFull(dayAdjust)}</span></div>`:''}
+    <div class="sal-result-row"><span>🎓 Кандидати на навчання (${trainCand}×200)</span><span style="color:${trainBonus>0?'#2e7d52':'#8a7060'}">${trainBonus>0?'+':''}${fmtFull(trainBonus)}</span></div>
+    <div class="sal-result-row"><span>💼 Кандидати у продажі (${salesCand}×600)</span><span style="color:${salesBonus>0?'#2e7d52':'#8a7060'}">${salesBonus>0?'+':''}${fmtFull(salesBonus)}</span></div>
+    ${adminBonus?`<div class="sal-result-row"><span>Доплата адмін-блок</span><span style="color:#2e7d52">+${fmtFull(adminBonus)}</span></div>`:''}
+    ${list.map(a=>{const amt=parseFloat(a.amount)||0;return `<div class="sal-result-row"><span>${a.type}${a.comment?' ('+a.comment+')':''}</span><span style="color:${amt>=0?'#2e7d52':'#ef5350'}">${amt>=0?'+':''}${fmtFull(amt)}</span></div>`;}).join('')}
+    <div class="sal-result-row"><span>Виплата 1 (15-те): аванс</span><span>${fmtFull(payout1)}</span></div>
+    <div class="sal-result-row"><span>Виплата 2 (1-ше наст.): залишок+бонуси</span><span>${fmtFull(payout2)}</span></div>
+    <div class="sal-result-row green"><span>💰 Всього за місяць</span><span>${fmtFull(total)}</span></div>
+  </div>`;
+}
 
 // ══ ROP PIN ═══════════════════════════════════════════
 let ropUnlocked = false;
