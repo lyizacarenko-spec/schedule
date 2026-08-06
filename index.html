@@ -1599,6 +1599,32 @@ function openMgrCard(empId){
         </div>
         ${adjBlockHtml(emp.id)}
         <div id="frate-result-${emp.id}" style="margin-top:8px"></div>`;
+      })() : isRecruiterCard ? (()=>{
+        const base=parseFloat(scheme.base_rate)||0;
+        const trainCand=parseInt(recruiterData[emp.id]?.train_candidates)||0;
+        const salesCand=parseInt(recruiterData[emp.id]?.sales_candidates)||0;
+        const adminBonus=parseFloat(recruiterData[emp.id]?.admin_bonus)||0;
+        return `<div style="font-size:.78rem;color:#8a7060;margin-bottom:10px">Ставка (як у ставочника) + 200 грн/кандидат на навчання + 600 грн/кандидат у продажі + доплата адмін (вручну)</div>
+        <div class="sal-row">
+          <div class="sal-field"><label>Оклад (грн/міс)</label><input type="number" id="recr-base-${emp.id}" placeholder="25000" value="${base||''}"></div>
+          <div class="sal-field"><label>Тип норми</label>
+            <select id="recr-normtype-${emp.id}">
+              <option value="month_workdays" ${scheme.norm_type==='month_workdays'?'selected':''}>Будні місяця</option>
+              <option value="fixed" ${scheme.norm_type==='fixed'?'selected':''}>Фікс. 22</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="saveRecruiterBase(${emp.id})" style="width:100%;padding:8px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px;margin-bottom:12px">💾 Зберегти оклад</button>
+        <div class="sal-row">
+          <div class="sal-field"><label>Кандидатів на навчання (×200)</label><input type="number" id="recr-train-${emp.id}" placeholder="0" value="${trainCand||''}"></div>
+          <div class="sal-field"><label>Кандидатів у продажі (×600)</label><input type="number" id="recr-sales-${emp.id}" placeholder="0" value="${salesCand||''}"></div>
+        </div>
+        <div class="sal-row">
+          <div class="sal-field"><label>Доплата адмін-блок (грн)</label><input type="number" id="recr-admin-${emp.id}" placeholder="0" value="${adminBonus||''}"></div>
+        </div>
+        <button onclick="saveRecruiterCandidates(${emp.id})" style="width:100%;padding:8px;background:#b84e30;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px">💾 Зберегти кандидатів</button>
+        ${adjBlockHtml(emp.id)}
+        <div id="recr-result-${emp.id}" style="margin-top:8px"></div>`;
       })() : isMentorCard ? (()=>{
         const base=parseFloat(scheme.base_rate)||0;
         const avgScore=parseFloat(mentorData[emp.id]?.avg_score)||0;
