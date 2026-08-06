@@ -2236,7 +2236,7 @@ function calcRecruiter(empId){
     ${diff!==0?`<div class="sal-result-row"><span>${diff>0?'Переробка +'+diff:'Недопрацьовано '+(-diff)} дн.</span><span style="color:${diff>0?'#2e7d52':'#ef5350'}">${diff>0?'+':''}${fmtFull(dayAdjust)}</span></div>`:''}
     <div class="sal-result-row"><span>🎓 Кандидати на навчання (${trainCand}×200)</span><span style="color:${trainBonus>0?'#2e7d52':'#8a7060'}">${trainBonus>0?'+':''}${fmtFull(trainBonus)}</span></div>
     <div class="sal-result-row"><span>💼 Кандидати у продажі (${salesCand}×600)</span><span style="color:${salesBonus>0?'#2e7d52':'#8a7060'}">${salesBonus>0?'+':''}${fmtFull(salesBonus)}</span></div>
-    ${adminBonus?`<div class="sal-result-row"><span>Доплата адмін-блок</span><span style="color:#2e7d52">+${fmtFull(adminBonus)}</span></div>`:''}
+    ${adminBonus?`<div class="sal-result-row"><span>Доплата за кандидата адмін-блок</span><span style="color:#2e7d52">+${fmtFull(adminBonus)}</span></div>`:''}
     ${list.map(a=>{const amt=parseFloat(a.amount)||0;return `<div class="sal-result-row"><span>${a.type}${a.comment?' ('+a.comment+')':''}</span><span style="color:${amt>=0?'#2e7d52':'#ef5350'}">${amt>=0?'+':''}${fmtFull(amt)}</span></div>`;}).join('')}
     <div class="sal-result-row"><span>Виплата 1 (15-те): аванс</span><span>${fmtFull(payout1)}</span></div>
     <div class="sal-result-row"><span>Виплата 2 (1-ше наст.): залишок+бонуси</span><span>${fmtFull(payout2)}</span></div>
