@@ -738,7 +738,8 @@ function renderTable(){
   days.forEach(d=>{
     const isToday = d.date===todayDate;
     const cls = isToday ? 'today-col' : (d.isW?'wk':'');
-    h+=`<th class="${cls}" ${isToday?'style="background:#b84e30;color:#fff;border-radius:6px 6px 0 0"':''}>${d.label}</th>`;
+    const baseStyle = isToday?'background:#b84e30;color:#fff;border-radius:6px 6px 0 0;':'';
+    h+=`<th class="${cls}" style="${baseStyle}cursor:pointer" onclick="showDayShiftCount('${d.date}','${d.label}')" title="Клікни щоб побачити кількість людей у зміні">${d.label}</th>`;
   });
   h+=`<th>Зм.</th><th>Год.</th><th>💰</th></tr>
   <tr class="dow-row"><th class="name-th"></th><th></th>`;
