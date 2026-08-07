@@ -695,6 +695,15 @@ function getVisEmps(){
   return employees.filter(e=>e.dept_code===curDept && isVisibleThisMonth(e));
 }
 
+function showDayShiftCount(date,label){
+  const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','8:30-16:30','удаленка','запізн','відробіт'];
+  const isWork=(s)=> WORKS.includes(s) || /^\d{1,2}(:\d{2})?-\d{1,2}(:\d{2})?$/.test(s||'');
+  const emps=getVisEmps();
+  const working=emps.filter(e=>isWork(getStatus(e.id,date)));
+  const names=working.map(e=>e.name).join(', ');
+  alert(`${label}: у зміні ${working.length} з ${emps.length}\n\n${names||'—'}`);
+}
+
 function renderTable(){
   const days=getDays(Y,M);
   const emps=getVisEmps();
