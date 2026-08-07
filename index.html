@@ -1211,14 +1211,24 @@ async function saveRevenue(){
       const r=await api('/api/revenue/dept',{method:'PUT',body:JSON.stringify({department_id:revDeptSel,revenue_date:date,amount:amt,note})});
       revDeptMap[`${revDeptSel}_${date}`]=r;
     } else {
-      const visEmps=getVisEmps();
+      const dateTo=document.getElementById('rev-date-to').value;
+      const dates=[date];
+      if(dateTo && dateTo>date){
+        let d=new Date(date);
+        const end=new Date(dateTo);
+        d.setDate(d.getDate()+1);
+        while(d<=end){ dates.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); }
+      }
+      const visEmps=getVisEmps().filter(e=>!NO_PLAN_ROLES.includes(e.role)||e.role==='rop');
       for(const e of visEmps){
         const el=document.getElementById(`rev-emp-${e.id}`);
         if(!el)continue;
         const amt=parseFloat(el.value)||0;
         if(amt>0){
-          const r=await api('/api/revenue/detail',{method:'PUT',body:JSON.stringify({employee_id:e.id,revenue_date:date,amount:amt})});
-          revDetailMap[`${e.id}_${date}`]=r;
+          for(const dt of dates){
+            const r=await api('/api/revenue/detail',{method:'PUT',body:JSON.stringify({employee_id:e.id,revenue_date:dt,amount:amt})});
+            revDetailMap[`${e.id}_${dt}`]=r;
+          }
         }
       }
     }
