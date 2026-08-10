@@ -2986,13 +2986,37 @@ async function renderFinanceWeeks(){
         ${d.emps.map(e=>`<th style="text-align:right;font-size:.7rem">${e.name.split(' ')[0]}</th>`).join('')}
         <th style="text-align:right">Разом</th>
       </tr></thead><tbody>`;
-    d.weeks.forEach(w=>{
+    d.weeks.forEach((w,wi)=>{
       h+=`<tr style="border-top:1px solid #3a2818">
         <td style="padding:8px 5px;color:#e8dcc8">${w.period}</td>
         <td style="text-align:center;color:#7ac070;font-weight:600">${w.pay_date}</td>
-        ${d.emps.map(e=>{const p=w.per_emp.find(x=>x.employee_id===e.id);const s=p?p.sum:0;return `<td style="text-align:right;color:${s?'#c0a878':'#5a4838'}">${s?fmtUAH(s):'—'}</td>`;}).join('')}
+        ${d.emps.map(e=>{
+          const p=w.per_emp.find(x=>x.employee_id===e.id);
+          const s=p?p.sum:0;
+          const key=`${wi}_${e.id}`;
+          const hasBd=p&&(p.breakdown||[]).length>0;
+          return `<td style="text-align:right;color:${s?'#c0a878':'#5a4838'}">
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px">
+              ${hasBd?`<span onclick="toggleWeekDetail('${key}')" id="wk-toggle-${key}" title="Деталізація" style="cursor:pointer;color:#8a7050;font-size:.6rem">▸</span>`:''}
+              <span>${s?fmtUAH(s):'—'}</span>
+              ${p?`<input type="checkbox" ${p.paid?'checked':''} onchange="toggleWarehousePaid(${e.id},'${p.pay_date_iso}',this.checked)" title="Позначити як виплачено" style="width:13px;height:13px;cursor:pointer;accent-color:#2e7d52">`:''}
+            </div>
+          </td>`;
+        }).join('')}
         <td style="text-align:right;color:#f0c040;font-weight:700">${fmtUAH(w.week_total)}</td>
-      </tr>`;
+      </tr>
+      ${d.emps.map(e=>{
+        const p=w.per_emp.find(x=>x.employee_id===e.id);
+        const hasBd=p&&(p.breakdown||[]).length>0;
+        if(!hasBd) return '';
+        const key=`${wi}_${e.id}`;
+        return `<tr id="wk-detail-${key}" style="display:none">
+          <td colspan="${d.emps.length+3}" style="padding:2px 5px 10px 26px;background:#1c130c">
+            <span style="color:#8a7050;font-size:.68rem;margin-right:8px">${e.name}:</span>
+            ${financeBreakdownHtml(p)}
+          </td>
+        </tr>`;
+      }).join('')}`;
     });
     // підсумковий рядок
     h+=`<tr style="border-top:2px solid #6a4020;background:#241810">
@@ -3003,6 +3027,26 @@ async function renderFinanceWeeks(){
     h+=`</tbody></table>`;
     body.innerHTML=h;
   }catch(e){ body.innerHTML=financeMonthNav()+`<div class="loading" style="color:#e06050">Помилка: ${e.message}</div>`; }
+}
+
+function toggleWeekDetail(key){
+  const row=document.getElementById('wk-detail-'+key);
+  const tgl=document.getElementById('wk-toggle-'+key);
+  if(!row) return;
+  const show = row.style.display==='none';
+  row.style.display = show?'table-row':'none';
+  if(tgl) tgl.textContent = show?'▾':'▸';
+}
+
+// Галочка «виплачено» для складу по тижнях — прив'язана до дати виплати
+// (наступний понеділок), окремо від основного togglePaid/payout_status.
+async function toggleWarehousePaid(empId,payDateIso,checked){
+  try{
+    await api('/api/finance/warehouse-payout-status',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, pay_date:payDateIso, paid:checked
+    })});
+    renderFinanceWeeks();
+  }catch(e){ alert('Помилка: '+e.message); }
 }
 
 function renderFinanceAverage(){
