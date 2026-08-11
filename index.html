@@ -2883,7 +2883,6 @@ function financeTable(rows, detailed){
     else if(isSales||isOrderRow||isRopRow) baseCol=fmtUAH(r.rate);
     else baseCol=fmtUAH(r.base_rate);
     let adjCol, adjCellTitle=adjTitle;
-    let adjCol, adjCellTitle=adjTitle;
     if(isSales||isOrderRow){
       adjCol=`+${fmtUAH(r.bonus)}`;
       adjCellTitle=`Ставка: ${r.rate}\nБонус ${r.bonus_pct}%: ${Math.round(r.bonus)}\nОборот: ${r.fact}\nПовернення: ${r.returns_pct}%`;
