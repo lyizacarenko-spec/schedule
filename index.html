@@ -2966,7 +2966,6 @@ async function toggleCorrPaid(empId,checked){
 }
 
 async function savePayout(empId,no,value){
-async function savePayout(empId,no,value){
   const v = value===''?null:parseFloat(value);
   const row=(financeData?.rows||[]).find(r=>r.employee_id===empId);
   const paid = row ? (no===1?row.paid1:row.paid2) : false;
