@@ -1188,10 +1188,9 @@ function renderRevBody(){
     `;
   }
 }
-function selRevDept(id,el){
+function selRevDept(id){
   revDeptSel=id;
-  document.querySelectorAll('.dept-btn').forEach(b=>b.classList.remove('sel'));
-  el.classList.add('sel');
+  renderRevBody();
 }
 
 function openRevEmpModalById(empId){
