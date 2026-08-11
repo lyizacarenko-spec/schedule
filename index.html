@@ -2955,7 +2955,18 @@ async function togglePaid(empId,no,checked){
     renderFinance();
   }catch(e){ alert('Помилка: '+e.message); }
 }
+async function toggleCorrPaid(empId,checked){
+  try{
+    await api('/api/correction-payout-status',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:financeYear, calc_month:financeMonth, paid:checked
+    })});
+    const row=(financeData?.rows||[]).find(r=>r.employee_id===empId);
+    if(row) row.corr_paid=checked;
+    renderFinance();
+  }catch(e){ alert('Помилка: '+e.message); }
+}
 
+async function savePayout(empId,no,value){
 async function savePayout(empId,no,value){
   const v = value===''?null:parseFloat(value);
   const row=(financeData?.rows||[]).find(r=>r.employee_id===empId);
