@@ -1219,8 +1219,18 @@ async function saveRevenue(){
     if(revMode==='dept'){
       const amt=parseFloat(document.getElementById('rev-amount-dept').value)||0;
       const note=document.getElementById('rev-note-dept').value;
-      const r=await api('/api/revenue/dept',{method:'PUT',body:JSON.stringify({department_id:revDeptSel,revenue_date:date,amount:amt,note})});
-      revDeptMap[`${revDeptSel}_${date}`]=r;
+      const dateTo=document.getElementById('rev-date-to').value;
+      const deptDates=[date];
+      if(dateTo && dateTo>date){
+        let dd=new Date(date);
+        const deptEnd=new Date(dateTo);
+        dd.setDate(dd.getDate()+1);
+        while(dd<=deptEnd){ deptDates.push(dd.toISOString().slice(0,10)); dd.setDate(dd.getDate()+1); }
+      }
+      for(const dt of deptDates){
+        const r=await api('/api/revenue/dept',{method:'PUT',body:JSON.stringify({department_id:revDeptSel,revenue_date:dt,amount:amt,note})});
+        revDeptMap[`${revDeptSel}_${dt}`]=r;
+      }
     } else {
       const dateTo=document.getElementById('rev-date-to').value;
       const dates=[date];
