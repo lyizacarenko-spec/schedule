@@ -2905,8 +2905,7 @@ function financeTable(rows, detailed){
       ${detailed?`<td style="text-align:center;color:#a09070">${baseCol}</td>
       <td style="text-align:center;color:#c0a878">${r.worked_days!=null?r.worked_days:'—'}</td>
       <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${(isPiece||isHrRow||isSales||isOrderRow)?'—':(diff>0?'+'+diff:diff<0?diff:'—')}</td>
-      <td style="text-align:right;color:${(isSales||isOrderRow)?'#7ac070':adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjCellTitle}">${adjCol}</td>`:''}
-      ${payCell(r,1)}${chkCell(r,1)}
+<td style="text-align:right;color:${(isSales||isOrderRow)?'#7ac070':adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjCellTitle}">${adjCol}${(!isSales&&!isOrderRow&&adj)?`<input type="checkbox" ${r.corr_paid?'checked':''} onchange="toggleCorrPaid(${r.employee_id},this.checked)" title="Видано в конверті" style="width:13px;height:13px;margin-left:5px;vertical-align:middle;cursor:pointer;accent-color:#c08040">`:''}</td>`:''}      ${payCell(r,1)}${chkCell(r,1)}
       ${payCell(r,2)}${chkCell(r,2)}
       <td style="text-align:right;color:#f0c040;font-weight:700">${fmtUAH2(totalDisplay)}</td>
     </tr>
