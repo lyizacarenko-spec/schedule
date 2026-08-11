@@ -307,7 +307,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
       <div class="rev-mode-tab"        id="rev-tab-emp"  onclick="setRevMode('emp')">По менеджерах</div>
     </div>
     <label>Дата (від)</label>
-    <input type="date" id="rev-date">
+    <input type="date" id="rev-date" onchange="renderRevBody()">
     <label id="rev-date-to-label" style="display:none">До (необов., щоб заповнити діапазон однаковою сумою)</label>
     <input type="date" id="rev-date-to" style="display:none">
     <div id="rev-body"></div>
