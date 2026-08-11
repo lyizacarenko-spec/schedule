@@ -1158,15 +1158,17 @@ function closeRevModal(){ document.getElementById('rev-modal-ov').classList.remo
 function renderRevBody(){
   if(revMode==='dept'){
     const revDepts=departments.filter(d=>isSalesDept(d.code)||isOrderDept(d.code));
+    const dDate=document.getElementById('rev-date').value;
+    const dCur=revDeptMap[`${revDeptSel}_${dDate}`]||{};
     document.getElementById('rev-body').innerHTML=`
       <label>Відділ</label>
       <div class="dept-btns">${revDepts.map(d=>
         `<button class="dept-btn ${d.id===revDeptSel?'sel':''}" onclick="selRevDept(${d.id},this)">${d.name}</button>`
       ).join('')}</div>
       <label>Сума (грн)</label>
-      <input type="number" id="rev-amount-dept" placeholder="0">
+      <input type="number" id="rev-amount-dept" placeholder="0" value="${dCur.amount||''}">
       <label>Примітка</label>
-      <input type="text" id="rev-note-dept" placeholder="">
+      <input type="text" id="rev-note-dept" placeholder="" value="${dCur.note||''}">
     `;
   } else {
     const date=document.getElementById('rev-date').value;
