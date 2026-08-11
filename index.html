@@ -1143,8 +1143,8 @@ function setRevMode(mode){
   revMode=mode;
   document.getElementById('rev-tab-dept').classList.toggle('active',mode==='dept');
   document.getElementById('rev-tab-emp').classList.toggle('active',mode==='emp');
-  document.getElementById('rev-date-to').style.display = mode==='emp' ? 'block' : 'none';
-  document.getElementById('rev-date-to-label').style.display = mode==='emp' ? 'block' : 'none';
+  document.getElementById('rev-date-to').style.display = 'block';
+  document.getElementById('rev-date-to-label').style.display = 'block';
   renderRevBody();
 }
 function openRevModal(){
