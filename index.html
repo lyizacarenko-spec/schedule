@@ -522,13 +522,16 @@ async function loadAll(){
 
 async function loadMonthData(){
   const qs=`?year=${Y}&month=${M}`;
-  const [sched,revD,revDept,stats,salData]=await Promise.all([
+  const empQs=`?include_month=${Y}-${String(M).padStart(2,'0')}`;
+  const [sched,revD,revDept,stats,salData,empList]=await Promise.all([
     api('/api/schedule'+qs),
     api('/api/revenue/detail'+qs),
     api('/api/revenue/dept'+qs),
     api('/api/stats'+qs),
     api('/api/salary'+qs),
+    api('/api/employees'+empQs),
   ]);
+  employees = empList;
   salaryMap={};
   salData.forEach(s=>{ salaryMap[s.employee_id]=s; });
   // схеми окладів (ставочники) — не критично, тому окремо і без падіння
