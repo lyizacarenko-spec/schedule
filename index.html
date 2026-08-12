@@ -1366,7 +1366,7 @@ function renderDailyPlanBar(){
   visDepts.forEach(dept=>{
     const s = statsData.find(x=>x.dept_code===dept.code);
     if(!s||!s.plan_total) return;
-    const deptEmps = employees.filter(e=>e.dept_code===dept.code);
+    const deptEmps = employees.filter(e=>e.dept_code===dept.code && isVisibleThisMonth(e));
     const workingToday = deptEmps.filter(e=>{
       if(NO_PLAN_ROLES.includes(e.role)) return false;
       const v = getStatus(e.id, today);
