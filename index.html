@@ -3440,6 +3440,47 @@ async function toggleUser(id,active){
     renderUsers();
   }catch(e){ alert('Помилка: '+e.message); }
 }
+
+const ROLE_OPTS = {owner:'Власник',commerce:'Комерційний',rop:'РОП',head:'Керівник',special:'Спеціальний',schedule:'Тільки графік'};
+
+function openEditUser(u){
+  const roleOpts = Object.keys(ROLE_OPTS).map(k=>`<option value="${k}" ${u.role===k?'selected':''}>${ROLE_OPTS[k]}</option>`).join('');
+  const html = `
+  <div id="eu-ov" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999">
+    <div style="background:#f7f2ec;border-radius:10px;padding:22px;width:340px;max-width:92vw">
+      <h3 style="margin:0 0 14px;color:#2c2218">✏️ Редагувати: ${u.full_name}</h3>
+      <label style="font-size:.78rem;color:#7a6050">Роль</label>
+      <select id="eu-role" style="width:100%;padding:7px;margin:4px 0 12px;border-radius:6px;border:1px solid #d4c8b8">${roleOpts}</select>
+      <label style="font-size:.78rem;color:#7a6050">Відділи (через кому, порожньо = всі)</label>
+      <input type="text" id="eu-depts" value="${u.dept_codes||''}" placeholder="rzpk,hot,refuse" style="width:100%;padding:7px;margin:4px 0 12px;border-radius:6px;border:1px solid #d4c8b8;box-sizing:border-box">
+      <div style="display:flex;align-items:center;gap:7px;margin:8px 0">
+        <input type="checkbox" id="eu-finance" ${u.can_finance?'checked':''} style="width:auto;margin:0">
+        <label style="margin:0;font-size:.85rem;cursor:pointer" onclick="document.getElementById('eu-finance').click()">💰 Доступ до Фінансів</label>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px;margin:8px 0 16px">
+        <input type="checkbox" id="eu-salary" ${u.can_salary?'checked':''} style="width:auto;margin:0">
+        <label style="margin:0;font-size:.85rem;cursor:pointer" onclick="document.getElementById('eu-salary').click()">✏️ Може вводити ЗП</label>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('eu-ov').remove()" style="background:#e8e0d4;color:#7a6050;border-radius:6px;padding:8px 16px">Скасувати</button>
+        <button onclick="saveEditUser(${u.id})" style="background:#2e6b1c;color:#fff;border-radius:6px;padding:8px 16px">Зберегти</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function saveEditUser(id){
+  const role = document.getElementById('eu-role').value;
+  const dept_codes = document.getElementById('eu-depts').value.trim() || null;
+  const can_finance = document.getElementById('eu-finance').checked;
+  const can_salary = document.getElementById('eu-salary').checked;
+  try{
+    await api('/api/users/'+id,{method:'PATCH',body:JSON.stringify({role,dept_codes,can_finance,can_salary})});
+    document.getElementById('eu-ov').remove();
+    renderUsers();
+  }catch(e){ alert('Помилка: '+e.message); }
+}
 async function createUser(){
   const err=document.getElementById('nu-err');
   const login=document.getElementById('nu-login').value.trim();
