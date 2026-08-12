@@ -1240,6 +1240,7 @@ async function saveRevenue(){
       }
     } else {
       const dateTo=document.getElementById('rev-date-to').value;
+      const splitSum=document.getElementById('rev-split-sum')?.checked;
       const dates=[date];
       if(dateTo && dateTo>date){
         let d=new Date(date);
@@ -1251,8 +1252,9 @@ async function saveRevenue(){
       for(const e of visEmps){
         const el=document.getElementById(`rev-emp-${e.id}`);
         if(!el)continue;
-        const amt=parseFloat(el.value)||0;
-        if(amt>0){
+        const amtRaw=parseFloat(el.value)||0;
+        if(amtRaw>0){
+          const amt = splitSum ? amtRaw/dates.length : amtRaw;
           for(const dt of dates){
             const r=await api('/api/revenue/detail',{method:'PUT',body:JSON.stringify({employee_id:e.id,revenue_date:dt,amount:amt})});
             revDetailMap[`${e.id}_${dt}`]=r;
