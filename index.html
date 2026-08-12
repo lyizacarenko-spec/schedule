@@ -3419,6 +3419,7 @@ async function renderUsers(){
           <div style="font-weight:600;color:#2c2218">${u.full_name}</div>
           <div style="font-size:.68rem;color:#8a7060">${u.login} · ${ROLE[u.role]||u.role}${u.dept_codes?' · '+u.dept_codes:''}${u.can_finance?' · 💰Фінанси':''}</div>
         </div>
+        <button onclick='openEditUser(${JSON.stringify(u).replace(/'/g,"&apos;")})' style="background:#dce8d4;color:#2e6b1c;border-radius:5px;padding:3px 8px;font-size:.68rem">✏️ Редагувати</button>
         <button onclick="resetPass(${u.id},'${u.login}')" style="background:#e8e0d4;color:#7a6050;border-radius:5px;padding:3px 8px;font-size:.68rem">Скинути пароль</button>
         <button onclick="toggleUser(${u.id},${!u.is_active})" style="background:${u.is_active?'#f0d4d4':'#d4edd8'};color:${u.is_active?'#b71c1c':'#1a5c30'};border-radius:5px;padding:3px 8px;font-size:.68rem">${u.is_active?'Вимкнути':'Увімкнути'}</button>
       </div>`).join('');
