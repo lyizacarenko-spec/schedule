@@ -308,9 +308,13 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     </div>
     <label>Дата (від)</label>
     <input type="date" id="rev-date" onchange="renderRevBody()">
-    <label id="rev-date-to-label" style="display:none">До (необов., щоб заповнити діапазон однаковою сумою)</label>
-    <input type="date" id="rev-date-to" style="display:none">
-    <div id="rev-body"></div>
+    <label id="rev-date-to-label" style="display:none">До (необов'язково — щоб внести суму за декілька днів)</label>
+      <input type="date" id="rev-date-to" style="display:none">
+      <div id="rev-split-wrap" style="display:none;align-items:center;gap:7px;margin:4px 0 12px;font-size:.78rem;color:#6a5040">
+        <input type="checkbox" id="rev-split-sum" style="width:auto;margin:0">
+        <label style="margin:0;cursor:pointer" onclick="document.getElementById('rev-split-sum').click()">Розділити суму порівну на кожен день діапазону (інакше — однакова сума щодня)</label>
+      </div>
+      <div id="rev-body"></div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeRevModal()">Скасувати</button>
       <button class="btn-save"   onclick="saveRevenue()">Зберегти</button>
