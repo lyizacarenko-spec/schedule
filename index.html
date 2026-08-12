@@ -2805,13 +2805,14 @@ function renderFinance(){
       <th style="text-align:right">Фонд</th><th style="text-align:right">Середня</th><th style="text-align:right">Мін</th><th style="text-align:right">Макс</th><th></th>
     </tr></thead><tbody>`;
   d.depts.forEach(dp=>{
+    const pendingNote = dp.pending>0 ? `<div style="font-size:.66rem;color:#c08040;margin-top:2px;font-weight:400">⏳ ${dp.pending} на авансі — оборот ще не внесено</div>` : '';
     h+=`<tr style="border-top:1px solid #3a2818;cursor:pointer" onclick="financeDeptFilter='${dp.dept_code}';renderFinance()">
-      <td style="padding:9px 6px;color:#e8dcc8;font-weight:600">${dp.dept_name}</td>
-      <td style="text-align:center;color:#c0a878">${dp.count}</td>
-      <td style="text-align:right;color:#f0c040">${fmtUAH(dp.sum)}</td>
-      <td style="text-align:right;color:#7ac070;font-weight:700">${fmtUAH(dp.avg)}</td>
-      <td style="text-align:right;color:#a09070">${fmtUAH(dp.min)}</td>
-      <td style="text-align:right;color:#a09070">${fmtUAH(dp.max)}</td>
+      <td style="padding:9px 6px;color:#e8dcc8;font-weight:600">${dp.dept_name}${pendingNote}</td>
+      <td style="text-align:center;color:#c0a878">${dp.count>0?dp.count:'—'}</td>
+      <td style="text-align:right;color:#f0c040">${dp.count>0?fmtUAH(dp.sum):'—'}</td>
+      <td style="text-align:right;color:#7ac070;font-weight:700">${dp.count>0?fmtUAH(dp.avg):'—'}</td>
+      <td style="text-align:right;color:#a09070">${dp.count>0?fmtUAH(dp.min):'—'}</td>
+      <td style="text-align:right;color:#a09070">${dp.count>0?fmtUAH(dp.max):'—'}</td>
       <td style="text-align:right;color:#8a7050">›</td>
     </tr>`;
   });
