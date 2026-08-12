@@ -1222,9 +1222,10 @@ async function saveRevenue(){
   setSave('Збереження...',false);
   try{
     if(revMode==='dept'){
-      const amt=parseFloat(document.getElementById('rev-amount-dept').value)||0;
+      const amtRaw=parseFloat(document.getElementById('rev-amount-dept').value)||0;
       const note=document.getElementById('rev-note-dept').value;
       const dateTo=document.getElementById('rev-date-to').value;
+      const splitSum=document.getElementById('rev-split-sum')?.checked;
       const deptDates=[date];
       if(dateTo && dateTo>date){
         let dd=new Date(date);
@@ -1232,6 +1233,7 @@ async function saveRevenue(){
         dd.setDate(dd.getDate()+1);
         while(dd<=deptEnd){ deptDates.push(dd.toISOString().slice(0,10)); dd.setDate(dd.getDate()+1); }
       }
+      const amt = splitSum ? amtRaw/deptDates.length : amtRaw;
       for(const dt of deptDates){
         const r=await api('/api/revenue/dept',{method:'PUT',body:JSON.stringify({department_id:revDeptSel,revenue_date:dt,amount:amt,note})});
         revDeptMap[`${revDeptSel}_${dt}`]=r;
