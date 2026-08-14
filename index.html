@@ -2103,7 +2103,55 @@ async function addAdjustment(empId){
     setSave('Корегування додано ✓',true);
   }catch(e){ alert('Помилка: '+e.message); }
 }
-
+let advMap={};
+    async function loadAdvances(empId){
+      try{
+        const list = await api(`/api/advance-payments?employee_id=${empId}&year=${Y}&month=${M}`);
+        advMap[empId]=list;
+      }catch(e){ advMap[empId]=[]; }
+    }
+    function renderAdvList(empId){
+      const el=document.getElementById('frate-adv-list-'+empId);
+      if(!el) return;
+      const list=advMap[empId]||[];
+      if(!list.length){ el.innerHTML='<div style="font-size:.72rem;color:#8a7060">Немає виданих авансів</div>'; return; }
+      el.innerHTML=list.map(a=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:.76rem;padding:4px 0;border-bottom:1px solid #ece5da">
+          <span>${a.payment_date?new Date(a.payment_date).toLocaleDateString('uk-UA'):''} — ${a.comment||'без коментаря'}</span>
+          <span style="display:flex;align-items:center;gap:8px">
+            <b style="color:#b84e30">${parseFloat(a.amount).toLocaleString('uk-UA')} ₴</b>
+            <button onclick="deleteAdvance(${a.id},${empId})" style="background:none;border:none;color:#a05040;cursor:pointer;font-size:.9rem">✕</button>
+          </span>
+        </div>`).join('');
+    }
+    async function addAdvance(empId){
+      const amount=parseFloat(document.getElementById('frate-adv-amount-'+empId).value);
+      const date=document.getElementById('frate-adv-date-'+empId).value;
+      const comment=document.getElementById('frate-adv-comment-'+empId).value.trim();
+      if(isNaN(amount)||amount<=0){ alert('Введи суму (напр. 4700)'); return; }
+      setSave('Збереження...',false);
+      try{
+        await api('/api/advance-payments',{method:'POST',body:JSON.stringify({
+          employee_id:empId, calc_year:Y, calc_month:M, amount, payment_date:date||null, comment
+        })});
+        document.getElementById('frate-adv-amount-'+empId).value='';
+        document.getElementById('frate-adv-date-'+empId).value='';
+        document.getElementById('frate-adv-comment-'+empId).value='';
+        await loadAdvances(empId);
+        renderAdvList(empId);
+        if(schemeMap[empId]?.scheme_type==='fixed_rate') calcFrate(empId); else openMgrCard(empId);
+        setSave('Аванс додано ✓',true);
+      }catch(e){ alert('Помилка: '+e.message); }
+    }
+    async function deleteAdvance(id,empId){
+      if(!confirm('Видалити цей аванс?')) return;
+      try{
+        await api('/api/advance-payments/'+id,{method:'DELETE'});
+        await loadAdvances(empId);
+        renderAdvList(empId);
+        if(schemeMap[empId]?.scheme_type==='fixed_rate') calcFrate(empId); else openMgrCard(empId);
+      }catch(e){ alert('Помилка: '+e.message); }
+    }
 async function deleteAdjustment(empId,adjId){
   if(!confirm('Видалити це корегування?')) return;
   try{
