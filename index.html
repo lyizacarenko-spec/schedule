@@ -1727,7 +1727,8 @@ function openMgrCard(empId){
           <button onclick="saveFrate(${emp.id})" style="flex:1;padding:8px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem">💾 Зберегти оклад</button>
         </div>
 
-        ${adjBlockHtml(emp.id)}
+       ${adjBlockHtml(emp.id)}
+        ${advBlockHtml(emp.id)}
 
         <div id="frate-result-${emp.id}" style="margin-top:10px"></div>
       </div>` : (!canCalcSalary ? '<div style="font-size:.75rem;color:#8a7060;padding:8px 0">Розрахунок ЗП для цієї ролі/відділу не передбачений</div>' : `
