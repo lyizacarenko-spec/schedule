@@ -2925,12 +2925,14 @@ function financeTable(rows, detailed){
       const ovr = no===1 ? r.override1 : r.override2;
       const isPaid = no===1 ? r.paid1 : r.paid2;
       if(val==null) return '<td style="text-align:right;color:#6a5040">—</td>';
+      const advNote = (no===1 && r.advance_taken>0) ? `<div style="font-size:.62rem;color:#c08040;margin-top:2px">⏱ аванс −${Math.round(r.advance_taken*100)/100}</div>` : '';
       return `<td style="text-align:right">
         <input type="number" value="${Math.round(val*100)/100}" step="0.01"
           onchange="savePayout(${r.employee_id},${no},this.value)"
           ${isPaid?'readonly':''}
           title="${isPaid?'Заблоковано — зніміть галочку «виплачено», щоб редагувати':(ovr!=null?'Ручна сума (бухгалтер)':'Розрахована сума')}"
           style="width:92px;text-align:right;background:${isPaid?'#1a1410':(ovr!=null?'#3a2a14':'transparent')};border:1px solid ${isPaid?'#4a3a2a':(ovr!=null?'#8a6030':'#3a2818')};color:${isPaid?'#7a6a5a':(ovr!=null?'#f0c040':'#e8dcc8')};cursor:${isPaid?'not-allowed':'text'}">
+        ${advNote}
       </td>`;
     };
   const chkCell=(r,no)=>{
