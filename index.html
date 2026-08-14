@@ -1677,6 +1677,7 @@ function openMgrCard(empId){
         </div>
         <button onclick="saveRecruiterCandidates(${emp.id})" style="width:100%;padding:8px;background:#b84e30;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px">💾 Зберегти кандидатів</button>
         ${adjBlockHtml(emp.id)}
+        ${advBlockHtml(emp.id)}
         <div id="recr-result-${emp.id}" style="margin-top:8px"></div>`;
       })() : isMentorCard ? (()=>{
         const base=parseFloat(scheme.base_rate)||0;
