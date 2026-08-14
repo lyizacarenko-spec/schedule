@@ -2027,8 +2027,8 @@ function unlockFrate(){
     const baseInput=document.querySelector('[id^="frate-base-"]');
     if(baseInput){
       const empId=parseInt(baseInput.id.replace('frate-base-',''));
-      loadAdjustments(empId).then(()=>{ renderAdjList(empId); calcFrate(empId); });
-    }
+loadAdjustments(empId).then(()=>{ renderAdjList(empId); calcFrate(empId); });
+          loadAdvances(empId).then(()=>renderAdvList(empId));    }
   } else alert('Невірний PIN');
 }
 
