@@ -1998,7 +1998,26 @@ function adjBlockHtml(empId){
     </div>
   </div>`;
 }
+}
 
+    // HTML блоку авансів, виданих заздалегідь (зменшують виплату 1, не total)
+    function advBlockHtml(empId){
+      return `<div style="margin-top:12px;border-top:1px solid #d4cdc4;padding-top:10px">
+        <div style="font-size:.72rem;color:#b84e30;font-weight:700;margin-bottom:8px">Аванс, виданий заздалегідь за ${MONTH_UA[M]}</div>
+        <div id="frate-adv-list-${empId}"></div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:end">
+          <div style="flex:0 0 90px"><label style="font-size:.62rem;color:#8a7060">Сума (грн)</label>
+            <input type="number" id="frate-adv-amount-${empId}" placeholder="4700" style="width:100%;background:#fff;border:1px solid #c8c0b4;border-radius:6px;padding:5px 6px;font-size:.78rem"></div>
+          <div style="flex:0 0 130px"><label style="font-size:.62rem;color:#8a7060">Дата видачі</label>
+            <input type="date" id="frate-adv-date-${empId}" style="width:100%;background:#fff;border:1px solid #c8c0b4;border-radius:6px;padding:5px 6px;font-size:.78rem"></div>
+          <div style="flex:1;min-width:100px"><label style="font-size:.62rem;color:#8a7060">Коментар</label>
+            <input type="text" id="frate-adv-comment-${empId}" placeholder="за що" style="width:100%;background:#fff;border:1px solid #c8c0b4;border-radius:6px;padding:5px 6px;font-size:.78rem"></div>
+          <button onclick="addAdvance(${empId})" style="flex:0 0 auto;background:#b84e30;color:#fff;border-radius:6px;padding:6px 12px;font-size:.78rem;font-weight:700">+ Додати</button>
+        </div>
+      </div>`;
+    }
+
+    function unlockFrate(){
 function unlockFrate(){
   const pin=document.getElementById('frate-pin-input')?.value;
   if(pin===ROP_PIN){
