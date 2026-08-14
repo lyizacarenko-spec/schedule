@@ -1537,6 +1537,7 @@ function openMgrCard(empId){
         <button onclick="saveRopSalary(${emp.id})" style="width:100%;padding:9px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px">💾 Зберегти та розрахувати</button>
         <div id="rop-result-${emp.id}" style="margin-top:10px"></div>
         ${adjBlockHtml(emp.id)}
+        ${advBlockHtml(emp.id)}
       </div>` : isHot ? `
       <div id="rop-pin-block" style="${(ropUnlocked||ME.role==='rop')?'display:none':'display:block'}">
         <div style="text-align:center;padding:8px 0 12px">
@@ -1575,6 +1576,7 @@ function openMgrCard(empId){
           <div id="hot-result-${emp.id}-${no}" style="margin-top:8px"></div>
         </div>`).join('')}
         ${adjBlockHtml(emp.id)}
+        ${advBlockHtml(emp.id)}
       </div>` : isPieceWh ? (()=>{
         let whTotal=0, whDays=0;
         getDays(Y,M).forEach(d=>{ const r=whMap[`${emp.id}_${d.date}`]; if(r){ whTotal+=whDayAmount(r); whDays++; } });
@@ -1584,6 +1586,7 @@ function openMgrCard(empId){
           <div class="sal-result-row green"><span>💰 Відрядно за ${MONTH_UA[M]}</span><span>${fmtFull(whTotal)}</span></div>
         </div>
         ${adjBlockHtml(emp.id)}
+        ${advBlockHtml(emp.id)}
         <div id="frate-result-${emp.id}" style="margin-top:8px"></div>`;
       })() : isHr ? (()=>{
         let hrTotal=0, hrDays=0, hoursSum=0;
@@ -1594,7 +1597,8 @@ function openMgrCard(empId){
           <div class="sal-result-row"><span>Днів / годин</span><span>${hrDays} дн · ${hoursSum} год</span></div>
           <div class="sal-result-row green"><span>💰 Години за ${MONTH_UA[M]}</span><span>${fmtFull(hrTotal)}</span></div>
         </div>
-       ${adjBlockHtml(emp.id)}
+        ${adjBlockHtml(emp.id)}
+        ${advBlockHtml(emp.id)}
         <div id="frate-result-${emp.id}" style="margin-top:8px"></div>`;
       })() : isHrFix ? (()=>{
         const rate=hrRate(emp.id);
@@ -1646,6 +1650,7 @@ function openMgrCard(empId){
           <div class="sal-result-row green"><span>💰 Всього за місяць</span><span>${fmtFull(total)}</span></div>
         </div>
         ${adjBlockHtml(emp.id)}
+        ${advBlockHtml(emp.id)}
         <div id="frate-result-${emp.id}" style="margin-top:8px"></div>`;
       })() : isRecruiterCard ? (()=>{
         const base=parseFloat(scheme.base_rate)||0;
@@ -1694,6 +1699,7 @@ function openMgrCard(empId){
         </div>
         <button onclick="saveMentorScores(${emp.id})" style="width:100%;padding:8px;background:#b84e30;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px">💾 Зберегти бали</button>
         ${adjBlockHtml(emp.id)}
+        ${advBlockHtml(emp.id)}
         <div id="mentor-result-${emp.id}" style="margin-top:8px"></div>`;
       })() : (isFixedRate ? `
       <div id="frate-pin-block" style="${ropUnlocked?'display:none':'display:block'}">
