@@ -1619,6 +1619,7 @@ function openMgrCard(empId){
           <div class="sal-result-row green"><span>💰 Всього за місяць</span><span>${fmtFull(total)}</span></div>
         </div>
         ${adjBlockHtml(emp.id)}
+               ${advBlockHtml(emp.id)}
         <div id="frate-result-${emp.id}" style="margin-top:8px"></div>`;
       })() : isWhHyb ? (()=>{
         const base=whHybBaseRate(emp.id);
