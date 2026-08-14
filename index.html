@@ -2992,22 +2992,22 @@ async function toggleCorrPaid(empId,checked){
 }
 
 async function savePayout(empId,no,value){
-  const v = value===''?null:parseFloat(value);
-  const row=(financeData?.rows||[]).find(r=>r.employee_id===empId);
-  const paid = row ? (no===1?row.paid1:row.paid2) : false;
-  try{
-    await api('/api/payout-status',{method:'PUT',body:JSON.stringify({
-      employee_id:empId, calc_year:financeYear, calc_month:financeMonth,
-      payout_no:no, paid, amount_override:v
-    })});
-    if(row){
-      if(no===1){ row.override1=v; row.pay1=v!=null?v:row.payout1; }
-      else { row.override2=v; row.pay2=v!=null?v:row.payout2; }
+      const row=(financeData?.rows||[]).find(r=>r.employee_id===empId);
+      const paid = row ? (no===1?row.paid1:row.paid2) : false;
+      if(paid){ alert('Спочатку зніміть галочку "виплачено", щоб редагувати суму'); renderFinance(); return; }
+      const v = value===''?null:parseFloat(value);
+      try{
+        await api('/api/payout-status',{method:'PUT',body:JSON.stringify({
+          employee_id:empId, calc_year:financeYear, calc_month:financeMonth,
+          payout_no:no, paid, amount_override:v
+        })});
+        if(row){
+          if(no===1){ row.override1=v; row.pay1=v!=null?v:row.payout1; }
+          else { row.override2=v; row.pay2=v!=null?v:row.payout2; }
+        }
+        renderFinance();
+      }catch(e){ alert('Помилка: '+e.message); }
     }
-    renderFinance();
-  }catch(e){ alert('Помилка: '+e.message); }
-}
-
 // ── Середня за період ──
 let avgFrom=null, avgTo=null, avgDept='';
 // ── Склад по тижнях ──
