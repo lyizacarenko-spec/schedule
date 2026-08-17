@@ -1971,14 +1971,11 @@ const POSITIONS = {
 
 // ══ SAVE SALARY ════════════════════════════════════════
 async function saveSalary(empId){
-  const emp = employees.find(e=>e.id===empId);
-  const sd = emp?.start_date ? String(emp.start_date) : null;
-  const isFirst = !!(sd && parseInt(sd.slice(0,4))===Y && parseInt(sd.slice(5,7))===M);
   const plan  = parseFloat(document.getElementById('sal-plan-'+empId).value)||0;
   const fact  = parseFloat(document.getElementById('sal-fact-'+empId).value)||0;
   const ret   = parseFloat(document.getElementById('sal-ret-'+empId).value)||0;
   const days  = parseInt(document.getElementById('sal-days-'+empId).value)||0;
-  if((!plan && !isFirst)||!fact){ alert(isFirst?'Введи оборот':'Введи план та оборот'); return; }
+  if(!fact){ alert('Введи оборот'); return; }
   try{
     const seniorBonus2=parseFloat(document.getElementById('sal-bonus-'+empId)?.value)||0;
     const penalty2=parseFloat(document.getElementById('sal-penalty-'+empId)?.value)||0;
@@ -2448,6 +2445,7 @@ function calcSalary(empId){
   const penalty = parseFloat(document.getElementById('sal-penalty-'+empId)?.value)||0;
   const sd = emp?.start_date ? String(emp.start_date) : null;
   const isFirst = !!(sd && parseInt(sd.slice(0,4))===Y && parseInt(sd.slice(5,7))===M);
+  const isSecondMonth = !isFirst && !!(sd && (()=>{ let ny=parseInt(sd.slice(0,4)), nm=parseInt(sd.slice(5,7))+1; if(nm>12){nm=1;ny++;} return ny===Y && nm===M; })());
 
   if(!fact){ res.innerHTML='<div style="font-size:.75rem;color:#aaa">Введи суму замовлень / оборот</div>'; return; }
 
@@ -2495,10 +2493,11 @@ function calcSalary(empId){
   } else {
     // ══ ПРОДАЖІ: по % виконання плану ══
     const plan = parseFloat(document.getElementById('sal-plan-'+empId).value)||0;
-    if(!plan && !isFirst){ res.innerHTML='<div style="font-size:.75rem;color:#aaa">Введи план та оборот</div>'; return; }
     const pct = plan>0 ? Math.round(cleanBase / plan * 100) : 0;
 
     if(isFirst){ rate=Math.round(15000*days/22); bonusPct=5; rateLabel='Новачок — 1-й місяць'; }
+    else if(isSecondMonth){ rate=Math.round(15000*days/22); bonusPct=4; rateLabel='2-й місяць роботи'; }
+    else if(!plan){ rate=Math.round(15000*days/22); bonusPct=5; rateLabel='Немає плану — 5% від обороту'; }
     else if(days < 15 && pct < 80){ rate=8000; bonusPct=4; rateLabel='Неповний місяць'; }
     else if(pct < 70){ rate=13000; bonusPct=4; rateLabel='Зона ризику (<70%)'; }
     else if(pct < 80){ rate=13000; bonusPct=4.5; rateLabel='Базова страховка (70–79%)'; }
