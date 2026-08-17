@@ -2443,6 +2443,8 @@ function calcSalary(empId){
   const res  = document.getElementById('sal-result-'+empId);
   const seniorBonus = parseFloat(document.getElementById('sal-bonus-'+empId)?.value)||0;
   const penalty = parseFloat(document.getElementById('sal-penalty-'+empId)?.value)||0;
+  const sd = emp?.start_date ? String(emp.start_date) : null;
+  const isFirst = !!(sd && parseInt(sd.slice(0,4))===Y && parseInt(sd.slice(5,7))===M);
 
   if(!fact){ res.innerHTML='<div style="font-size:.75rem;color:#aaa">Введи суму замовлень / оборот</div>'; return; }
 
@@ -2490,10 +2492,11 @@ function calcSalary(empId){
   } else {
     // ══ ПРОДАЖІ: по % виконання плану ══
     const plan = parseFloat(document.getElementById('sal-plan-'+empId).value)||0;
-    if(!plan){ res.innerHTML='<div style="font-size:.75rem;color:#aaa">Введи план та оборот</div>'; return; }
-    const pct = Math.round(cleanBase / plan * 100);
+    if(!plan && !isFirst){ res.innerHTML='<div style="font-size:.75rem;color:#aaa">Введи план та оборот</div>'; return; }
+    const pct = plan>0 ? Math.round(cleanBase / plan * 100) : 0;
 
-    if(days < 15 && pct < 80){ rate=8000; bonusPct=4; rateLabel='Неповний місяць'; }
+    if(isFirst){ rate=Math.round(15000*days/22); bonusPct=5; rateLabel='Новачок — 1-й місяць'; }
+    else if(days < 15 && pct < 80){ rate=8000; bonusPct=4; rateLabel='Неповний місяць'; }
     else if(pct < 70){ rate=13000; bonusPct=4; rateLabel='Зона ризику (<70%)'; }
     else if(pct < 80){ rate=13000; bonusPct=4.5; rateLabel='Базова страховка (70–79%)'; }
     else if(pct < 100){ rate=15000; bonusPct=5; rateLabel='Стабільна зона (80–99%)'; }
