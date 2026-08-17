@@ -1971,11 +1971,14 @@ const POSITIONS = {
 
 // ══ SAVE SALARY ════════════════════════════════════════
 async function saveSalary(empId){
+  const emp = employees.find(e=>e.id===empId);
+  const sd = emp?.start_date ? String(emp.start_date) : null;
+  const isFirst = !!(sd && parseInt(sd.slice(0,4))===Y && parseInt(sd.slice(5,7))===M);
   const plan  = parseFloat(document.getElementById('sal-plan-'+empId).value)||0;
   const fact  = parseFloat(document.getElementById('sal-fact-'+empId).value)||0;
   const ret   = parseFloat(document.getElementById('sal-ret-'+empId).value)||0;
   const days  = parseInt(document.getElementById('sal-days-'+empId).value)||0;
-  if(!plan||!fact){ alert('Введи план та оборот'); return; }
+  if((!plan && !isFirst)||!fact){ alert(isFirst?'Введи оборот':'Введи план та оборот'); return; }
   try{
     const seniorBonus2=parseFloat(document.getElementById('sal-bonus-'+empId)?.value)||0;
     const penalty2=parseFloat(document.getElementById('sal-penalty-'+empId)?.value)||0;
