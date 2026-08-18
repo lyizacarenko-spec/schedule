@@ -2967,22 +2967,33 @@ function renderFinance(){
   }
   const totalFund=d.depts.reduce((a,x)=>a+x.sum,0);
   const totalPeople=d.depts.reduce((a,x)=>a+x.count,0);
+  const totalFb=fundBreakdown(d.rows);
   h+=`<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
     <div style="flex:1;min-width:120px;background:#2a1e14;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#8a7050">Загальний фонд ЗП</div><div style="font-size:1.2rem;font-weight:700;color:#f0c040">${fmtUAH(totalFund)}</div></div>
+    <div style="flex:1;min-width:120px;background:#2a1e14;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#8a7050">💼 Всього ставки</div><div style="font-size:1.2rem;font-weight:700;color:#e8dcc8">${fmtUAH(totalFb.rate)}</div></div>
+    <div style="flex:1;min-width:120px;background:#2a1e14;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#8a7050">📈 Всього %</div><div style="font-size:1.2rem;font-weight:700;color:#e8dcc8">${fmtUAH(totalFb.pct)}</div></div>
+    <div style="flex:1;min-width:120px;background:#2a1e14;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#8a7050">🎁 Всього допки/штрафи</div><div style="font-size:1.2rem;font-weight:700;color:#e8dcc8">${fmtUAH(totalFb.other)}</div></div>
     <div style="flex:1;min-width:120px;background:#2a1e14;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#8a7050">Людей (ставочники)</div><div style="font-size:1.2rem;font-weight:700;color:#c0a878">${totalPeople}</div></div>
     <div style="flex:1;min-width:120px;background:#2a1e14;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#8a7050">Середня по всіх</div><div style="font-size:1.2rem;font-weight:700;color:#7ac070">${fmtUAH(totalPeople?totalFund/totalPeople:0)}</div></div>
   </div>`;
   h+=`<table style="width:100%;border-collapse:collapse;font-size:.82rem">
     <thead><tr style="color:#8a7050;text-align:left">
       <th style="padding:8px 6px">Відділ</th><th style="text-align:center">Людей</th>
-      <th style="text-align:right">Фонд</th><th style="text-align:right">Середня</th><th style="text-align:right">Мін</th><th style="text-align:right">Макс</th><th></th>
+      <th style="text-align:right">Фонд</th>
+      <th style="text-align:right">💼 Ставка</th><th style="text-align:right">📈 %</th><th style="text-align:right">🎁 Допки</th>
+      <th style="text-align:right">Середня</th><th style="text-align:right">Мін</th><th style="text-align:right">Макс</th><th></th>
     </tr></thead><tbody>`;
   d.depts.forEach(dp=>{
     const pendingNote = dp.pending>0 ? `<div style="font-size:.66rem;color:#c08040;margin-top:2px;font-weight:400">⏳ ${dp.pending} на авансі — оборот ще не внесено</div>` : '';
+    const deptRows = d.rows.filter(r=>r.dept_code===dp.dept_code);
+    const fb = fundBreakdown(deptRows);
     h+=`<tr style="border-top:1px solid #3a2818;cursor:pointer" onclick="financeDeptFilter='${dp.dept_code}';renderFinance()">
       <td style="padding:9px 6px;color:#e8dcc8;font-weight:600">${dp.dept_name}${pendingNote}</td>
       <td style="text-align:center;color:#c0a878">${dp.count>0?dp.count:'—'}</td>
       <td style="text-align:right;color:#f0c040">${dp.count>0?fmtUAH(dp.sum):'—'}</td>
+      <td style="text-align:right;color:#c0a878">${fb.rate?fmtUAH(fb.rate):'—'}</td>
+      <td style="text-align:right;color:#c0a878">${fb.pct?fmtUAH(fb.pct):'—'}</td>
+      <td style="text-align:right;color:#c0a878">${fb.other?fmtUAH(fb.other):'—'}</td>
       <td style="text-align:right;color:#7ac070;font-weight:700">${dp.count>0?fmtUAH(dp.avg):'—'}</td>
       <td style="text-align:right;color:#a09070">${dp.count>0?fmtUAH(dp.min):'—'}</td>
       <td style="text-align:right;color:#a09070">${dp.count>0?fmtUAH(dp.max):'—'}</td>
