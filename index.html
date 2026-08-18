@@ -2898,6 +2898,28 @@ function financeChangeMonth(d){
 }
 function financeSetView(v){ financeView=v; if(v==='average') renderFinance(); else if(v==='weeks'){ renderFinance(); } else { financeDeptFilter=null; renderFinance(); } }
 
+// Категоризація рядка деталізації ЗП для зведення "Фонд ЗП":
+//  rate  — оклад/ставка/фікс/переробка/відрядна оплата (упаковка, фасовка, вихід, години×ставка)
+//  pct   — будь-який компонент із "%" у назві (відсоток від обороту/плану)
+//  other — все інше: доплати, штрафи, KPI, бонуси, навчання, корегування
+function categorizeSalaryLabel(label){
+  if(/%/.test(label)) return 'pct';
+  if(/Оклад|Ставка|Фікс|Переробка|Недопрацьовано|Упаковка|Фасовка|Вихід|Години × ставка/.test(label)) return 'rate';
+  return 'other';
+}
+function fundBreakdown(rows){
+  let rate=0, pct=0, other=0;
+  (rows||[]).forEach(r=>{
+    (r.breakdown||[]).forEach(item=>{
+      const cat=categorizeSalaryLabel(item.label);
+      if(cat==='rate') rate+=item.amount;
+      else if(cat==='pct') pct+=item.amount;
+      else other+=item.amount;
+    });
+  });
+  return {rate, pct, other};
+}
+
 function renderFinance(){
   if(financeView==='average'){ renderFinanceAverage(); return; }
   if(financeView==='weeks'){ renderFinanceWeeks(); return; }
@@ -2914,11 +2936,20 @@ function renderFinance(){
     h+=`<div style="font-size:.95rem;color:#f0c040;font-weight:700;margin-bottom:10px">${rows[0]?.dept_name||''}</div>`;
     h+=financeTable(rows,true);
     if(dept){
-      h+=`<div style="margin-top:12px;padding:12px;background:#2a1e14;border-radius:8px;display:flex;gap:20px;flex-wrap:wrap">
-        <div><div style="font-size:.65rem;color:#8a7050">Фонд ЗП</div><div style="font-size:1.05rem;font-weight:700;color:#f0c040">${fmtUAH(dept.sum)}</div></div>
-        <div><div style="font-size:.65rem;color:#8a7050">Середня</div><div style="font-size:1.05rem;font-weight:700;color:#7ac070">${fmtUAH(dept.avg)}</div></div>
-        <div><div style="font-size:.65rem;color:#8a7050">Мін / Макс</div><div style="font-size:1.05rem;font-weight:700;color:#c0a878">${fmtUAH(dept.min)} / ${fmtUAH(dept.max)}</div></div>
-        <div><div style="font-size:.65rem;color:#8a7050">Людей</div><div style="font-size:1.05rem;font-weight:700;color:#c0a878">${dept.count}</div></div>
+      const fb=fundBreakdown(rows);
+      h+=`<div style="margin-top:12px;padding:12px;background:#2a1e14;border-radius:8px">
+        <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+          <div><div style="font-size:.65rem;color:#8a7050">Фонд ЗП</div><div style="font-size:1.05rem;font-weight:700;color:#f0c040">${fmtUAH(dept.sum)}</div></div>
+          <div><div style="font-size:.65rem;color:#8a7050">Середня</div><div style="font-size:1.05rem;font-weight:700;color:#7ac070">${fmtUAH(dept.avg)}</div></div>
+          <div><div style="font-size:.65rem;color:#8a7050">Мін / Макс</div><div style="font-size:1.05rem;font-weight:700;color:#c0a878">${fmtUAH(dept.min)} / ${fmtUAH(dept.max)}</div></div>
+          <div><div style="font-size:.65rem;color:#8a7050">Людей</div><div style="font-size:1.05rem;font-weight:700;color:#c0a878">${dept.count}</div></div>
+          <button onclick="const el=document.getElementById('fund-bd');el.style.display=el.style.display==='none'?'flex':'none';this.textContent=el.style.display==='none'?'▾ Деталізація фонду':'▴ Сховати деталізацію'" style="margin-left:auto;background:#3a2818;color:#c0a878;border-radius:6px;padding:5px 10px;font-size:.72rem">▾ Деталізація фонду</button>
+        </div>
+        <div id="fund-bd" style="display:none;gap:20px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid #3a2818">
+          <div><div style="font-size:.65rem;color:#8a7050">💼 Ставки (оклад/фікс)</div><div style="font-size:1rem;font-weight:700;color:#e8dcc8">${fmtUAH(fb.rate)}</div></div>
+          <div><div style="font-size:.65rem;color:#8a7050">📈 % (від обороту/плану)</div><div style="font-size:1rem;font-weight:700;color:#e8dcc8">${fmtUAH(fb.pct)}</div></div>
+          <div><div style="font-size:.65rem;color:#8a7050">🎁 Доплати/бонуси/штрафи</div><div style="font-size:1rem;font-weight:700;color:#e8dcc8">${fmtUAH(fb.other)}</div></div>
+        </div>
       </div>`;
     }
     body.innerHTML=h;
