@@ -253,8 +253,8 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     <button class="btn btn-green"  onclick="openRevModal()">💰 Виручка</button>
     <button class="btn btn-ghost"  onclick="openPlanModal()">📊 Плани</button>
     <button class="btn btn-orange" onclick="openAddEmpModal()">＋ Співробітник</button>
-    <button class="btn btn-ghost" onclick="openExportModal()" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e">📊 Експорт ЗП</button>
-    <a class="btn btn-ghost" href="https://docs.google.com/spreadsheets/d/132hHyGfehSWe6mkpmKBUhUBsJtPGLPjPZH84d1HuvXI/edit" target="_blank" rel="noopener" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e;text-decoration:none;display:inline-flex;align-items:center">📄 Таблиця ЗП ↗</a>
+    <button class="btn btn-ghost" onclick="openExportModal()" id="btn-export" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e">📊 Експорт ЗП</button>
+    <a class="btn btn-ghost" href="https://docs.google.com/spreadsheets/d/132hHyGfehSWe6mkpmKBUhUBsJtPGLPjPZH84d1HuvXI/edit" target="_blank" rel="noopener" id="btn-sheet-link" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e;text-decoration:none;display:inline-flex;align-items:center">📄 Таблиця ЗП ↗</a>
     <button class="btn btn-ghost" onclick="toggleArchive()" id="btn-archive">📦 Архів</button>
     <button class="btn" onclick="openFinance()" id="btn-finance" style="background:linear-gradient(135deg,#2c1810,#4a2818);color:#f0c040;border:1px solid #6a4020;font-weight:700">💰 Фінанси</button>
   </div>
@@ -494,6 +494,13 @@ function logout(){
 function applyPermissions(){
   const btnFin=document.getElementById('btn-finance');
   if(btnFin) btnFin.style.display = ME?.can_finance ? '' : 'none';
+  // Експорт ЗП і посилання на таблицю — лише тим, у кого ПОВНИЙ доступ до фінансів
+  // (can_finance=true і dept_codes не обмежені конкретними відділами)
+  const hasFullFinance = !!(ME?.can_finance && !ME?.dept_codes);
+  const btnExport=document.getElementById('btn-export');
+  if(btnExport) btnExport.style.display = hasFullFinance ? '' : 'none';
+  const btnSheetLink=document.getElementById('btn-sheet-link');
+  if(btnSheetLink) btnSheetLink.style.display = hasFullFinance ? '' : 'none';
   const btnUsers=document.getElementById('btn-users');
   if(btnUsers) btnUsers.style.display = ME?.role==='owner' ? '' : 'none';
   const uBox=document.getElementById('user-box');
