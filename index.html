@@ -254,6 +254,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     <button class="btn btn-ghost"  onclick="openPlanModal()">📊 Плани</button>
     <button class="btn btn-orange" onclick="openAddEmpModal()">＋ Співробітник</button>
     <button class="btn btn-ghost" onclick="openExportModal()" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e">📊 Експорт ЗП</button>
+    <a class="btn btn-ghost" href="https://docs.google.com/spreadsheets/d/132hHyGfehSWe6mkpmKBUhUBsJtPGLPjPZH84d1HuvXI/edit" target="_blank" rel="noopener" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e;text-decoration:none;display:inline-flex;align-items:center">📄 Таблиця ЗП ↗</a>
     <button class="btn btn-ghost" onclick="toggleArchive()" id="btn-archive">📦 Архів</button>
     <button class="btn" onclick="openFinance()" id="btn-finance" style="background:linear-gradient(135deg,#2c1810,#4a2818);color:#f0c040;border:1px solid #6a4020;font-weight:700">💰 Фінанси</button>
   </div>
@@ -4050,7 +4051,8 @@ async function dragEnd(){
 <div class="modal-ov" id="export-modal-ov">
   <div class="modal">
     <h3>📊 Експорт ЗП в Google Sheets</h3>
-    <div style="font-size:.78rem;color:#8a7060;margin-bottom:14px">Дані будуть записані у нову вкладку таблиці бухгалтера</div>
+    <div style="font-size:.78rem;color:#8a7060;margin-bottom:14px">Дані будуть записані окремою вкладкою на кожен відділ</div>
+    <a href="https://docs.google.com/spreadsheets/d/132hHyGfehSWe6mkpmKBUhUBsJtPGLPjPZH84d1HuvXI/edit" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:14px;font-size:.8rem;color:#2e7d52;background:#e6f4ea;border:1px solid #b8ddc4;border-radius:7px;padding:6px 12px;text-decoration:none">📄 Відкрити таблицю в Google Sheets ↗</a>
     <label>Назва вкладки в таблиці</label>
     <input type="text" id="export-sheet-name" placeholder="ЗП Серпень 2026">
     <label>Відділ</label>
