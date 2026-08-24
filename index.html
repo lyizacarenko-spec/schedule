@@ -856,9 +856,12 @@ function renderTable(){
       const empPos = emp.position || POSITIONS[emp.name] || ROLE_LABEL[emp.role] || '';
       const empIsDir = ['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name);
       const showLevel = isSalesDept(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role) && emp.level!=='new';
-   let row=`<tr data-empid="${emp.id}" data-team="${(emp.team||emp.dept_code).replace(/"/g,'')}">
+      // is_active===false, але показується (бо мав реальні робочі дні цього місяця через include_month) —
+      // без цього індикатора рядок виглядав як звичайний активний співробітник
+      const isArchivedButShown = emp.is_active === false;
+   let row=`<tr data-empid="${emp.id}" data-team="${(emp.team||emp.dept_code).replace(/"/g,'')}" ${isArchivedButShown?'style="opacity:.6"':''}>
         <td class="name-td ${empIsDir?'director-name':''}" onclick="if(!dragMoved)openMgrCard(${emp.id})" style="cursor:grab;touch-action:none" onmousedown="dragStart(event,${emp.id})" ontouchstart="dragStart(event,${emp.id})">
-          <div>${emp.name}${empIsDir?'<span style="font-size:.6rem;color:#64b5f6;margin-left:4px">Директ</span>':''}</div>
+          <div>${emp.name}${empIsDir?'<span style="font-size:.6rem;color:#64b5f6;margin-left:4px">Директ</span>':''}${isArchivedButShown?'<span style="font-size:.6rem;color:#b84e30;margin-left:4px;font-weight:700">📦 архів</span>':''}</div>
           ${empPos?`<div style="font-size:.6rem;color:#a09080;margin-top:1px">${empPos}</div>`:''}
         </td>
         <td class="level-badge">${showLevel?`<span class="lbadge ${emp.level}">${LEVEL_LABEL[emp.level]}</span>`:''}</td>`;
