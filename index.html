@@ -3175,13 +3175,17 @@ function toggleFinDetail(empId){
 // Галочка «виплачено» + ручна сума (бухгалтер)
 async function togglePaid(empId,no,checked){
   try{
-    await api('/api/payout-status',{method:'PUT',body:JSON.stringify({
+    const res=await api('/api/payout-status',{method:'PUT',body:JSON.stringify({
       employee_id:empId, calc_year:financeYear, calc_month:financeMonth,
       payout_no:no, paid:checked
     })});
     const row=(financeData?.rows||[]).find(r=>r.employee_id===empId);
     if(row){ if(no===1) row.paid1=checked; else row.paid2=checked; }
     renderFinance();
+    if(res?.carry_forward){
+      const cf=res.carry_forward;
+      setSave(`⚠️ Недоплата ${fmtUAH(cf.amount)} автоматично перенесена корегуванням на ${MONTH_UA[cf.month]}`,true);
+    }
   }catch(e){ alert('Помилка: '+e.message); }
 }
 async function toggleCorrPaid(empId,checked){
