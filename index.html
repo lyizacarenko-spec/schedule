@@ -3239,11 +3239,20 @@ async function renderFinanceWeeks(){
           const s=p?p.sum:0;
           const key=`${wi}_${e.id}`;
           const hasBd=p&&(p.breakdown||[]).length>0;
+          const fieldId=`wk-pay-${key}`;
+          const hasOverride = p && p.override!=null;
+          const delta = hasOverride ? Math.round((p.override-s)*100)/100 : 0;
+          const deltaHtml = delta!==0
+            ? `<span style="font-size:.62rem;font-weight:700;color:${delta>0?'#7ac070':'#ef5350'}" title="${delta>0?'Переплатили':'Недоплатили'} відносно розрахунку">${delta>0?'+':''}${delta}</span>`
+            : '';
           return `<td style="text-align:right;color:${s?'#c0a878':'#5a4838'}">
-            <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px">
-              ${hasBd?`<span onclick="toggleWeekDetail('${key}')" id="wk-toggle-${key}" title="Деталізація" style="cursor:pointer;color:#8a7050;font-size:.6rem">▸</span>`:''}
-              <span>${s?fmtUAH(s):'—'}</span>
-              ${p?`<input type="checkbox" ${p.paid?'checked':''} onchange="toggleWarehousePaid(${e.id},'${p.pay_date_iso}',this.checked)" title="Позначити як виплачено" style="width:13px;height:13px;cursor:pointer;accent-color:#2e7d52">`:''}
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+              <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px">
+                ${hasBd?`<span onclick="toggleWeekDetail('${key}')" id="wk-toggle-${key}" title="Деталізація" style="cursor:pointer;color:#8a7050;font-size:.6rem">▸</span>`:''}
+                ${p?`<input type="number" id="${fieldId}" value="${hasOverride?p.override:''}" placeholder="${s?fmtUAH(s):'—'}" title="Округлення до 20: ${fmtUAH(p.round20)}" onchange="saveWarehousePay(${e.id},'${p.pay_date_iso}',this.value)" style="width:64px;text-align:right;background:transparent;border:1px solid #3a2818;color:${hasOverride?'#f0c040':'#c0a878'};border-radius:4px;padding:2px 4px;font-size:.78rem">`:'<span>—</span>'}
+                ${p?`<input type="checkbox" ${p.paid?'checked':''} onchange="toggleWarehousePaid(${e.id},'${p.pay_date_iso}',this.checked)" title="Позначити як виплачено" style="width:13px;height:13px;cursor:pointer;accent-color:#2e7d52">`:''}
+              </div>
+              ${p&&s?`<div style="font-size:.6rem;color:#6a5848">розр. ${fmtUAH(s)} ${deltaHtml}</div>`:''}
             </div>
           </td>`;
         }).join('')}
@@ -3263,10 +3272,21 @@ async function renderFinanceWeeks(){
       }).join('')}`;
     });
     // підсумковий рядок
+    const grandDelta = d.emp_totals.reduce((a,x)=>a+(x.delta||0),0);
     h+=`<tr style="border-top:2px solid #6a4020;background:#241810">
       <td style="padding:9px 5px;color:#f0c040;font-weight:700" colspan="2">Разом за ${MONTH_UA[financeMonth]}</td>
-      ${d.emps.map(e=>{const t=d.emp_totals.find(x=>x.employee_id===e.id)?.total||0;return `<td style="text-align:right;color:#f0c040;font-weight:700">${fmtUAH(t)}</td>`;}).join('')}
-      <td style="text-align:right;color:#f0c040;font-weight:700">${fmtUAH(d.emp_totals.reduce((a,x)=>a+x.total,0))}</td>
+      ${d.emps.map(e=>{
+        const t=d.emp_totals.find(x=>x.employee_id===e.id);
+        const dl=t?.delta||0;
+        return `<td style="text-align:right;color:#f0c040;font-weight:700">
+          ${fmtUAH(t?.paid_total||0)}
+          ${dl!==0?`<div style="font-size:.6rem;font-weight:700;color:${dl>0?'#7ac070':'#ef5350'}">${dl>0?'+':''}${dl} від розрах.</div>`:''}
+        </td>`;
+      }).join('')}
+      <td style="text-align:right;color:#f0c040;font-weight:700">
+        ${fmtUAH(d.emp_totals.reduce((a,x)=>a+x.paid_total,0))}
+        ${grandDelta!==0?`<div style="font-size:.6rem;font-weight:700;color:${grandDelta>0?'#7ac070':'#ef5350'}">${grandDelta>0?'+':''}${Math.round(grandDelta*100)/100} разом</div>`:''}
+      </td>
     </tr>`;
     h+=`</tbody></table>`;
     body.innerHTML=h;
@@ -3280,6 +3300,19 @@ function toggleWeekDetail(key){
   const show = row.style.display==='none';
   row.style.display = show?'table-row':'none';
   if(tgl) tgl.textContent = show?'▾':'▸';
+}
+
+// Ручна сума "факт виплачено" для складу по тижнях — може відрізнятись від
+// розрахованої (округлення до 20 грн чи інша домовлена сума). Порожнє поле =
+// прибрати override і повернутись до розрахованої суми.
+async function saveWarehousePay(empId,payDateIso,value){
+  const v = value===''? null : parseFloat(value);
+  try{
+    await api('/api/finance/warehouse-payout-status',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, pay_date:payDateIso, amount_override:v
+    })});
+    renderFinanceWeeks();
+  }catch(e){ alert('Помилка: '+e.message); }
 }
 
 // Галочка «виплачено» для складу по тижнях — прив'язана до дати виплати
