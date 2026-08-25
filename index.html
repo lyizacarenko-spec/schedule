@@ -3019,21 +3019,31 @@ function renderFinance(){
     const dpSum1=deptRows.reduce((a,r)=>a+(r.pay1!=null?r.pay1:(r.payout1||0)),0);
     const dpSum2=deptRows.reduce((a,r)=>a+(r.pay2!=null?r.pay2:(r.payout2||0)),0);
     h+=`<tr style="border-top:1px solid #5a4a38;cursor:pointer" onclick="financeDeptFilter='${dp.dept_code}';renderFinance()">
-      <td style="padding:9px 6px;color:#5a4a38;font-weight:600">${dp.dept_name}${pendingNote}</td>
-      <td style="text-align:center;color:#6a5040">${dp.count>0?dp.count:'—'}</td>
-      <td style="text-align:right;color:#FE8B26">${dp.count>0?fmtUAH(dp.sum):'—'}</td>
-      <td style="text-align:right;color:#5a4a38">${dpSum1?fmtUAH(dpSum1):'—'}</td>
-      <td style="text-align:right;color:#5a4a38">${dpSum2?fmtUAH(dpSum2):'—'}</td>
-      <td style="text-align:right;color:#6a5040">${fb.rate?fmtUAH(fb.rate):'—'}</td>
-      <td style="text-align:right;color:#6a5040">${fb.pct?fmtUAH(fb.pct):'—'}</td>
-      <td style="text-align:right;color:#7ac070">${fb.bonus?fmtUAH(fb.bonus):'—'}</td>
-      <td style="text-align:right;color:#ef5350">${fb.penalty?'−'+fmtUAH(Math.abs(fb.penalty)):'—'}</td>
+      <td style="padding:9px 6px;color:#5a4a38;font-weight:700">${dp.dept_name}${pendingNote}</td>
+      <td style="text-align:center;color:#6a5040;font-weight:700">${dp.count>0?dp.count:'—'}</td>
+      <td style="text-align:right;color:#FE8B26;font-weight:700">${dp.count>0?fmtUAH(dp.sum):'—'}</td>
+      <td style="text-align:right;color:#5a4a38;font-weight:700">${dpSum1?fmtUAH(dpSum1):'—'}</td>
+      <td style="text-align:right;color:#5a4a38;font-weight:700">${dpSum2?fmtUAH(dpSum2):'—'}</td>
+      <td style="text-align:right;color:#6a5040;font-weight:700">${fb.rate?fmtUAH(fb.rate):'—'}</td>
+      <td style="text-align:right;color:#6a5040;font-weight:700">${fb.pct?fmtUAH(fb.pct):'—'}</td>
+      <td style="text-align:right;color:#7ac070;font-weight:700">${fb.bonus?fmtUAH(fb.bonus):'—'}</td>
+      <td style="text-align:right;color:#ef5350;font-weight:700">${fb.penalty?'−'+fmtUAH(Math.abs(fb.penalty)):'—'}</td>
       <td style="text-align:right;color:#7ac070;font-weight:700">${dp.count>0?fmtUAH(dp.avg):'—'}</td>
-      <td style="text-align:right;color:#8a7860">${dp.count>0?fmtUAH(dp.min):'—'}</td>
-      <td style="text-align:right;color:#8a7860">${dp.count>0?fmtUAH(dp.max):'—'}</td>
+      <td style="text-align:right;color:#8a7860;font-weight:700">${dp.count>0?fmtUAH(dp.min):'—'}</td>
+      <td style="text-align:right;color:#8a7860;font-weight:700">${dp.count>0?fmtUAH(dp.max):'—'}</td>
       <td style="text-align:right;color:#7a6048">›</td>
     </tr>`;
   });
+  // підсумковий рядок — скільки грошей треба всього на 15-те, скільки на 1-ше, і разом
+  const grandSum1=d.rows.reduce((a,r)=>a+(r.pay1!=null?r.pay1:(r.payout1||0)),0);
+  const grandSum2=d.rows.reduce((a,r)=>a+(r.pay2!=null?r.pay2:(r.payout2||0)),0);
+  h+=`<tr style="border-top:2px solid #F43313;background:#f5efe4">
+    <td style="padding:10px 6px;color:#2c2218;font-weight:800" colspan="2">Разом потрібно</td>
+    <td style="text-align:right;color:#FE8B26;font-weight:800;font-size:1.02rem">${fmtUAH(totalFund)}</td>
+    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(grandSum1)}</td>
+    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(grandSum2)}</td>
+    <td colspan="6"></td>
+  </tr>`;
   h+=`</tbody></table>`;
   const skipped=d.rows.filter(r=>r.total==null && r.note==='оклад не задано');
   if(skipped.length){
