@@ -252,6 +252,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
   <div class="toolbar">
     <button class="btn btn-green"  onclick="openRevModal()">💰 Виручка</button>
     <button class="btn btn-ghost"  onclick="openPlanModal()">📊 Плани</button>
+    <button class="btn btn-ghost" onclick="openIndivPlanModal()">🎯 Індивід. плани</button>
     <button class="btn btn-orange" onclick="openAddEmpModal()">＋ Співробітник</button>
     <button class="btn btn-ghost" onclick="openExportModal()" id="btn-export" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e">📊 Експорт ЗП</button>
     <a class="btn btn-ghost" href="https://docs.google.com/spreadsheets/d/132hHyGfehSWe6mkpmKBUhUBsJtPGLPjPZH84d1HuvXI/edit" target="_blank" rel="noopener" id="btn-sheet-link" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e;text-decoration:none;display:inline-flex;align-items:center">📄 Таблиця ЗП ↗</a>
@@ -295,6 +296,17 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closePlanModal()">Скасувати</button>
       <button class="btn-save"   onclick="savePlans()">Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-ov" id="indiv-plan-modal-ov">
+  <div class="modal" style="max-width:520px">
+    <h3>🎯 Індивідуальні плани/факт</h3>
+    <div style="font-size:.75rem;color:#8a7060;margin-bottom:12px">Особистий план і факт обороту по кожній людині — ці ж дані підтягуються в картку ЗП. Факт можна оновлювати кілька разів протягом місяця.</div>
+    <div id="indiv-plan-body" style="max-height:60vh;overflow-y:auto"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeIndivPlanModal()">Закрити</button>
     </div>
   </div>
 </div>
@@ -797,7 +809,11 @@ function renderTable(){
       let dayPlan3=0;
       emps.forEach(e=>{
         if(NO_PLAN_ROLES.includes(e.role)||e.level==='new') return;
-        if(WORK_ST3.includes(getStatus(e.id,d.date))) dayPlan3+=planPerDay3[e.level]||0;
+        if(!WORK_ST3.includes(getStatus(e.id,d.date))) return;
+        // особистий план (якщо заданий у "🎯 Індивід. плани") пріоритетніший за шаблон рівня
+        const indivPlan = salaryMap[e.id]?.plan_amount;
+        const indivDayPlan = indivPlan>0 ? Math.round(indivPlan/days.length) : 0;
+        dayPlan3 += indivDayPlan>0 ? indivDayPlan : (planPerDay3[e.level]||0);
       });
       const col=isT3?'#F43313':'#8a6050', fw=isT3?'700':'500', bg=isT3?'#ffeee8':'#fff8f4';
       h+=`<td style="font-size:.6rem;color:${col};font-weight:${fw};padding:2px;text-align:center;background:${bg}">${dayPlan3>0?fmtM(dayPlan3):'—'}</td>`;
@@ -827,11 +843,18 @@ function renderTable(){
     let teamDayHtml = '';
     if(!['РОП','Керівник'].includes(g.name) && s2 && s2.plan_total){
       const lvlCounts={top:0,mid:0,jun:0};
+      const indivParts=[]; let indivTotal=0;
       g.emps.forEach(e=>{
         if(NO_PLAN_ROLES.includes(e.role)) return;
         const v=getStatus(e.id,today2);
         const working=['10-18','11-18','10-17','9:30-17:30','удаленка','відробіт'].includes(v);
-        if(working && lvlCounts[e.level]!==undefined) lvlCounts[e.level]++;
+        if(!working) return;
+        const indivPlan = salaryMap[e.id]?.plan_amount;
+        if(indivPlan>0){
+          const dayPer=Math.round(indivPlan/workDays2);
+          indivTotal+=dayPer;
+          indivParts.push(`${e.name.split(' ')[0]}: ${fmtM(dayPer)}`);
+        } else if(lvlCounts[e.level]!==undefined) lvlCounts[e.level]++;
       });
       const parts=[];
       ['top','mid','jun'].forEach(lvl=>{
@@ -841,6 +864,7 @@ function renderTable(){
         const teamTotal=Math.round(dayPer*lvlCounts[lvl]);
         parts.push(`${LEVEL_LABEL[lvl]}: ${lvlCounts[lvl]}×${fmtM(dayPer)}=<b>${fmtM(teamTotal)}</b>`);
       });
+      if(indivParts.length) parts.push(`👤 ${indivParts.join(', ')}=<b>${fmtM(indivTotal)}</b>`);
       if(parts.length) teamDayHtml = ` <span style="font-weight:400;font-size:.65rem;color:#8a6050;margin-left:8px">${parts.join(' · ')}</span>`;
     }
 
@@ -1119,6 +1143,49 @@ function updatePlanTotal(deptId){
 }
 
 function closePlanModal(){ document.getElementById('plan-modal-ov').classList.remove('open'); }
+
+// ═══ ІНДИВІДУАЛЬНІ ПЛАНИ/ФАКТ (по конкретній людині, не по рівню) ═══
+// Використовує ТІ САМІ поля salary_calc.plan_amount/fact_amount, що й картка
+// ЗП (/api/salary) — тому все, що вводиш тут, одразу видно і в ЗП, і навпаки.
+function openIndivPlanModal(){
+  const emps = employees.filter(e=>e.dept_code===curDept && hasSalaryCalc(e.dept_code) && !NO_PLAN_ROLES.includes(e.role) && e.level!=='new');
+  const body = document.getElementById('indiv-plan-body');
+  if(!emps.length){
+    body.innerHTML = '<div style="font-size:.8rem;color:#8a7060;padding:20px;text-align:center">У цьому відділі немає співробітників з індивідуальним планом (продажі/відмови)</div>';
+  } else {
+    body.innerHTML = emps.map(e=>{
+      const s = salaryMap[e.id]||{};
+      return `<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #e8e0d4">
+        <div style="flex:1;min-width:0"><div style="font-size:.82rem;color:#2c2218;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.name}</div><div style="font-size:.65rem;color:#a09070">${LEVEL_LABEL[e.level]||''}</div></div>
+        <div style="flex:0 0 110px"><label style="font-size:.6rem;color:#8a7060">План</label>
+          <input type="number" id="ip-plan-${e.id}" value="${s.plan_amount||''}" placeholder="235000" onchange="saveIndivPlan(${e.id})" style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:6px;padding:5px 7px;font-size:.8rem"></div>
+        <div style="flex:0 0 110px"><label style="font-size:.6rem;color:#8a7060">Факт</label>
+          <input type="number" id="ip-fact-${e.id}" value="${s.fact_amount||''}" placeholder="0" onchange="saveIndivPlan(${e.id})" style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:6px;padding:5px 7px;font-size:.8rem"></div>
+        <span id="ip-status-${e.id}" style="width:16px;text-align:center;font-size:.8rem"></span>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('indiv-plan-modal-ov').classList.add('open');
+}
+function closeIndivPlanModal(){ document.getElementById('indiv-plan-modal-ov').classList.remove('open'); }
+
+async function saveIndivPlan(empId){
+  const plan = parseFloat(document.getElementById(`ip-plan-${empId}`).value)||0;
+  const fact = parseFloat(document.getElementById(`ip-fact-${empId}`).value)||0;
+  const st = document.getElementById(`ip-status-${empId}`);
+  try{
+    const existing = salaryMap[empId]||{};
+    await api('/api/salary',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:Y, calc_month:M,
+      plan_amount:plan, fact_amount:fact,
+      returns_pct: existing.returns_pct||0, worked_days: existing.worked_days||0,
+      senior_bonus: existing.senior_bonus||0, penalty: existing.penalty||0,
+      note: existing.note||null, bonus_manual: existing.bonus_manual||0
+    })});
+    salaryMap[empId] = {...existing, plan_amount:plan, fact_amount:fact};
+    if(st){ st.textContent='✓'; st.style.color='#2e7d52'; setTimeout(()=>{ if(st) st.textContent=''; },1500); }
+  }catch(e){ if(st){ st.textContent='✗'; st.style.color='#ef5350'; } alert('Помилка: '+e.message); }
+}
 
 async function savePlans(){
   const visDepts=planDeptFilter ? departments.filter(d=>d.code===planDeptFilter) : departments.filter(d=>isSalesDept(d.code));
@@ -3171,6 +3238,24 @@ function financeTable(rows, detailed){
       <td colspan="${detailColspan}" style="padding:2px 5px 12px 26px;background:#f7f3ec">${financeBreakdownHtml(r)}</td>
     </tr>`:''}`;
   });
+  // підсумковий рядок — суми точно під колонками 15-те / 1-ше / Всього
+  const tblSum1=rows.reduce((a,r)=>a+(r.pay1!=null?r.pay1:(r.payout1||0)),0);
+  const tblSum2=rows.reduce((a,r)=>a+(r.pay2!=null?r.pay2:(r.payout2||0)),0);
+  const tblTotal=rows.reduce((a,r)=>{
+    const p1=r.pay1!=null?parseFloat(r.pay1):(r.payout1!=null?parseFloat(r.payout1):null);
+    const p2=r.pay2!=null?parseFloat(r.pay2):(r.payout2!=null?parseFloat(r.payout2):null);
+    const anyOvr=(r.override1!=null||r.override2!=null);
+    const adjExtra=anyOvr?(r.adj_total||0):0;
+    const t=(p1!=null||p2!=null)?(p1||0)+(p2||0)+adjExtra:(r.total||0);
+    return a+t;
+  },0);
+  h+=`<tr style="border-top:2px solid #F43313;background:#f5efe4">
+    <td style="padding:10px 5px;color:#2c2218;font-weight:800">Разом</td>
+    ${detailed?'<td></td><td></td><td></td><td></td>':''}
+    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(tblSum1)}</td><td></td>
+    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(tblSum2)}</td><td></td>
+    <td style="text-align:right;color:#FE8B26;font-weight:800;font-size:1.05rem">${fmtUAH(tblTotal)}</td>
+  </tr>`;
   h+=`</tbody></table>`;
   return h;
 }
