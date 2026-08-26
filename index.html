@@ -3005,6 +3005,36 @@ function fundBreakdown(rows){
   return {rate, pct, bonus, penalty};
 }
 
+// Те саме, але окремо для виплати 15-го (payout1/аванс) і 1-го (payout2/залишок).
+// Для "гарячих" (два незалежні періоди 1-14/15-кінець) беремо мітки напряму.
+// Для решти схем: payout1 — аванс, який "з'їдає" ставку в першу чергу; всі інші
+// категорії (%, доплати, штрафи) завжди йдуть у payout2/залишок.
+function fundBreakdownByPayout(rows){
+  const p1={rate:0,pct:0,bonus:0,penalty:0}, p2={rate:0,pct:0,bonus:0,penalty:0};
+  (rows||[]).forEach(r=>{
+    if(r.scheme_type==='hot'){
+      (r.breakdown||[]).forEach(item=>{
+        const cat=categorizeSalaryLabel(item.label,item.amount);
+        const bucket=/\(1-14\)/.test(item.label)?p1:p2;
+        if(cat==='rate') bucket.rate+=item.amount;
+        else if(cat==='pct') bucket.pct+=item.amount;
+        else if(cat==='penalty') bucket.penalty+=item.amount;
+        else bucket.bonus+=item.amount;
+      });
+      return;
+    }
+    const fb=fundBreakdown([r]);
+    const pay1amt = r.pay1!=null?r.pay1:(r.payout1||0);
+    const rateForP1 = Math.min(pay1amt||0, Math.max(fb.rate,0));
+    p1.rate += rateForP1;
+    p2.rate += (fb.rate - rateForP1);
+    p2.pct += fb.pct;
+    p2.bonus += fb.bonus;
+    p2.penalty += fb.penalty;
+  });
+  return {p1,p2};
+}
+
 function renderFinance(){
   if(financeView==='average'){ renderFinanceAverage(); return; }
   if(financeView==='weeks'){ renderFinanceWeeks(); return; }
@@ -3021,9 +3051,10 @@ function renderFinance(){
     h+=`<div style="font-size:.95rem;color:#FE8B26;font-weight:700;margin-bottom:10px">${rows[0]?.dept_name||''}</div>`;
     h+=financeTable(rows,true);
     if(dept){
-      const fb=fundBreakdown(rows);
+      const fbp=fundBreakdownByPayout(rows);
       const sum1=rows.reduce((a,r)=>a+(r.pay1!=null?r.pay1:(r.payout1||0)),0);
       const sum2=rows.reduce((a,r)=>a+(r.pay2!=null?r.pay2:(r.payout2||0)),0);
+      const catRow=(label,val,color)=>`<div><div style="font-size:.62rem;color:#7a6048">${label}</div><div style="font-size:.92rem;font-weight:700;color:${color}">${val?fmtUAH(val):'—'}</div></div>`;
       h+=`<div style="margin-top:12px;padding:12px;background:#f5efe4;border-radius:8px">
         <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
           <div><div style="font-size:.65rem;color:#7a6048">Фонд ЗП</div><div style="font-size:1.05rem;font-weight:700;color:#FE8B26">${fmtUAH(dept.sum)}</div></div>
@@ -3034,11 +3065,25 @@ function renderFinance(){
           <div><div style="font-size:.65rem;color:#7a6048">Людей</div><div style="font-size:1.05rem;font-weight:700;color:#6a5040">${dept.count}</div></div>
           <button onclick="const el=document.getElementById('fund-bd');el.style.display=el.style.display==='none'?'flex':'none';this.textContent=el.style.display==='none'?'▾ Деталізація фонду':'▴ Сховати деталізацію'" style="margin-left:auto;background:#F43313;color:#fff;font-weight:700;border-radius:6px;padding:6px 12px;font-size:.75rem">▾ Деталізація фонду</button>
         </div>
-        <div id="fund-bd" style="display:none;gap:20px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid #5a4a38">
-          <div><div style="font-size:.65rem;color:#7a6048">💼 Ставки (оклад/фікс)</div><div style="font-size:1rem;font-weight:700;color:#5a4a38">${fmtUAH(fb.rate)}</div></div>
-          <div><div style="font-size:.65rem;color:#7a6048">📈 % (від обороту/плану)</div><div style="font-size:1rem;font-weight:700;color:#5a4a38">${fmtUAH(fb.pct)}</div></div>
-          <div><div style="font-size:.65rem;color:#7a6048">🎁 Доплати/бонуси</div><div style="font-size:1rem;font-weight:700;color:#7ac070">${fmtUAH(fb.bonus)}</div></div>
-          <div><div style="font-size:.65rem;color:#7a6048">⚠️ Штрафи</div><div style="font-size:1rem;font-weight:700;color:#ef5350">${fb.penalty?'−'+fmtUAH(Math.abs(fb.penalty)):'—'}</div></div>
+        <div id="fund-bd" style="display:none;gap:24px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid #5a4a38">
+          <div style="min-width:220px">
+            <div style="font-size:.72rem;font-weight:700;color:#F43313;margin-bottom:8px">💵 На 15-те (аванс)</div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap">
+              ${catRow('💼 Ставка',fbp.p1.rate,'#5a4a38')}
+              ${catRow('📈 %',fbp.p1.pct,'#5a4a38')}
+              ${catRow('🎁 Допки',fbp.p1.bonus,'#7ac070')}
+              ${catRow('⚠️ Штрафи',fbp.p1.penalty?-Math.abs(fbp.p1.penalty):0,'#ef5350')}
+            </div>
+          </div>
+          <div style="min-width:220px">
+            <div style="font-size:.72rem;font-weight:700;color:#F43313;margin-bottom:8px">💰 На 1-ше (залишок)</div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap">
+              ${catRow('💼 Ставка',fbp.p2.rate,'#5a4a38')}
+              ${catRow('📈 %',fbp.p2.pct,'#5a4a38')}
+              ${catRow('🎁 Допки',fbp.p2.bonus,'#7ac070')}
+              ${catRow('⚠️ Штрафи',fbp.p2.penalty?-Math.abs(fbp.p2.penalty):0,'#ef5350')}
+            </div>
+          </div>
         </div>
       </div>`;
     }
@@ -3057,19 +3102,36 @@ function renderFinance(){
   }
   const totalFund=d.depts.reduce((a,x)=>a+x.sum,0);
   const totalPeople=d.depts.reduce((a,x)=>a+x.count,0);
-  const totalFb=fundBreakdown(d.rows);
+  const totalFbp=fundBreakdownByPayout(d.rows);
   const totalSum1=d.rows.reduce((a,r)=>a+(r.pay1!=null?r.pay1:(r.payout1||0)),0);
   const totalSum2=d.rows.reduce((a,r)=>a+(r.pay2!=null?r.pay2:(r.payout2||0)),0);
+  const catRowTop=(label,val,color)=>`<div><div style="font-size:.62rem;color:#7a6048">${label}</div><div style="font-size:.9rem;font-weight:700;color:${color}">${val?fmtUAH(val):'—'}</div></div>`;
   h+=`<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
     <div style="flex:1;min-width:120px;background:#f5efe4;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#7a6048">Загальний фонд ЗП</div><div style="font-size:1.2rem;font-weight:700;color:#FE8B26">${fmtUAH(totalFund)}</div></div>
-    <div style="flex:1;min-width:120px;background:#f5efe4;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#7a6048">💵 15-те (всього)</div><div style="font-size:1.2rem;font-weight:700;color:#5a4a38">${fmtUAH(totalSum1)}</div></div>
-    <div style="flex:1;min-width:120px;background:#f5efe4;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#7a6048">💰 1-ше наст. (всього)</div><div style="font-size:1.2rem;font-weight:700;color:#5a4a38">${fmtUAH(totalSum2)}</div></div>
-    <div style="flex:1;min-width:120px;background:#f5efe4;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#7a6048">💼 Всього ставки</div><div style="font-size:1.2rem;font-weight:700;color:#5a4a38">${fmtUAH(totalFb.rate)}</div></div>
-    <div style="flex:1;min-width:120px;background:#f5efe4;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#7a6048">📈 Всього %</div><div style="font-size:1.2rem;font-weight:700;color:#5a4a38">${fmtUAH(totalFb.pct)}</div></div>
-    <div style="flex:1;min-width:120px;background:#f5efe4;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#7a6048">🎁 Всього доплати</div><div style="font-size:1.2rem;font-weight:700;color:#7ac070">${fmtUAH(totalFb.bonus)}</div></div>
-    <div style="flex:1;min-width:120px;background:#f5efe4;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#7a6048">⚠️ Всього штрафи</div><div style="font-size:1.2rem;font-weight:700;color:#ef5350">${totalFb.penalty?'−'+fmtUAH(Math.abs(totalFb.penalty)):'—'}</div></div>
     <div style="flex:1;min-width:120px;background:#f5efe4;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#7a6048">Людей (ставочники)</div><div style="font-size:1.2rem;font-weight:700;color:#6a5040">${totalPeople}</div></div>
     <div style="flex:1;min-width:120px;background:#f5efe4;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#7a6048">Середня по всіх</div><div style="font-size:1.2rem;font-weight:700;color:#7ac070">${fmtUAH(totalPeople?totalFund/totalPeople:0)}</div></div>
+  </div>
+  <div style="background:#f5efe4;border-radius:8px;padding:14px;margin-bottom:14px">
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <div style="min-width:240px">
+        <div style="font-size:.8rem;font-weight:800;color:#F43313;margin-bottom:8px">💵 На 15-те (аванс) — всього ${fmtUAH(totalSum1)}</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          ${catRowTop('💼 Ставка',totalFbp.p1.rate,'#5a4a38')}
+          ${catRowTop('📈 %',totalFbp.p1.pct,'#5a4a38')}
+          ${catRowTop('🎁 Допки',totalFbp.p1.bonus,'#7ac070')}
+          ${catRowTop('⚠️ Штрафи',totalFbp.p1.penalty?-Math.abs(totalFbp.p1.penalty):0,'#ef5350')}
+        </div>
+      </div>
+      <div style="min-width:240px">
+        <div style="font-size:.8rem;font-weight:800;color:#F43313;margin-bottom:8px">💰 На 1-ше (залишок) — всього ${fmtUAH(totalSum2)}</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          ${catRowTop('💼 Ставка',totalFbp.p2.rate,'#5a4a38')}
+          ${catRowTop('📈 %',totalFbp.p2.pct,'#5a4a38')}
+          ${catRowTop('🎁 Допки',totalFbp.p2.bonus,'#7ac070')}
+          ${catRowTop('⚠️ Штрафи',totalFbp.p2.penalty?-Math.abs(totalFbp.p2.penalty):0,'#ef5350')}
+        </div>
+      </div>
+    </div>
   </div>`;
   h+=`<table style="width:100%;border-collapse:collapse;font-size:.82rem">
     <thead><tr style="color:#7a6048;text-align:left">
