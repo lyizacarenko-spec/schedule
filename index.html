@@ -3106,6 +3106,10 @@ function renderFinance(){
   const totalSum1=d.rows.reduce((a,r)=>a+(r.pay1!=null?r.pay1:(r.payout1||0)),0);
   const totalSum2=d.rows.reduce((a,r)=>a+(r.pay2!=null?r.pay2:(r.payout2||0)),0);
   const catRowTop=(label,val,color)=>`<div><div style="font-size:.62rem;color:#7a6048">${label}</div><div style="font-size:.9rem;font-weight:700;color:${color}">${val?fmtUAH(val):'—'}</div></div>`;
+  const topRows1=d.rows.filter(r=>(r.pay1!=null?r.pay1:(r.payout1||0))>0);
+  const topRows2=d.rows.filter(r=>(r.pay2!=null?r.pay2:(r.payout2||0))>0);
+  const topPaid1 = topRows1.length && topRows1.every(r=>r.paid1);
+  const topPaid2 = topRows2.length && topRows2.every(r=>r.paid2);
   h+=`<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
     <div style="flex:1;min-width:120px;background:#f5efe4;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#7a6048">Загальний фонд ЗП</div><div style="font-size:1.2rem;font-weight:700;color:#FE8B26">${fmtUAH(totalFund)}</div></div>
     <div style="flex:1;min-width:120px;background:#f5efe4;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#7a6048">Людей (ставочники)</div><div style="font-size:1.2rem;font-weight:700;color:#6a5040">${totalPeople}</div></div>
@@ -3114,7 +3118,7 @@ function renderFinance(){
   <div style="background:#f5efe4;border-radius:8px;padding:14px;margin-bottom:14px">
     <div style="display:flex;gap:24px;flex-wrap:wrap">
       <div style="min-width:240px">
-        <div style="font-size:.8rem;font-weight:800;color:#F43313;margin-bottom:8px">💵 На 15-те (аванс) — всього ${fmtUAH(totalSum1)}</div>
+        <div style="font-size:.8rem;font-weight:800;color:${topPaid1?'#2e7d52':'#F43313'};margin-bottom:8px">💵 На 15-те (аванс) — всього ${fmtUAH(totalSum1)}${topPaid1?' ✓ виплачено':''}</div>
         <div style="display:flex;gap:16px;flex-wrap:wrap">
           ${catRowTop('💼 Ставка',totalFbp.p1.rate,'#5a4a38')}
           ${catRowTop('📈 %',totalFbp.p1.pct,'#5a4a38')}
@@ -3123,7 +3127,7 @@ function renderFinance(){
         </div>
       </div>
       <div style="min-width:240px">
-        <div style="font-size:.8rem;font-weight:800;color:#F43313;margin-bottom:8px">💰 На 1-ше (залишок) — всього ${fmtUAH(totalSum2)}</div>
+        <div style="font-size:.8rem;font-weight:800;color:${topPaid2?'#2e7d52':'#F43313'};margin-bottom:8px">💰 На 1-ше (залишок) — всього ${fmtUAH(totalSum2)}${topPaid2?' ✓ виплачено':''}</div>
         <div style="display:flex;gap:16px;flex-wrap:wrap">
           ${catRowTop('💼 Ставка',totalFbp.p2.rate,'#5a4a38')}
           ${catRowTop('📈 %',totalFbp.p2.pct,'#5a4a38')}
@@ -3166,11 +3170,16 @@ function renderFinance(){
   // підсумковий рядок — скільки грошей треба всього на 15-те, скільки на 1-ше, і разом
   const grandSum1=d.rows.reduce((a,r)=>a+(r.pay1!=null?r.pay1:(r.payout1||0)),0);
   const grandSum2=d.rows.reduce((a,r)=>a+(r.pay2!=null?r.pay2:(r.payout2||0)),0);
+  // зелений — якщо ВСІ, у кого є сума на цю виплату, вже позначені "виплачено"; інакше червоний (ще треба видати)
+  const rows1=d.rows.filter(r=>(r.pay1!=null?r.pay1:(r.payout1||0))>0);
+  const rows2=d.rows.filter(r=>(r.pay2!=null?r.pay2:(r.payout2||0))>0);
+  const col1 = rows1.length && rows1.every(r=>r.paid1) ? '#2e7d52' : '#F43313';
+  const col2 = rows2.length && rows2.every(r=>r.paid2) ? '#2e7d52' : '#F43313';
   h+=`<tr style="border-top:2px solid #F43313;background:#f5efe4">
     <td style="padding:10px 6px;color:#2c2218;font-weight:800" colspan="2">Разом потрібно</td>
     <td style="text-align:right;color:#FE8B26;font-weight:800;font-size:1.02rem">${fmtUAH(totalFund)}</td>
-    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(grandSum1)}</td>
-    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(grandSum2)}</td>
+    <td style="text-align:right;color:${col1};font-weight:800;font-size:1.02rem">${fmtUAH(grandSum1)}${rows1.length&&rows1.every(r=>r.paid1)?' ✓':''}</td>
+    <td style="text-align:right;color:${col2};font-weight:800;font-size:1.02rem">${fmtUAH(grandSum2)}${rows2.length&&rows2.every(r=>r.paid2)?' ✓':''}</td>
     <td colspan="6"></td>
   </tr>`;
   h+=`</tbody></table>`;
