@@ -1587,7 +1587,8 @@ function openMgrCard(empId){
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
         <h3>${emp.name}</h3>
-        <div class="mgr-sub">${emp.dept_name}${levelPart} · ${ROLE_LABEL[emp.role]||'Співробітник'}
+        <div class="mgr-sub">${emp.dept_name}${levelPart} · <span id="role-view-${emp.id}">${ROLE_LABEL[emp.role]||'Співробітник'}</span>
+          <button onclick="editRole(${emp.id})" style="background:none;color:#F43313;font-size:.7rem;cursor:pointer;padding:0 4px" title="Змінити роль">✏️</button>
           <span id="pos-view-${emp.id}">${emp.position?' · '+emp.position:''}</span>
           <button onclick="editPosition(${emp.id})" style="background:none;color:#F43313;font-size:.7rem;cursor:pointer;padding:0 4px">✏️</button>
         </div>
@@ -4050,6 +4051,26 @@ async function dragEnd(){
     if(el) el.textContent=emp.position?' · '+emp.position:'';
     renderTable();
     setSave('Посаду збережено ✓',true);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+async function editRole(empId){
+  const emp=employees.find(e=>e.id===empId);
+  if(!emp) return;
+  const ROLE_OPTS=[['manager','Менеджер'],['senior','Старший менеджер'],['teamlead','Тімлід'],['rop','РОП'],['staff','Співробітник'],['head','Керівник']];
+  const list=ROLE_OPTS.map((o,i)=>`${i+1}. ${o[1]}`).join('\n');
+  const cur=ROLE_OPTS.findIndex(o=>o[0]===emp.role)+1;
+  const val=prompt(`Роль для ${emp.name}:\n${list}\n\nВведи номер (зараз: ${cur||'?'}):`, cur||'');
+  if(val===null) return;
+  const idx=parseInt(val)-1;
+  if(idx<0||idx>=ROLE_OPTS.length){ alert('Невірний номер'); return; }
+  const newRole=ROLE_OPTS[idx][0];
+  try{
+    await api('/api/employees/'+empId,{method:'PATCH',body:JSON.stringify({role:newRole})});
+    emp.role=newRole;
+    const el=document.getElementById('role-view-'+empId);
+    if(el) el.textContent=ROLE_LABEL[newRole]||'Співробітник';
+    renderTable();
+    setSave('Роль збережено ✓',true);
   }catch(e){ alert('Помилка: '+e.message); }
 }
 // ══ INIT ═══════════════════════════
