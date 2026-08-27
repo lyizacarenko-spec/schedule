@@ -1101,14 +1101,26 @@ async function fillDefaultMonth(empId){
 
 // ══ PLAN MODAL ════════════════════════════════════════
 let planDeptFilter=null;
-function openPlanModal(deptCode){
+const RZPK_TEAMS = ['Роздріб','Малий опт','Ресейл'];
+let planData = [];
+
+async function openPlanModal(deptCode){
   planDeptFilter=deptCode||null;
+  try{ planData = await api(`/api/plans?year=${Y}&month=${M}`); }catch(e){ planData = []; }
   const visDepts=planDeptFilter
     ? departments.filter(d=>d.code===planDeptFilter)
     : departments.filter(d=>isSalesDept(d.code));
 
   let body='';
   visDepts.forEach(dept=>{
+    if(dept.code==='rzpk'){
+      body+=`<div style="margin-bottom:18px">
+        <div style="font-size:.78rem;color:#F43313;font-weight:700;margin-bottom:10px">${dept.name}</div>
+        <div style="font-size:.68rem;color:#8a7060;margin-bottom:10px">Окремий план на кожну команду (Роздріб / Малий опт / Ресейл). Якщо для команди план не задано — береться загальний план відділу.</div>
+        ${RZPK_TEAMS.map(team=>planTeamBlockHtml(dept,team)).join('')}
+      </div>`;
+      return;
+    }
     const s=statsData.find(x=>x.dept_code===dept.code)||{plan_breakdown:{},plan_total:0};
     const bd=s.plan_breakdown||{};
     const total=s.plan_total||0;
@@ -1146,6 +1158,30 @@ function openPlanModal(deptCode){
   });
   document.getElementById('plan-modal-body').innerHTML=body||'<div style="font-size:.8rem;color:#8a7060">Для цього відділу плани не задаються.</div>';
   document.getElementById('plan-modal-ov').classList.add('open');
+}
+
+// окремий блок плану для однієї команди РЗПК (Роздріб/Малий опт/Ресейл) —
+// кількість людей рахуємо серед employees з відповідним team, план шукаємо
+// в level_plans з тим самим team (окремий запис від дефолтного, team=NULL)
+function planTeamBlockHtml(dept,team){
+  const teamEmps = employees.filter(e=>e.dept_code==='rzpk' && e.team===team && !NO_PLAN_ROLES.includes(e.role) && e.level!=='new');
+  const teamPlanId = team.replace(/\s+/g,'_');
+  return `<div style="background:#f5efe4;border-radius:8px;padding:10px 12px;margin-bottom:10px">
+    <div style="font-size:.74rem;font-weight:700;color:#5a4a38;margin-bottom:8px">${team} (${teamEmps.length} ос.)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      ${['top','mid','jun'].map(lvl=>{
+        const cnt=teamEmps.filter(e=>e.level===lvl).length;
+        const sPlan=(planData||[]).find(p=>p.department_id===dept.id && p.level===lvl && p.team===team);
+        const val=sPlan?.plan_amount||'';
+        return `<div>
+          <div style="font-size:.65rem;color:#8a7060;margin-bottom:3px">${LEVEL_LABEL[lvl]} (${cnt} ос.)</div>
+          <input type="number" id="plan-${dept.id}-${teamPlanId}-${lvl}" value="${val}"
+            placeholder="план/особу"
+            style="width:100%;background:#fff;border:1px solid #c8c0b4;color:#2c2218;border-radius:6px;padding:5px 8px;font-size:.8rem;outline:none">
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
 }
 
 function updatePlanTotal(deptId){
@@ -1218,6 +1254,20 @@ async function savePlans(){
   setSave('Збереження...',false);
   try{
     for(const dept of visDepts){
+      if(dept.code==='rzpk'){
+        for(const team of RZPK_TEAMS){
+          const teamPlanId = team.replace(/\s+/g,'_');
+          for(const lvl of ['top','mid','jun']){
+            const el=document.getElementById(`plan-${dept.id}-${teamPlanId}-${lvl}`);
+            if(!el || el.value==='') continue;
+            const amt=parseFloat(el.value)||0;
+            await api('/api/plans',{method:'PUT',body:JSON.stringify({
+              department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:amt,team
+            })});
+          }
+        }
+        continue;
+      }
       const s=statsData.find(x=>x.dept_code===dept.code)||{plan_breakdown:{}};
       const bd=s.plan_breakdown||{};
       const deptTotalEl=document.getElementById(`plan-dept-total-${dept.id}`);
