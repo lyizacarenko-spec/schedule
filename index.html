@@ -3005,10 +3005,19 @@ function fundBreakdown(rows){
   return {rate, pct, bonus, penalty};
 }
 
-// Те саме, але окремо для виплати 15-го (payout1/аванс) і 1-го (payout2/залишок).
-// Для "гарячих" (два незалежні періоди 1-14/15-кінець) беремо мітки напряму.
-// Для решти схем: payout1 — аванс, який "з'їдає" ставку в першу чергу; всі інші
-// категорії (%, доплати, штрафи) завжди йдуть у payout2/залишок.
+// Реальна дата виплати за календарем: p1 = завжди "15-те", p2 = завжди "1-ше",
+// НЕЗАЛЕЖНО від того, в якому полі (payout1/payout2) це лежить у БД.
+// Для схем pay_schedule='sales' (продажі/відмови/РОП/холодка) аванс (ставка)
+// платиться 1-го, а залишок (ставка+%+допки) — 15-го, тобто НАВПАКИ відносно
+// ставочників/складу/гарячих (де аванс 15-го, залишок 1-го).
+function real15teAmt(r){ return r.pay_schedule==='sales' ? (r.pay2!=null?r.pay2:(r.payout2||0)) : (r.pay1!=null?r.pay1:(r.payout1||0)); }
+function real1sheAmt(r){ return r.pay_schedule==='sales' ? (r.pay1!=null?r.pay1:(r.payout1||0)) : (r.pay2!=null?r.pay2:(r.payout2||0)); }
+function real15tePaid(r){ return r.pay_schedule==='sales' ? !!r.paid2 : !!r.paid1; }
+function real1shePaid(r){ return r.pay_schedule==='sales' ? !!r.paid1 : !!r.paid2; }
+
+// Те саме, але окремо для виплати 15-го (p1) і 1-го (p2) — з урахуванням реверсу
+// для pay_schedule='sales'. Для "гарячих" (два незалежні періоди 1-14/15-кінець)
+// беремо мітки напряму (там своя, вже правильна, схема виплат).
 function fundBreakdownByPayout(rows){
   const p1={rate:0,pct:0,bonus:0,penalty:0}, p2={rate:0,pct:0,bonus:0,penalty:0};
   (rows||[]).forEach(r=>{
@@ -3025,12 +3034,16 @@ function fundBreakdownByPayout(rows){
     }
     const fb=fundBreakdown([r]);
     const pay1amt = r.pay1!=null?r.pay1:(r.payout1||0);
-    const rateForP1 = Math.min(pay1amt||0, Math.max(fb.rate,0));
-    p1.rate += rateForP1;
-    p2.rate += (fb.rate - rateForP1);
-    p2.pct += fb.pct;
-    p2.bonus += fb.bonus;
-    p2.penalty += fb.penalty;
+    const rateForAdvance = Math.min(pay1amt||0, Math.max(fb.rate,0));
+    const remainderRate = fb.rate - rateForAdvance;
+    // 'sales': аванс(ставка) реально платиться 1-го → p2; залишок(ставка+%+допки) — 15-го → p1
+    const advBucket = r.pay_schedule==='sales' ? p2 : p1;
+    const remBucket = r.pay_schedule==='sales' ? p1 : p2;
+    advBucket.rate += rateForAdvance;
+    remBucket.rate += remainderRate;
+    remBucket.pct += fb.pct;
+    remBucket.bonus += fb.bonus;
+    remBucket.penalty += fb.penalty;
   });
   return {p1,p2};
 }
@@ -3052,8 +3065,8 @@ function renderFinance(){
     h+=financeTable(rows,true);
     if(dept){
       const fbp=fundBreakdownByPayout(rows);
-      const sum1=rows.reduce((a,r)=>a+(r.pay1!=null?r.pay1:(r.payout1||0)),0);
-      const sum2=rows.reduce((a,r)=>a+(r.pay2!=null?r.pay2:(r.payout2||0)),0);
+      const sum1=rows.reduce((a,r)=>a+real15teAmt(r),0);
+      const sum2=rows.reduce((a,r)=>a+real1sheAmt(r),0);
       const catRow=(label,val,color)=>`<div><div style="font-size:.62rem;color:#7a6048">${label}</div><div style="font-size:.92rem;font-weight:700;color:${color}">${val?fmtUAH(val):'—'}</div></div>`;
       h+=`<div style="margin-top:12px;padding:12px;background:#f5efe4;border-radius:8px">
         <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
@@ -3103,13 +3116,13 @@ function renderFinance(){
   const totalFund=d.depts.reduce((a,x)=>a+x.sum,0);
   const totalPeople=d.depts.reduce((a,x)=>a+x.count,0);
   const totalFbp=fundBreakdownByPayout(d.rows);
-  const totalSum1=d.rows.reduce((a,r)=>a+(r.pay1!=null?r.pay1:(r.payout1||0)),0);
-  const totalSum2=d.rows.reduce((a,r)=>a+(r.pay2!=null?r.pay2:(r.payout2||0)),0);
+  const totalSum1=d.rows.reduce((a,r)=>a+real15teAmt(r),0);
+  const totalSum2=d.rows.reduce((a,r)=>a+real1sheAmt(r),0);
   const catRowTop=(label,val,color)=>`<div><div style="font-size:.62rem;color:#7a6048">${label}</div><div style="font-size:.9rem;font-weight:700;color:${color}">${val?fmtUAH(val):'—'}</div></div>`;
-  const topRows1=d.rows.filter(r=>(r.pay1!=null?r.pay1:(r.payout1||0))>0);
-  const topRows2=d.rows.filter(r=>(r.pay2!=null?r.pay2:(r.payout2||0))>0);
-  const topPaid1 = topRows1.length && topRows1.every(r=>r.paid1);
-  const topPaid2 = topRows2.length && topRows2.every(r=>r.paid2);
+  const topRows1=d.rows.filter(r=>real15teAmt(r)>0);
+  const topRows2=d.rows.filter(r=>real1sheAmt(r)>0);
+  const topPaid1 = topRows1.length && topRows1.every(real15tePaid);
+  const topPaid2 = topRows2.length && topRows2.every(real1shePaid);
   h+=`<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
     <div style="flex:1;min-width:120px;background:#f5efe4;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#7a6048">Загальний фонд ЗП</div><div style="font-size:1.2rem;font-weight:700;color:#FE8B26">${fmtUAH(totalFund)}</div></div>
     <div style="flex:1;min-width:120px;background:#f5efe4;border-radius:8px;padding:12px"><div style="font-size:.65rem;color:#7a6048">Людей (ставочники)</div><div style="font-size:1.2rem;font-weight:700;color:#6a5040">${totalPeople}</div></div>
@@ -3149,8 +3162,8 @@ function renderFinance(){
     const pendingNote = dp.pending>0 ? `<div style="font-size:.66rem;color:#c08040;margin-top:2px;font-weight:400">⏳ ${dp.pending} на авансі — оборот ще не внесено</div>` : '';
     const deptRows = d.rows.filter(r=>r.dept_code===dp.dept_code);
     const fb = fundBreakdown(deptRows);
-    const dpSum1=deptRows.reduce((a,r)=>a+(r.pay1!=null?r.pay1:(r.payout1||0)),0);
-    const dpSum2=deptRows.reduce((a,r)=>a+(r.pay2!=null?r.pay2:(r.payout2||0)),0);
+    const dpSum1=deptRows.reduce((a,r)=>a+real15teAmt(r),0);
+    const dpSum2=deptRows.reduce((a,r)=>a+real1sheAmt(r),0);
     h+=`<tr style="border-top:1px solid #5a4a38;cursor:pointer" onclick="financeDeptFilter='${dp.dept_code}';renderFinance()">
       <td style="padding:9px 6px;color:#5a4a38;font-weight:700">${dp.dept_name}${pendingNote}</td>
       <td style="text-align:center;color:#6a5040;font-weight:700">${dp.count>0?dp.count:'—'}</td>
@@ -3168,18 +3181,18 @@ function renderFinance(){
     </tr>`;
   });
   // підсумковий рядок — скільки грошей треба всього на 15-те, скільки на 1-ше, і разом
-  const grandSum1=d.rows.reduce((a,r)=>a+(r.pay1!=null?r.pay1:(r.payout1||0)),0);
-  const grandSum2=d.rows.reduce((a,r)=>a+(r.pay2!=null?r.pay2:(r.payout2||0)),0);
+  const grandSum1=d.rows.reduce((a,r)=>a+real15teAmt(r),0);
+  const grandSum2=d.rows.reduce((a,r)=>a+real1sheAmt(r),0);
   // зелений — якщо ВСІ, у кого є сума на цю виплату, вже позначені "виплачено"; інакше червоний (ще треба видати)
-  const rows1=d.rows.filter(r=>(r.pay1!=null?r.pay1:(r.payout1||0))>0);
-  const rows2=d.rows.filter(r=>(r.pay2!=null?r.pay2:(r.payout2||0))>0);
-  const col1 = rows1.length && rows1.every(r=>r.paid1) ? '#2e7d52' : '#F43313';
-  const col2 = rows2.length && rows2.every(r=>r.paid2) ? '#2e7d52' : '#F43313';
+  const rows1=d.rows.filter(r=>real15teAmt(r)>0);
+  const rows2=d.rows.filter(r=>real1sheAmt(r)>0);
+  const col1 = rows1.length && rows1.every(real15tePaid) ? '#2e7d52' : '#F43313';
+  const col2 = rows2.length && rows2.every(real1shePaid) ? '#2e7d52' : '#F43313';
   h+=`<tr style="border-top:2px solid #F43313;background:#f5efe4">
     <td style="padding:10px 6px;color:#2c2218;font-weight:800" colspan="2">Разом потрібно</td>
     <td style="text-align:right;color:#FE8B26;font-weight:800;font-size:1.02rem">${fmtUAH(totalFund)}</td>
-    <td style="text-align:right;color:${col1};font-weight:800;font-size:1.02rem">${fmtUAH(grandSum1)}${rows1.length&&rows1.every(r=>r.paid1)?' ✓':''}</td>
-    <td style="text-align:right;color:${col2};font-weight:800;font-size:1.02rem">${fmtUAH(grandSum2)}${rows2.length&&rows2.every(r=>r.paid2)?' ✓':''}</td>
+    <td style="text-align:right;color:${col1};font-weight:800;font-size:1.02rem">${fmtUAH(grandSum1)}${rows1.length&&rows1.every(real15tePaid)?' ✓':''}</td>
+    <td style="text-align:right;color:${col2};font-weight:800;font-size:1.02rem">${fmtUAH(grandSum2)}${rows2.length&&rows2.every(real1shePaid)?' ✓':''}</td>
     <td colspan="6"></td>
   </tr>`;
   h+=`</tbody></table>`;
