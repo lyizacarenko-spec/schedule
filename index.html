@@ -3086,7 +3086,7 @@ function renderFinance(){
   // окремий відділ
   if(financeDeptFilter){
     const rows = financeDeptFilter==='__leaders__'
-      ? d.rows.filter(r=>['rop','head','teamlead'].includes(r.role))
+      ? d.rows.filter(r=>(isSalesDept(r.dept_code)||isOrderDept(r.dept_code))&&['rop','teamlead'].includes(r.role))
       : d.rows.filter(r=>r.dept_code===financeDeptFilter);
     const dept=d.depts.find(x=>x.dept_code===financeDeptFilter);
     let h=financeMonthNav();
@@ -3191,7 +3191,7 @@ function renderFinance(){
   d.depts.forEach(dp=>{
     const pendingNote = dp.pending>0 ? `<div style="font-size:.66rem;color:#c08040;margin-top:2px;font-weight:400">⏳ ${dp.pending} на авансі — оборот ще не внесено</div>` : '';
     const deptRows = dp.dept_code==='__leaders__'
-      ? d.rows.filter(r=>['rop','head','teamlead'].includes(r.role))
+      ? d.rows.filter(r=>(isSalesDept(r.dept_code)||isOrderDept(r.dept_code))&&['rop','teamlead'].includes(r.role))
       : d.rows.filter(r=>r.dept_code===dp.dept_code);
     const fb = fundBreakdown(deptRows);
     const dpSum1=deptRows.reduce((a,r)=>a+real15teAmt(r),0);
