@@ -426,6 +426,7 @@ const MONTH_UA = ['','Січень','Лютий','Березень','Квіте�
 let Y = new Date().getFullYear();
 let M = new Date().getMonth()+1;
 let curDept = 'retail';
+let rzpkSubFilter = null; // null=усі, 'retail'=Роздріб, 'wholesale_resellers'=Малий опт+Ресейл (для РЗПК)
 let employees=[], departments=[], schedMap={}, revDetailMap={}, revDeptMap={}, statsData=[], salaryMap={}, schemeMap={};
 let pending={};
 let revMode = 'dept';
@@ -640,7 +641,11 @@ function pbarCls(pct){ return pct>=80?'ok':pct>=50?'warn':'danger'; }
 
 function renderStats(){
   const days=getDays(Y,M);
-  const visEmps=getVisEmps();
+  let visEmps=getVisEmps();
+  if(curDept==='rzpk' && rzpkSubFilter){
+    const target = rzpkSubFilter==='retail' ? ['Роздріб'] : ['Малий опт','Ресейл'];
+    visEmps = visEmps.filter(e=>target.includes(e.team));
+  }
   let wd=0,hrs=0,sick=0,vac=0,rem=0,late=0;
   visEmps.forEach(e=>{
     days.forEach(d=>{
@@ -737,7 +742,12 @@ function showDayShiftCount(date,label){
 
 function renderTable(){
   const days=getDays(Y,M);
-  const emps=getVisEmps();
+  let emps=getVisEmps();
+  // РЗПК: перемикач Роздріб / Малий опт+Ресейл (за полем team, без переносу у відділи)
+  if(curDept==='rzpk' && rzpkSubFilter){
+    const target = rzpkSubFilter==='retail' ? ['Роздріб'] : ['Малий опт','Ресейл'];
+    emps = emps.filter(e=>target.includes(e.team));
+  }
   // Порядок груп усередині відділу
   const TEAM_ORDER = [
     'РОП','Керівник','Тімлід',
@@ -936,7 +946,12 @@ function renderTable(){
     }
   }
   h+=`</tbody></table>`;
-  document.getElementById('table-area').innerHTML=h;
+  let rzpkFilterHtml = '';
+  if(curDept==='rzpk'){
+    const mk=(val,label)=>`<button onclick="rzpkSubFilter=${val===null?'null':`'${val}'`};renderTable();renderStats()" style="background:${rzpkSubFilter===val?'#F43313':'#ede8e0'};color:${rzpkSubFilter===val?'#fff':'#5a4a38'};font-weight:700;border-radius:7px;padding:6px 14px;font-size:.8rem;margin-right:8px">${label}</button>`;
+    rzpkFilterHtml = `<div style="margin-bottom:10px">${mk(null,'Всі')}${mk('retail','Роздріб')}${mk('wholesale_resellers','Малий опт + Ресейл')}</div>`;
+  }
+  document.getElementById('table-area').innerHTML=rzpkFilterHtml+h;
 }
 
 // ══ POPUP ════════════════════════════════════════════
@@ -1435,6 +1450,7 @@ function changeMonth(d){
 }
 function setDept(code){
   curDept=code;
+  rzpkSubFilter=null;
   renderAll();
 }
 
