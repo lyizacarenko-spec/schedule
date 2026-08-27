@@ -427,6 +427,7 @@ let Y = new Date().getFullYear();
 let M = new Date().getMonth()+1;
 let curDept = 'retail';
 let rzpkSubFilter = null; // null=усі, 'retail'=Роздріб, 'wholesale_resellers'=Малий опт+Ресейл (для РЗПК)
+let leadersOnlyFilter = false; // показати лише РОП/тімлідів (лінійних керівників) поточного відділу продажів
 let employees=[], departments=[], schedMap={}, revDetailMap={}, revDeptMap={}, statsData=[], salaryMap={}, schemeMap={};
 let pending={};
 let revMode = 'dept';
@@ -646,6 +647,9 @@ function renderStats(){
     const target = rzpkSubFilter==='retail' ? ['Роздріб'] : ['Малий опт','Ресейл'];
     visEmps = visEmps.filter(e=>target.includes(e.team));
   }
+  if(isSalesDept(curDept) && leadersOnlyFilter){
+    visEmps = visEmps.filter(e=>NO_PLAN_ROLES.includes(e.role));
+  }
   let wd=0,hrs=0,sick=0,vac=0,rem=0,late=0;
   visEmps.forEach(e=>{
     days.forEach(d=>{
@@ -747,6 +751,10 @@ function renderTable(){
   if(curDept==='rzpk' && rzpkSubFilter){
     const target = rzpkSubFilter==='retail' ? ['Роздріб'] : ['Малий опт','Ресейл'];
     emps = emps.filter(e=>target.includes(e.team));
+  }
+  // Відділи продажів: фільтр "лише лінійні керівники" (РОП/тімлід) окремо від менеджерів
+  if(isSalesDept(curDept) && leadersOnlyFilter){
+    emps = emps.filter(e=>NO_PLAN_ROLES.includes(e.role));
   }
   // Порядок груп усередині відділу
   const TEAM_ORDER = [
@@ -950,6 +958,9 @@ function renderTable(){
   if(curDept==='rzpk'){
     const mk=(val,label)=>`<button onclick="rzpkSubFilter=${val===null?'null':`'${val}'`};renderTable();renderStats()" style="background:${rzpkSubFilter===val?'#F43313':'#ede8e0'};color:${rzpkSubFilter===val?'#fff':'#5a4a38'};font-weight:700;border-radius:7px;padding:6px 14px;font-size:.8rem;margin-right:8px">${label}</button>`;
     rzpkFilterHtml = `<div style="margin-bottom:10px">${mk(null,'Всі')}${mk('retail','Роздріб')}${mk('wholesale_resellers','Малий опт + Ресейл')}</div>`;
+  }
+  if(isSalesDept(curDept)){
+    rzpkFilterHtml += `<div style="margin-bottom:10px"><button onclick="leadersOnlyFilter=!leadersOnlyFilter;renderTable();renderStats()" style="background:${leadersOnlyFilter?'#F43313':'#ede8e0'};color:${leadersOnlyFilter?'#fff':'#5a4a38'};font-weight:700;border-radius:7px;padding:6px 14px;font-size:.8rem">👔 ${leadersOnlyFilter?'Показати всіх':'Лише лінійні керівники (РОП/тімлід)'}</button></div>`;
   }
   document.getElementById('table-area').innerHTML=rzpkFilterHtml+h;
 }
@@ -1451,6 +1462,7 @@ function changeMonth(d){
 function setDept(code){
   curDept=code;
   rzpkSubFilter=null;
+  leadersOnlyFilter=false;
   renderAll();
 }
 
@@ -3073,11 +3085,13 @@ function renderFinance(){
 
   // окремий відділ
   if(financeDeptFilter){
-    const rows=d.rows.filter(r=>r.dept_code===financeDeptFilter);
+    const rows = financeDeptFilter==='__leaders__'
+      ? d.rows.filter(r=>['rop','head','teamlead'].includes(r.role))
+      : d.rows.filter(r=>r.dept_code===financeDeptFilter);
     const dept=d.depts.find(x=>x.dept_code===financeDeptFilter);
     let h=financeMonthNav();
     h+=`<button onclick="financeDeptFilter=null;renderFinance()" style="background:#f5efe4;color:#6a5040;border-radius:6px;padding:5px 12px;font-size:.78rem;margin-bottom:12px">← всі відділи</button>`;
-    h+=`<div style="font-size:.95rem;color:#FE8B26;font-weight:700;margin-bottom:10px">${rows[0]?.dept_name||''}</div>`;
+    h+=`<div style="font-size:.95rem;color:#FE8B26;font-weight:700;margin-bottom:10px">${financeDeptFilter==='__leaders__'?'Лінійні керівники':(rows[0]?.dept_name||'')}</div>`;
     h+=financeTable(rows,true);
     if(dept){
       const fbp=fundBreakdownByPayout(rows);
@@ -3176,7 +3190,9 @@ function renderFinance(){
     </tr></thead><tbody>`;
   d.depts.forEach(dp=>{
     const pendingNote = dp.pending>0 ? `<div style="font-size:.66rem;color:#c08040;margin-top:2px;font-weight:400">⏳ ${dp.pending} на авансі — оборот ще не внесено</div>` : '';
-    const deptRows = d.rows.filter(r=>r.dept_code===dp.dept_code);
+    const deptRows = dp.dept_code==='__leaders__'
+      ? d.rows.filter(r=>['rop','head','teamlead'].includes(r.role))
+      : d.rows.filter(r=>r.dept_code===dp.dept_code);
     const fb = fundBreakdown(deptRows);
     const dpSum1=deptRows.reduce((a,r)=>a+real15teAmt(r),0);
     const dpSum2=deptRows.reduce((a,r)=>a+real1sheAmt(r),0);
