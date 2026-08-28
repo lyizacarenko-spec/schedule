@@ -3473,7 +3473,13 @@ function financeTable(rows, detailed){
         style="width:17px;height:17px;cursor:pointer;accent-color:#2e7d52">
     </td>`;
   };
+  const isMixedDepts = new Set(rows.map(r=>r.dept_code)).size > 1;
+  let lastDeptCode = null;
   rows.forEach(r=>{
+    if(isMixedDepts && r.dept_code!==lastDeptCode){
+      h+=`<tr><td colspan="${detailed?10:6}" style="padding:10px 5px 4px;font-size:.7rem;font-weight:700;color:#F43313;border-top:2px solid #e0d8c8">${r.dept_name||''}</td></tr>`;
+      lastDeptCode=r.dept_code;
+    }
     const bothPaid = r.paid1 && (r.payout2==null || r.paid2);
     const rowBg = bothPaid ? 'background:#e6f4ea' : '';
     if(r.total==null){
