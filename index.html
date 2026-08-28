@@ -363,6 +363,37 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     </div>
     <label>Посада (необов.)</label>
     <input type="text" id="ae-position" placeholder="наприклад: Пакувальник, Контент/СММ...">
+
+    <div id="ae-scheme-wrap" style="display:none;background:#f5efe4;border-radius:8px;padding:10px 12px;margin:6px 0 12px">
+      <div style="font-size:.74rem;font-weight:700;color:#F43313;margin-bottom:8px">💰 Схема нарахування ЗП</div>
+      <div id="ae-scheme-type-wrap" style="margin-bottom:8px">
+        <label style="margin-top:0">Тип оплати</label>
+        <select id="ae-scheme-type" onchange="onAeSchemeTypeChange()">
+          <option value="fixed_rate">Оклад (ставочник)</option>
+          <option value="piece_warehouse">Відрядна (упаковка/фасовка/вихід)</option>
+          <option value="hourly">Погодинна</option>
+          <option value="hourly_fixed">Погодинна + фікс</option>
+          <option value="warehouse_hybrid">Гібридна (оклад+фасовка, начальник складу)</option>
+        </select>
+      </div>
+      <div id="ae-baserate-wrap">
+        <label style="margin-top:0" id="ae-baserate-label">Оклад (грн/міс)</label>
+        <input type="number" id="ae-base-rate" placeholder="наприклад 15000" style="margin-bottom:8px">
+      </div>
+      <div id="ae-fixedamt-wrap" style="display:none">
+        <label style="margin-top:0">Фікс частина (грн/міс)</label>
+        <input type="number" id="ae-fixed-amount" placeholder="наприклад 5000" style="margin-bottom:8px">
+      </div>
+      <div id="ae-normtype-wrap">
+        <label style="margin-top:0">Норма днів</label>
+        <select id="ae-norm-type">
+          <option value="fixed">Фіксовано 22 дні</option>
+          <option value="month_workdays">Будні цього місяця</option>
+        </select>
+      </div>
+      <div style="font-size:.65rem;color:#8a7060;margin-top:6px">Можна лишити порожнім і задати пізніше в картці співробітника.</div>
+    </div>
+
     <label>Дата початку (перший день)</label>
     <input type="date" id="ae-start-date" style="margin-bottom:4px">
     <label style="margin-top:4px">Кількість днів навчання</label>
@@ -1498,6 +1529,42 @@ function onAeDeptChange(){
   // для несейлз відділів дефолтна роль — Співробітник
   const roleSel=document.getElementById('ae-role');
   if(!isSalesDept(dept?.code)&&!isOrderDept(dept?.code)) roleSel.value='staff';
+
+  // Схема ЗП: не показуємо для відділів продажів/відмов (там окремий щомісячний
+  // розрахунок % від плану/обороту, персистентна схема не потрібна) і для
+  // гарячих (своя окрема схема, задається автоматично). Для решти (склад,
+  // адмінка, логістика, бухгалтерія, маркетинг, ІТ, навчання, керівництво) —
+  // показуємо, щоб одразу задати оклад/тип оплати, а не лишати без ЗП.
+  const schemeWrap=document.getElementById('ae-scheme-wrap');
+  const needsScheme = dept && !isSalesDept(dept.code) && !isOrderDept(dept.code) && dept.code!=='hot';
+  schemeWrap.style.display = needsScheme ? 'block' : 'none';
+  if(needsScheme){
+    const typeSel=document.getElementById('ae-scheme-type');
+    // склад — за замовчуванням відрядна (найчастіший випадок для нового пакувальника)
+    // решта — оклад (ставочник)
+    typeSel.value = dept.code==='warehouse' ? 'piece_warehouse' : 'fixed_rate';
+    onAeSchemeTypeChange();
+  }
+}
+
+function onAeSchemeTypeChange(){
+  const t=document.getElementById('ae-scheme-type').value;
+  const baseWrap=document.getElementById('ae-baserate-wrap');
+  const fixedWrap=document.getElementById('ae-fixedamt-wrap');
+  const normWrap=document.getElementById('ae-normtype-wrap');
+  const label=document.getElementById('ae-baserate-label');
+  if(t==='piece_warehouse'){
+    baseWrap.style.display='none'; fixedWrap.style.display='none'; normWrap.style.display='none';
+  } else if(t==='hourly'){
+    label.textContent='Ставка за годину (грн)'; baseWrap.style.display='block';
+    fixedWrap.style.display='none'; normWrap.style.display='none';
+  } else if(t==='hourly_fixed'){
+    label.textContent='Ставка за годину (грн)'; baseWrap.style.display='block';
+    fixedWrap.style.display='block'; normWrap.style.display='none';
+  } else {
+    label.textContent='Оклад (грн/міс)'; baseWrap.style.display='block';
+    fixedWrap.style.display='none'; normWrap.style.display='block';
+  }
 }
 function closeAeModal(){ document.getElementById('ae-modal-ov').classList.remove('open'); }
 
@@ -1524,6 +1591,22 @@ async function saveEmployee(){
     if(position2) POSITIONS[r.name]=position2;
     employees.push({...r,dept_code:deptObj?.code,dept_name:deptObj?.name,start_date:startDate||null});
 
+    // якщо блок схеми ЗП був показаний — одразу створюємо salary_schemes,
+    // щоб новий співробітник не лишився без нарахування ЗП
+    const schemeWrap=document.getElementById('ae-scheme-wrap');
+    if(schemeWrap.style.display!=='none'){
+      const schemeType=document.getElementById('ae-scheme-type').value;
+      const baseRate=parseFloat(document.getElementById('ae-base-rate').value)||0;
+      const fixedAmount=parseFloat(document.getElementById('ae-fixed-amount').value)||0;
+      const normType=document.getElementById('ae-norm-type').value;
+      try{
+        await api('/api/salary-schemes',{method:'PUT',body:JSON.stringify({
+          employee_id:r.id, scheme_type:schemeType, base_rate:baseRate,
+          norm_days:22, norm_type:normType, fixed_amount:fixedAmount
+        })});
+      }catch(e){ console.error('Схема ЗП не збереглась:',e.message); }
+    }
+
     const navchDays = parseInt(document.getElementById('ae-navch-days').value)||0;
     const allDays = getDays(Y,M);
     const entries=[];
@@ -1549,6 +1632,8 @@ async function saveEmployee(){
     document.getElementById('ae-start-date').value='';
     document.getElementById('ae-navch-days').value='';
     if(document.getElementById('ae-position')) document.getElementById('ae-position').value='';
+    if(document.getElementById('ae-base-rate')) document.getElementById('ae-base-rate').value='';
+    if(document.getElementById('ae-fixed-amount')) document.getElementById('ae-fixed-amount').value='';
     employees = await api('/api/employees');
     await loadMonthData();
   }catch(e){alert('Помилка: '+e.message);}
