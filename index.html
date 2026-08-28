@@ -1367,7 +1367,13 @@ async function savePlans(){
         } else {
           for(const lvl of ['top','mid','jun']){
             const el=document.getElementById(`plan-${dept.id}-${lvl}`);
-            if(!el || el.value==='') continue;
+            if(!el) continue;
+            if(el.value===''){
+              await api('/api/plans',{method:'DELETE',body:JSON.stringify({
+                department_id:dept.id,plan_year:Y,plan_month:M,level:lvl
+              })});
+              continue;
+            }
             const amt=parseFloat(el.value)||0;
             await api('/api/plans',{method:'PUT',body:JSON.stringify({
               department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:amt
@@ -1397,7 +1403,13 @@ async function savePlans(){
           } else {
             for(const lvl of ['top','mid','jun']){
               const el=document.getElementById(`plan-${scopeId}-${lvl}`);
-              if(!el || el.value==='') continue;
+              if(!el) continue;
+              if(el.value===''){
+                await api('/api/plans',{method:'DELETE',body:JSON.stringify({
+                  department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,team
+                })});
+                continue;
+              }
               const amt=parseFloat(el.value)||0;
               await api('/api/plans',{method:'PUT',body:JSON.stringify({
                 department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:amt,team
