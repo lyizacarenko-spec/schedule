@@ -2167,12 +2167,22 @@ function openMgrCard(empId){
   }
   if(salaryAllowed && isMentorCard && ropUnlocked){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
-    loadMentorData(emp.id).then(()=>{ calcMentor(emp.id); });
+    loadMentorData(emp.id).then(()=>{
+      const d=mentorData[emp.id];
+      const set=(id,v)=>{const el=document.getElementById(id); if(el&&v!=null&&parseFloat(v)) el.value=v;};
+      if(d){ set(`mentor-score-${emp.id}`,d.avg_score); set(`mentor-ie-${emp.id}`,d.group_ie); }
+      calcMentor(emp.id);
+    });
     loadAdvances(emp.id).then(()=>renderAdvList(emp.id));
   }
   if(salaryAllowed && isRecruiterCard && ropUnlocked){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
-    loadRecruiterData(emp.id).then(()=>{ calcRecruiter(emp.id); });
+    loadRecruiterData(emp.id).then(()=>{
+      const d=recruiterData[emp.id];
+      const set=(id,v)=>{const el=document.getElementById(id); if(el&&v!=null&&parseFloat(v)) el.value=v;};
+      if(d){ set(`recr-train-${emp.id}`,d.train_candidates); set(`recr-sales-${emp.id}`,d.sales_candidates); set(`recr-admin-${emp.id}`,d.admin_bonus); }
+      calcRecruiter(emp.id);
+    });
     loadAdvances(emp.id).then(()=>renderAdvList(emp.id));
   }
   if(salaryAllowed && (isPieceWh||isHr||isHrFix||isWhHyb)){
@@ -3522,7 +3532,8 @@ function financeTable(rows, detailed){
       const ovr = no===1 ? r.override1 : r.override2;
       const isPaid = no===1 ? r.paid1 : r.paid2;
       if(val==null) return '<td style="text-align:right;color:#6a5040">—</td>';
-      const advNote = (no===1 && r.advance_taken>0) ? `<div style="font-size:.62rem;color:#c08040;margin-top:2px">⏱ аванс −${Math.round(r.advance_taken*100)/100}</div>` : '';
+      const advAmt = no===1 ? r.advance_p1 : r.advance_p2;
+      const advNote = (advAmt>0) ? `<div style="font-size:.62rem;color:#c08040;margin-top:2px">⏱ аванс −${Math.round(advAmt*100)/100}</div>` : '';
       const delta = (ovr!=null && calc!=null) ? Math.round((ovr-calc)*100)/100 : 0;
       const deltaHtml = delta!==0
         ? `<div style="font-size:.6rem;font-weight:700;color:${delta>0?'#7ac070':'#ef5350'}" title="${delta>0?'Переплатили':'Недоплатили'} відносно розрахунку">розр. ${fmtUAH(calc)} ${delta>0?'+':''}${delta}</div>`
