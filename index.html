@@ -2165,7 +2165,7 @@ function openMgrCard(empId){
     });
     loadAdvances(emp.id).then(()=>renderAdvList(emp.id));
   }
-  if(salaryAllowed && isMentorCard && ropUnlocked){
+  if(salaryAllowed && isMentorCard){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
     loadMentorData(emp.id).then(()=>{
       const d=mentorData[emp.id];
@@ -2175,7 +2175,7 @@ function openMgrCard(empId){
     });
     loadAdvances(emp.id).then(()=>renderAdvList(emp.id));
   }
-  if(salaryAllowed && isRecruiterCard && ropUnlocked){
+  if(salaryAllowed && isRecruiterCard){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
     loadRecruiterData(emp.id).then(()=>{
       const d=recruiterData[emp.id];
