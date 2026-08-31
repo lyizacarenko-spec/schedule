@@ -2163,17 +2163,21 @@ function openMgrCard(empId){
       renderAdjList(emp.id);
       if(scheme.base_rate) calcFrate(emp.id);
     });
+    loadAdvances(emp.id).then(()=>renderAdvList(emp.id));
   }
   if(salaryAllowed && isMentorCard && ropUnlocked){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
     loadMentorData(emp.id).then(()=>{ calcMentor(emp.id); });
+    loadAdvances(emp.id).then(()=>renderAdvList(emp.id));
   }
   if(salaryAllowed && isRecruiterCard && ropUnlocked){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
     loadRecruiterData(emp.id).then(()=>{ calcRecruiter(emp.id); });
+    loadAdvances(emp.id).then(()=>renderAdvList(emp.id));
   }
   if(salaryAllowed && (isPieceWh||isHr||isHrFix||isWhHyb)){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
+    loadAdvances(emp.id).then(()=>renderAdvList(emp.id));
   }
 // Продажі/відмови: показуємо виплати одразу, без «Розрахувати»
   if(salaryAllowed && canCalcSalary && !isHot && ropUnlocked){
@@ -2198,6 +2202,7 @@ function openMgrCard(empId){
       }
       showRopResult(emp.id);
       loadAdjustments(emp.id).then(()=>renderAdjList(emp.id));
+      loadAdvances(emp.id).then(()=>renderAdvList(emp.id));
     });
   }
   if(salaryAllowed && isHot && (ropUnlocked||ME.role==='rop')){
@@ -2217,6 +2222,7 @@ function openMgrCard(empId){
         showHotResult(emp.id,no);
       });
       loadAdjustments(emp.id).then(()=>renderAdjList(emp.id));
+      loadAdvances(emp.id).then(()=>renderAdvList(emp.id));
       loadHotCold(emp.id).then(c=>{
         const set=(id,v)=>{const el=document.getElementById(id); if(el&&v!=null) el.value=v;};
         set(`cold-sum-${emp.id}`, c?.cold_sum);
