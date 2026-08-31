@@ -3614,12 +3614,11 @@ function financeTable(rows, detailed){
     const hasBreakdown = (r.breakdown||[]).length>0;
     const pay1val = r.pay1!=null ? parseFloat(r.pay1) : (r.payout1!=null ? parseFloat(r.payout1) : null);
     const pay2val = r.pay2!=null ? parseFloat(r.pay2) : (r.payout2!=null ? parseFloat(r.payout2) : null);
-    // якщо є ручний override — він міг бути виставлений ДО корегування,
-    // тож донараховуємо adj_total окремо. Якщо override нема — payout1/2
-    // з бекенда вже містять корегування (не дублюємо).
-    const anyOverride = (r.override1!=null || r.override2!=null);
-    const adjExtra = anyOverride ? (r.adj_total||0) : 0;
-    const totalDisplay = (pay1val!=null || pay2val!=null) ? (pay1val||0)+(pay2val||0)+adjExtra : r.total;
+    // сервер вже автоматично перераховує payout2 = total - override1, коли
+    // override1 виставлено без override2 — тобто payout1+payout2 вже коректна
+    // сума (з урахуванням корегувань). Додатково плюсувати adj_total НЕ треба
+    // — це подвоювало б корегування для схем, де вони вже входять у total.
+    const totalDisplay = (pay1val!=null || pay2val!=null) ? (pay1val||0)+(pay2val||0) : r.total;
     h+=`<tr style="border-top:1px solid #5a4a38;${rowBg}">
       <td style="padding:8px 5px;color:#5a4a38">${hasBreakdown?`<span onclick="toggleFinDetail(${r.employee_id})" id="fin-toggle-${r.employee_id}" title="Показати деталізацію" style="cursor:pointer;color:#7a6048;display:inline-block;width:12px">▸</span>`:''}${r.name}${tag}${bothPaid?' <span style="font-size:.6rem;color:#7ac070">✓ виплачено</span>':''}</td>
       ${detailed?`<td style="text-align:center;color:#8a7860">${baseCol}</td>
@@ -3639,9 +3638,7 @@ function financeTable(rows, detailed){
   const tblTotal=rows.reduce((a,r)=>{
     const p1=r.pay1!=null?parseFloat(r.pay1):(r.payout1!=null?parseFloat(r.payout1):null);
     const p2=r.pay2!=null?parseFloat(r.pay2):(r.payout2!=null?parseFloat(r.payout2):null);
-    const anyOvr=(r.override1!=null||r.override2!=null);
-    const adjExtra=anyOvr?(r.adj_total||0):0;
-    const t=(p1!=null||p2!=null)?(p1||0)+(p2||0)+adjExtra:(r.total||0);
+    const t=(p1!=null||p2!=null)?(p1||0)+(p2||0):(r.total||0);
     return a+t;
   },0);
   h+=`<tr style="border-top:2px solid #F43313;background:#f5efe4">
