@@ -2562,7 +2562,7 @@ async function loadAdvances(empId){
         document.getElementById('frate-adv-comment-'+empId).value='';
         await loadAdvances(empId);
         renderAdvList(empId);
-        if(schemeMap[empId]?.scheme_type==='fixed_rate') calcFrate(empId); else openMgrCard(empId);
+        if(schemeMap[empId]?.scheme_type==='fixed_rate') calcFrate(empId); else await appendPayoutsFromFinance(empId);
         setSave('Аванс додано ✓',true);
       }catch(e){ alert('Помилка: '+e.message); }
     }
@@ -2572,7 +2572,7 @@ async function loadAdvances(empId){
         await api('/api/advance-payments/'+id,{method:'DELETE'});
         await loadAdvances(empId);
         renderAdvList(empId);
-        if(schemeMap[empId]?.scheme_type==='fixed_rate') calcFrate(empId); else openMgrCard(empId);
+        if(schemeMap[empId]?.scheme_type==='fixed_rate') calcFrate(empId); else await appendPayoutsFromFinance(empId);
       }catch(e){ alert('Помилка: '+e.message); }
     }
 async function deleteAdjustment(empId,adjId){
