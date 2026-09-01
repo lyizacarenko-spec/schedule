@@ -743,22 +743,31 @@ function renderStats(){
 //  • звільнений у попередніх місяцях → приховати
 //  • дата прийому не задана → показуємо завжди
 function isVisibleThisMonth(emp){
-  // архівні (is_active=false) — не показуємо в основному графіку взагалі,
-  // навіть якщо мали реальні робочі дні цього місяця. Вони й так доступні
-  // окремо в секції "📦 Архів" внизу — дублювати рядок в обох місцях не треба.
-  if(emp.is_active===false) return false;
   const mStart = `${Y}-${String(M).padStart(2,'0')}-01`;
   const lastDay = new Date(Y, M, 0).getDate();
   const mEnd = `${Y}-${String(M).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  const curYm = `${Y}-${String(M).padStart(2,'0')}`;
   // ще не прийнятий
   if(emp.start_date){
     const sd = String(emp.start_date).slice(0,10);
     if(sd > mEnd) return false;
   }
-  // звільнений раніше цього місяця
+  // звільнений (дата статусу "звіл.") — видимий до місяця звільнення
+  // ВКЛЮЧНО (він же працював частину цього місяця), з наступного — ховається
   if(emp.fired_date){
-    const fd = String(emp.fired_date).slice(0,10);
-    if(fd < mStart) return false;
+    const firedYm = String(emp.fired_date).slice(0,7);
+    if(firedYm < curYm) return false;
+  }
+  // архівний (is_active=false): якщо місяць звільнення вже настав або минув —
+  // ховаємо (є в "📦 Архів"); якщо дати звільнення взагалі нема — ховаємо
+  // завжди (немає орієнтиру, з якого місяця приховувати)
+  if(emp.is_active===false){
+    if(emp.fired_date){
+      const firedYm = String(emp.fired_date).slice(0,7);
+      if(firedYm <= curYm) return false;
+    } else {
+      return false;
+    }
   }
   return true;
 }
