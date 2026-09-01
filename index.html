@@ -3600,6 +3600,17 @@ function financeTable(rows, detailed){
         style="width:17px;height:17px;cursor:pointer;accent-color:#2e7d52">
     </td>`;
   };
+    const reviewCell=(r,no)=>{
+    const val = no===1 ? (r.pay1!=null?r.pay1:r.payout1) : (r.pay2!=null?r.pay2:r.payout2);
+    if(val==null) return '<td></td>';
+    const on = no===1 ? r.reviewed1 : r.reviewed2;
+    return `<td style="text-align:center">
+      <input type="checkbox" ${on?'checked':''}
+        onchange="toggleReviewed(${r.employee_id},${no},this.checked)"
+        title="Перевірено керівником"
+        style="width:15px;height:15px;cursor:pointer;accent-color:#e0a800">
+    </td>`;
+  };
   const isMixedDepts = new Set(rows.map(r=>r.dept_code)).size > 1;
   let lastDeptCode = null;
   rows.forEach(r=>{
