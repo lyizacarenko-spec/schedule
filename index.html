@@ -992,7 +992,10 @@ function renderTable(){
   }
   if(isSalesDept(curDept)){
     rzpkFilterHtml += `<div style="margin-bottom:10px"><button onclick="leadersOnlyFilter=!leadersOnlyFilter;renderTable();renderStats()" style="background:${leadersOnlyFilter?'#F43313':'#ede8e0'};color:${leadersOnlyFilter?'#fff':'#5a4a38'};font-weight:700;border-radius:7px;padding:6px 14px;font-size:.8rem">👔 ${leadersOnlyFilter?'Показати всіх':'Лише лінійні керівники (РОП/тімлід)'}</button></div>`;
-  }
+       }
+      if(isSalesDept(curDept)||isOrderDept(curDept)){
+        rzpkFilterHtml += `<div style="margin-bottom:10px"><button onclick="fillMissingForVisible()" style="background:#d4edd8;color:#1a5c30;font-weight:700;border-radius:7px;padding:6px 14px;font-size:.8rem">📅 Дозаповнити відсутні дні (всім видимим)</button></div>`;
+      }
   document.getElementById('table-area').innerHTML=rzpkFilterHtml+h;
 }
 
