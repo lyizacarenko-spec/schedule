@@ -3600,7 +3600,7 @@ function financeTable(rows, detailed){
         style="width:17px;height:17px;cursor:pointer;accent-color:#2e7d52">
     </td>`;
   };
-    const reviewCell=(r,no)=>{
+  const reviewCell=(r,no)=>{
     const val = no===1 ? (r.pay1!=null?r.pay1:r.payout1) : (r.pay2!=null?r.pay2:r.payout2);
     if(val==null) return '<td></td>';
     const on = no===1 ? r.reviewed1 : r.reviewed2;
@@ -3625,7 +3625,7 @@ function financeTable(rows, detailed){
         h+=`<tr style="border-top:1px solid #5a4a38;${rowBg}">
           <td style="padding:8px 5px;color:#5a4a38">${r.name} <span style="font-size:.62rem;color:#c08040">аванс</span></td>
           ${detailed?`<td style="text-align:center;color:#8a7860">—</td><td style="text-align:center;color:#6a5040">${(r.worked_graph!=null?r.worked_graph:r.worked_days)||0}</td><td style="text-align:center;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td>`:''}
-          ${payCell(r,1)}${chkCell(r,1)}
+          ${payCell(r,1)}${reviewCell(r,1)}${chkCell(r,1)}
           <td style="text-align:right;color:#6a5040">—</td><td></td>
           <td style="text-align:right;color:#6a5040">—</td>
         </tr>`;
@@ -3676,8 +3676,7 @@ function financeTable(rows, detailed){
       ${detailed?`<td style="text-align:center;color:#8a7860">${baseCol}</td>
       <td style="text-align:center;color:#6a5040">${(()=>{ const hasG=r.worked_graph!=null; const dReal=hasG?r.worked_graph:r.worked_days; const diffs=hasG&&r.worked_days!=null&&r.worked_days!==r.worked_graph; return dReal!=null?`${dReal}${diffs?` <span title="У картці вручну вписано ${r.worked_days} — розходиться з реальним графіком (${r.worked_graph}). Формула ЗП рахує за ручним значенням." style="color:#e06050;cursor:help">⚠</span>`:''}`:'—'; })()}</td>
       <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${(isPiece||isHrRow||isSales||isOrderRow)?'—':(diff>0?'+'+diff:diff<0?diff:'—')}</td>
-<td style="text-align:right;color:${(isSales||isOrderRow)?'#7ac070':adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjCellTitle}">${adjCol}${(!isSales&&!isOrderRow&&adj)?`<input type="checkbox" ${r.corr_paid?'checked':''} onchange="toggleCorrPaid(${r.employee_id},this.checked)" title="Видано в конверті" style="width:13px;height:13px;margin-left:5px;vertical-align:middle;cursor:pointer;accent-color:#c08040">`:''}</td>`:''}      ${payCell(r,1)}${chkCell(r,1)}
-          ${payCell(r,1)}${reviewCell(r,1)}${chkCell(r,1)}
+<td style="text-align:right;color:${(isSales||isOrderRow)?'#7ac070':adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjCellTitle}">${adjCol}${(!isSales&&!isOrderRow&&adj)?`<input type="checkbox" ${r.corr_paid?'checked':''} onchange="toggleCorrPaid(${r.employee_id},this.checked)" title="Видано в конверті" style="width:13px;height:13px;margin-left:5px;vertical-align:middle;cursor:pointer;accent-color:#c08040">`:''}</td>`:''}      ${payCell(r,1)}${reviewCell(r,1)}${chkCell(r,1)}
       ${payCell(r,2)}${reviewCell(r,2)}${chkCell(r,2)}
       <td style="text-align:right;color:#FE8B26;font-weight:700">${fmtUAH2(totalDisplay)}</td>
     </tr>
@@ -3745,6 +3744,17 @@ async function togglePaid(empId,no,checked){
       const cf=res.carry_forward;
       setSave(`⚠️ Недоплата ${fmtUAH(cf.amount)} автоматично перенесена корегуванням на ${MONTH_UA[cf.month]}`,true);
     }
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+async function toggleReviewed(empId,no,checked){
+  try{
+    await api('/api/payout-review-status',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:financeYear, calc_month:financeMonth,
+      payout_no:no, reviewed:checked
+    })});
+    const row=(financeData?.rows||[]).find(r=>r.employee_id===empId);
+    if(row){ if(no===1) row.reviewed1=checked; else row.reviewed2=checked; }
+    renderFinance();
   }catch(e){ alert('Помилка: '+e.message); }
 }
 async function toggleCorrPaid(empId,checked){
