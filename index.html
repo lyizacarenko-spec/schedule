@@ -1132,9 +1132,6 @@ async function fillDefaultMonth(empId){
     setSave(`Заповнено ${entries.length} днів ✓`,true);
   }catch(e){ setSave('Помилка ✗',false); alert('Помилка: '+e.message); }
 }
-    }
-    catch(e){ setSave('Помилка ✗',false); alert('Помилка: '+e.message); }
-  }
 
 // ══ ЗАПОВНИТИ ВІДСУТНІ ДНІ ВСІМ ВИДИМИМ У ВІДДІЛІ (не чіпає вже збережені) ══
 async function fillMissingForVisible(){
