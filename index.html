@@ -1129,7 +1129,47 @@ async function fillDefaultMonth(empId){
     setSave(`Заповнено ${entries.length} днів ✓`,true);
   }catch(e){ setSave('Помилка ✗',false); alert('Помилка: '+e.message); }
 }
+    }
+    catch(e){ setSave('Помилка ✗',false); alert('Помилка: '+e.message); }
+  }
 
+// ══ ЗАПОВНИТИ ВІДСУТНІ ДНІ ВСІМ ВИДИМИМ У ВІДДІЛІ (не чіпає вже збережені) ══
+async function fillMissingForVisible(){
+  let emps=getVisEmps();
+  if(curDept==='rzpk' && rzpkSubFilter){
+    const target = rzpkSubFilter==='retail' ? ['Роздріб'] : ['Малий опт','Ресейл'];
+    emps = emps.filter(e=>target.includes(e.team));
+  }
+  if(isSalesDept(curDept) && leadersOnlyFilter){
+    emps = emps.filter(e=>NO_PLAN_ROLES.includes(e.role));
+  }
+  if(!emps.length){ alert('Немає видимих співробітників'); return; }
+  const days=getDays(Y,M);
+  const entries=[];
+  emps.forEach(emp=>{
+    days.forEach(d=>{
+      const k=`${emp.id}_${d.date}`;
+      if(k in schedMap) return;
+      if(emp.start_date && d.date < emp.start_date.slice(0,10)) return;
+      if(emp.level==='new' && !NO_PLAN_ROLES.includes(emp.role)) return;
+      const dow=new Date(d.date).getDay();
+      const st=defaultStatusFor(emp.dept_code,dow,emp.name);
+      if(!st) return;
+      entries.push({employee_id:emp.id,entry_date:d.date,status:st});
+    });
+  });
+  if(!entries.length){ alert('Усі дні вже заповнені — дозаповнювати нічого'); return; }
+  if(!confirm(`Дозаповнити відсутні дні за ${MONTH_UA[M]} ${Y} для ${emps.length} осіб?\nБуде записано ${entries.length} записів. Існуючі відмітки НЕ будуть змінені.`)) return;
+  setSave('Дозаповнення...',false);
+  try{
+    await bulkSchedule(entries);
+    entries.forEach(en=>{ schedMap[`${en.employee_id}_${en.entry_date}`]=en; });
+    renderAll();
+    setSave(`Дозаповнено ${entries.length} записів (${emps.length} осіб) ✓`,true);
+  }catch(e){ setSave('Помилка ✗',false); alert('Помилка: '+e.message); }
+}
+
+// ══ PLAN MODAL ══════════════════════════════════════
 // ══ PLAN MODAL ════════════════════════════════════════
 let planDeptFilter=null;
 const RZPK_TEAMS = ['Роздріб','Малий опт','Ресейл'];
