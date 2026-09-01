@@ -620,6 +620,7 @@ function defaultStatusFor(deptCode, dow, empName){
     if(dow===4||dow===5) return 'удаленка';   // чт, пт
     return '10-18';                           // пн, вт, ср
   }
+  if(empName==='Люлченко Артем' && (dow===0||dow===6)) return 'вих';
   if(deptCode==='admin' && empName==='Мединська Ірина')
     return (dow===0||dow===6) ? 'вих' : '9:30-17:30';
   if(deptCode==='accounting')
