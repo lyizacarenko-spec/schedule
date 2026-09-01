@@ -3572,7 +3572,7 @@ function financeTable(rows, detailed){
       if(r.payout1!=null){
         h+=`<tr style="border-top:1px solid #5a4a38;${rowBg}">
           <td style="padding:8px 5px;color:#5a4a38">${r.name} <span style="font-size:.62rem;color:#c08040">аванс</span></td>
-          ${detailed?`<td style="text-align:center;color:#8a7860">—</td><td style="text-align:center;color:#6a5040">${r.worked_days||0}</td><td style="text-align:center;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td>`:''}
+          ${detailed?`<td style="text-align:center;color:#8a7860">—</td><td style="text-align:center;color:#6a5040">${(r.worked_graph!=null?r.worked_graph:r.worked_days)||0}</td><td style="text-align:center;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td>`:''}
           ${payCell(r,1)}${chkCell(r,1)}
           <td style="text-align:right;color:#6a5040">—</td><td></td>
           <td style="text-align:right;color:#6a5040">—</td>
@@ -3622,7 +3622,7 @@ function financeTable(rows, detailed){
     h+=`<tr style="border-top:1px solid #5a4a38;${rowBg}">
       <td style="padding:8px 5px;color:#5a4a38">${hasBreakdown?`<span onclick="toggleFinDetail(${r.employee_id})" id="fin-toggle-${r.employee_id}" title="Показати деталізацію" style="cursor:pointer;color:#7a6048;display:inline-block;width:12px">▸</span>`:''}${r.name}${tag}${bothPaid?' <span style="font-size:.6rem;color:#7ac070">✓ виплачено</span>':''}</td>
       ${detailed?`<td style="text-align:center;color:#8a7860">${baseCol}</td>
-      <td style="text-align:center;color:#6a5040">${r.worked_days!=null?r.worked_days:'—'}</td>
+      <td style="text-align:center;color:#6a5040">${(()=>{ const hasG=r.worked_graph!=null; const dReal=hasG?r.worked_graph:r.worked_days; const diffs=hasG&&r.worked_days!=null&&r.worked_days!==r.worked_graph; return dReal!=null?`${dReal}${diffs?` <span title="У картці вручну вписано ${r.worked_days} — розходиться з реальним графіком (${r.worked_graph}). Формула ЗП рахує за ручним значенням." style="color:#e06050;cursor:help">⚠</span>`:''}`:'—'; })()}</td>
       <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${(isPiece||isHrRow||isSales||isOrderRow)?'—':(diff>0?'+'+diff:diff<0?diff:'—')}</td>
 <td style="text-align:right;color:${(isSales||isOrderRow)?'#7ac070':adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjCellTitle}">${adjCol}${(!isSales&&!isOrderRow&&adj)?`<input type="checkbox" ${r.corr_paid?'checked':''} onchange="toggleCorrPaid(${r.employee_id},this.checked)" title="Видано в конверті" style="width:13px;height:13px;margin-left:5px;vertical-align:middle;cursor:pointer;accent-color:#c08040">`:''}</td>`:''}      ${payCell(r,1)}${chkCell(r,1)}
       ${payCell(r,2)}${chkCell(r,2)}
