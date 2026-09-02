@@ -3384,16 +3384,31 @@ function fundBreakdownByPayout(rows){
     }
     const fb=fundBreakdown([r]);
     const pay1amt = r.pay1!=null?r.pay1:(r.payout1||0);
+    const pay2amt = r.pay2!=null?r.pay2:(r.payout2||0);
     const rateForAdvance = Math.min(pay1amt||0, Math.max(fb.rate,0));
     const remainderRate = fb.rate - rateForAdvance;
     // 'sales': аванс(ставка) реально платиться 1-го → p2; залишок(ставка+%+допки) — 15-го → p1
     const advBucket = r.pay_schedule==='sales' ? p2 : p1;
     const remBucket = r.pay_schedule==='sales' ? p1 : p2;
     advBucket.rate += rateForAdvance;
-    remBucket.rate += remainderRate;
-    remBucket.pct += fb.pct;
-    remBucket.bonus += fb.bonus;
-    remBucket.penalty += fb.penalty;
+    // залишок масштабуємо до ФАКТИЧНОЇ суми (з урахуванням ручних правок
+    // бухгалтера, amount_override) — інакше плитка Ставка/%/Допки/Штрафи
+    // показує розрахункові цифри, які розходяться з реально проставленими
+    // сумами виплат і не годяться для передачі в економіку.
+    const remCalc = remainderRate + fb.pct + fb.bonus + fb.penalty;
+    const remActual = remBucket===p1 ? pay1amt : pay2amt;
+    if(remCalc && Math.abs(remActual-remCalc)>0.01){
+      const scale = remActual/remCalc;
+      remBucket.rate += remainderRate*scale;
+      remBucket.pct += fb.pct*scale;
+      remBucket.bonus += fb.bonus*scale;
+      remBucket.penalty += fb.penalty*scale;
+    } else {
+      remBucket.rate += remainderRate;
+      remBucket.pct += fb.pct;
+      remBucket.bonus += fb.bonus;
+      remBucket.penalty += fb.penalty;
+    }
   });
   return {p1,p2};
 }
@@ -3722,7 +3737,18 @@ function financeTable(rows, detailed){
 // корегування) — по кліку на трикутник біля імені. Дані вже приїжджають
 // в r.breakdown з /api/finance, тут лише рендер, без додаткових запитів.
 function financeBreakdownHtml(r){
-  const items = r.breakdown||[];
+  const items = (r.breakdown||[]).slice();
+  // якщо бухгалтер вручну переозначив суму виплати (override) — додаємо
+  // окремий рядок "Ручна правка (1-ше/15-те)", щоб різниця з розрахунком
+  // була видна прямо в деталізації, а не тільки під полем вводу суми
+  const calc1 = r.payout1;
+  const calc2 = r.payout2;
+  if(r.override1!=null && calc1!=null && Math.abs(r.override1-calc1)>0.01){
+    items.push({ label:`Ручна правка (${payLabel1([r])})`, amount: r.override1-calc1 });
+  }
+  if(r.override2!=null && calc2!=null && Math.abs(r.override2-calc2)>0.01){
+    items.push({ label:`Ручна правка (${payLabel2([r])})`, amount: r.override2-calc2 });
+  }
   if(!items.length) return '<div style="color:#6a5040;font-size:.72rem">Немає деталізації для цієї схеми.</div>';
   return `<div style="display:flex;flex-wrap:wrap;gap:4px 20px;font-size:.74rem">`
     + items.map(it=>{
