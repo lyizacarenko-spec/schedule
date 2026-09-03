@@ -3622,9 +3622,10 @@ function financeTable(rows, detailed){
     const val = no===1 ? (r.pay1!=null?r.pay1:r.payout1) : (r.pay2!=null?r.pay2:r.payout2);
     if(val==null) return '<td></td>';
     const on = no===1 ? r.paid1 : r.paid2;
+    const fn = r.is_cold_row ? 'toggleColdPaid' : 'togglePaid';
     return `<td style="text-align:center">
       <input type="checkbox" ${on?'checked':''}
-        onchange="togglePaid(${r.employee_id},${no},this.checked)"
+        onchange="${fn}(${r.employee_id},${no},this.checked)"
         title="Позначити як виплачено"
         style="width:17px;height:17px;cursor:pointer;accent-color:#2e7d52">
     </td>`;
@@ -3633,9 +3634,10 @@ function financeTable(rows, detailed){
     const val = no===1 ? (r.pay1!=null?r.pay1:r.payout1) : (r.pay2!=null?r.pay2:r.payout2);
     if(val==null) return '<td></td>';
     const on = no===1 ? r.reviewed1 : r.reviewed2;
+    const fn = r.is_cold_row ? 'toggleColdReviewed' : 'toggleReviewed';
     return `<td style="text-align:center">
       <input type="checkbox" ${on?'checked':''}
-        onchange="toggleReviewed(${r.employee_id},${no},this.checked)"
+        onchange="${fn}(${r.employee_id},${no},this.checked)"
         title="Перевірено керівником"
         style="width:15px;height:15px;cursor:pointer;accent-color:#e0a800">
     </td>`;
@@ -3777,7 +3779,7 @@ async function togglePaid(empId,no,checked){
       employee_id:empId, calc_year:financeYear, calc_month:financeMonth,
       payout_no:no, paid:checked
     })});
-    const row=(financeData?.rows||[]).find(r=>r.employee_id===empId);
+    const row=(financeData?.rows||[]).find(r=>r.employee_id===empId && !r.is_cold_row);
     if(row){ if(no===1) row.paid1=checked; else row.paid2=checked; }
     renderFinance();
     if(res?.carry_forward){
@@ -3792,7 +3794,31 @@ async function toggleReviewed(empId,no,checked){
       employee_id:empId, calc_year:financeYear, calc_month:financeMonth,
       payout_no:no, reviewed:checked
     })});
-    const row=(financeData?.rows||[]).find(r=>r.employee_id===empId);
+    const row=(financeData?.rows||[]).find(r=>r.employee_id===empId && !r.is_cold_row);
+    if(row){ if(no===1) row.reviewed1=checked; else row.reviewed2=checked; }
+    renderFinance();
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+// холодка — окремий статус виплати/перевірки, НЕ спільний з основною ЗП
+// того самого співробітника (щоб override гарячої ЗП не протікав у холодку)
+async function toggleColdPaid(empId,no,checked){
+  try{
+    await api('/api/hot-cold-payout-status',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:financeYear, calc_month:financeMonth,
+      payout_no:no, paid:checked
+    })});
+    const row=(financeData?.rows||[]).find(r=>r.employee_id===empId && r.is_cold_row);
+    if(row){ if(no===1) row.paid1=checked; else row.paid2=checked; }
+    renderFinance();
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+async function toggleColdReviewed(empId,no,checked){
+  try{
+    await api('/api/hot-cold-payout-status',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:financeYear, calc_month:financeMonth,
+      payout_no:no, reviewed:checked
+    })});
+    const row=(financeData?.rows||[]).find(r=>r.employee_id===empId && r.is_cold_row);
     if(row){ if(no===1) row.reviewed1=checked; else row.reviewed2=checked; }
     renderFinance();
   }catch(e){ alert('Помилка: '+e.message); }
