@@ -1885,7 +1885,17 @@ function openMgrCard(empId){
   const isHot = isHotDept(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role);
   const salaryAllowed = canSeeSalary(emp);
   const isRop = isRopMotiv(emp);
-  const isFixedRate = !isPieceWh && !isHr && !isHrFix && !isWhHyb && !isMentorCard && !isRecruiterCard && !isHot && !isRop && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
+  // нові формули РЗПК (з вересня 2026) — визначаються по team+role,
+  // діють лише для місяця, який зараз переглядається (Y,M), як і на бекенді
+  const rzpkCutoverYm = '2026-09';
+  const curYmView = `${Y}-${String(M).padStart(2,'0')}`;
+  const isRzpkNewSchemes = emp.dept_code==='rzpk' && curYmView >= rzpkCutoverYm;
+  const isRetailV2 = isRzpkNewSchemes && emp.team==='Роздріб' && !NO_PLAN_ROLES.includes(emp.role);
+  const isTeamleadRetail = isRzpkNewSchemes && emp.team==='Роздріб' && emp.role==='teamlead';
+  const isTeamleadMo = isRzpkNewSchemes && (emp.team==='Малий опт'||emp.team==='Ресейл') && emp.role==='teamlead';
+  const isMoManager = isRzpkNewSchemes && emp.team==='Малий опт' && !NO_PLAN_ROLES.includes(emp.role);
+  const isB2bManager = isRzpkNewSchemes && emp.team==='Ресейл' && !NO_PLAN_ROLES.includes(emp.role);
+  const isFixedRate = !isPieceWh && !isHr && !isHrFix && !isWhHyb && !isMentorCard && !isRecruiterCard && !isHot && !isRop && !isTeamleadRetail && !isTeamleadMo && !isMoManager && !isB2bManager && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
   const scheme = schemeMap[emp.id] || {};
 
   document.getElementById('mgr-card-content').innerHTML=`
@@ -1954,7 +1964,75 @@ function openMgrCard(empId){
         <div id="rop-result-${emp.id}" style="margin-top:10px"></div>
         ${adjBlockHtml(emp.id)}
         ${advBlockHtml(emp.id)}
-      </div>` : isHot ? `
+      </div>` : isTeamleadRetail ? `
+      <div style="font-size:.75rem;color:#8a7060;margin-bottom:10px">👔 Тімлід роздрібу · ставка 30 000 + % від обороту відділу</div>
+      <div class="sal-row">
+        <div class="sal-field"><label>План відділу (грн)</label><input type="number" id="tlr-ptarget-${emp.id}" placeholder="6885000"></div>
+        <div class="sal-field"><label>Факт відділу (грн)</label><input type="number" id="tlr-pfact-${emp.id}" placeholder="0"></div>
+      </div>
+      <div class="sal-row">
+        <div class="sal-field"><label>Доплата</label><input type="number" id="tlr-bonus-${emp.id}" placeholder="0"></div>
+        <div class="sal-field"><label>Штраф</label><input type="number" id="tlr-penalty-${emp.id}" placeholder="0"></div>
+      </div>
+      <button onclick="saveTeamleadRetail(${emp.id})" style="width:100%;padding:9px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px">💾 Зберегти та розрахувати</button>
+      <div id="tlr-result-${emp.id}" style="margin-top:10px"></div>
+      ${adjBlockHtml(emp.id)}
+      ${advBlockHtml(emp.id)}
+    ` : isTeamleadMo ? `
+      <div style="font-size:.75rem;color:#8a7060;margin-bottom:10px">👔 Тімлід малого опту і реселерів · ставка 35 000 + бонус за повернутих клієнтів</div>
+      <div class="sal-row">
+        <div class="sal-field"><label>Повернуто клієнтів (шт)</label><input type="number" id="tlm-clients-${emp.id}" placeholder="25"></div>
+      </div>
+      <div class="sal-row">
+        <div class="sal-field"><label>Доплата</label><input type="number" id="tlm-bonus-${emp.id}" placeholder="0"></div>
+        <div class="sal-field"><label>Штраф</label><input type="number" id="tlm-penalty-${emp.id}" placeholder="0"></div>
+      </div>
+      <button onclick="saveTeamleadMo(${emp.id})" style="width:100%;padding:9px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px">💾 Зберегти та розрахувати</button>
+      <div id="tlm-result-${emp.id}" style="margin-top:10px"></div>
+      ${adjBlockHtml(emp.id)}
+      ${advBlockHtml(emp.id)}
+    ` : isMoManager ? `
+      <div style="font-size:.75rem;color:#8a7060;margin-bottom:10px">📦 Менеджер "Малий опт" · оклад 25 000 + маржа + нові клієнти</div>
+      <div class="sal-row">
+        <div class="sal-field"><label>Сума маржі (грн)</label><input type="number" id="mom-mamt-${emp.id}" placeholder="80000"></div>
+        <div class="sal-field"><label>Маржинальність (%)</label><input type="number" id="mom-mpct-${emp.id}" placeholder="62"></div>
+        <div class="sal-field"><label>Нових клієнтів (шт)</label><input type="number" id="mom-clients-${emp.id}" placeholder="4"></div>
+      </div>
+      <div style="display:flex;gap:16px;margin:8px 0">
+        <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
+          <input type="checkbox" id="mom-disc-${emp.id}" checked style="width:auto"> Гейт "Робоча дисципліна" виконано</label>
+      </div>
+      <div class="sal-row">
+        <div class="sal-field"><label>Доплата</label><input type="number" id="mom-bonus-${emp.id}" placeholder="0"></div>
+        <div class="sal-field"><label>Штраф</label><input type="number" id="mom-penalty-${emp.id}" placeholder="0"></div>
+      </div>
+      <button onclick="saveMoManager(${emp.id})" style="width:100%;padding:9px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px">💾 Зберегти та розрахувати</button>
+      <div id="mom-result-${emp.id}" style="margin-top:10px"></div>
+      ${adjBlockHtml(emp.id)}
+      ${advBlockHtml(emp.id)}
+    ` : isB2bManager ? `
+      <div style="font-size:.75rem;color:#8a7060;margin-bottom:10px">🤝 Менеджер "B2B/Реселери" · оклад 25 000 + маржа + оборот + нові реселери</div>
+      <div class="sal-row">
+        <div class="sal-field"><label>Сума маржі (грн)</label><input type="number" id="b2b-mamt-${emp.id}" placeholder="160000"></div>
+        <div class="sal-field"><label>Маржинальність (%)</label><input type="number" id="b2b-mpct-${emp.id}" placeholder="45"></div>
+      </div>
+      <div class="sal-row">
+        <div class="sal-field"><label>Оборот з реселерами (грн)</label><input type="number" id="b2b-turn-${emp.id}" placeholder="500000"></div>
+        <div class="sal-field"><label>Нових реселерів (шт)</label><input type="number" id="b2b-newres-${emp.id}" placeholder="2"></div>
+      </div>
+      <div style="display:flex;gap:16px;margin:8px 0">
+        <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
+          <input type="checkbox" id="b2b-disc-${emp.id}" checked style="width:auto"> Гейт "Робоча дисципліна" виконано</label>
+      </div>
+      <div class="sal-row">
+        <div class="sal-field"><label>Доплата</label><input type="number" id="b2b-bonus-${emp.id}" placeholder="0"></div>
+        <div class="sal-field"><label>Штраф</label><input type="number" id="b2b-penalty-${emp.id}" placeholder="0"></div>
+      </div>
+      <button onclick="saveB2bManager(${emp.id})" style="width:100%;padding:9px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px">💾 Зберегти та розрахувати</button>
+      <div id="b2b-result-${emp.id}" style="margin-top:10px"></div>
+      ${adjBlockHtml(emp.id)}
+      ${advBlockHtml(emp.id)}
+    ` : isHot ? `
       <div id="rop-pin-block" style="${(ropUnlocked||ME.role==='rop')?'display:none':'display:block'}">
         <div style="text-align:center;padding:8px 0 12px">
           <div style="font-size:.78rem;color:#8a7060;margin-bottom:8px">🔒 Доступ за PIN</div>
@@ -2181,6 +2259,15 @@ function openMgrCard(empId){
           <div class="sal-field"><label>% повернень</label><input type="number" id="sal-ret-${emp.id}" placeholder="0" min="0" max="100" value="${salaryMap[emp.id]?.returns_pct||''}"></div>
           <div class="sal-field"><label>Відпрац. днів</label><input type="number" id="sal-days-${emp.id}" value="${salaryMap[emp.id]?.worked_days||wd}"></div>
         </div>
+        ${isRetailV2?`
+        <div style="display:flex;gap:14px;margin:8px 0;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
+            <input type="checkbox" id="sal-avgcheck-${emp.id}" ${salaryMap[emp.id]?.avg_check_ok?'checked':''} style="width:auto"> Середній чек (+2000)</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
+            <input type="checkbox" id="sal-calls-ok-${emp.id}" ${salaryMap[emp.id]?.calls_ok?'checked':''} style="width:auto"> К-сть дзвінків (+2000)</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
+            <input type="checkbox" id="sal-approval-${emp.id}" ${salaryMap[emp.id]?.approval_ok?'checked':''} style="width:auto"> Аппрув (+2000)</label>
+        </div>`:''}
         <div class="sal-row" style="margin-top:4px">
           <div class="sal-field"><label>Доплата старш. мен. (грн)</label><input type="number" id="sal-bonus-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.senior_bonus||''}"></div>
           <div class="sal-field"><label>Штраф (грн)</label><input type="number" id="sal-penalty-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.penalty||''}"></div>
@@ -2412,15 +2499,89 @@ async function saveSalary(empId){
     const seniorBonus2=parseFloat(document.getElementById('sal-bonus-'+empId)?.value)||0;
     const penalty2=parseFloat(document.getElementById('sal-penalty-'+empId)?.value)||0;
     const note2=document.getElementById('sal-note-'+empId)?.value||'';
+    const avgCheckOk=document.getElementById('sal-avgcheck-'+empId)?.checked||false;
+    const callsOk=document.getElementById('sal-calls-ok-'+empId)?.checked||false;
+    const approvalOk=document.getElementById('sal-approval-'+empId)?.checked||false;
     const r = await api('/api/salary',{method:'PUT',body:JSON.stringify({
       employee_id:empId, calc_year:Y, calc_month:M,
       plan_amount:plan, fact_amount:fact, returns_pct:ret, worked_days:days,
-      senior_bonus:seniorBonus2, penalty:penalty2, note:note2
+      senior_bonus:seniorBonus2, penalty:penalty2, note:note2,
+      avg_check_ok:avgCheckOk, calls_ok:callsOk, approval_ok:approvalOk
     })});
     salaryMap[empId]=r;
     setSave('ЗП збережено ✓',true);
     calcSalary(empId);
   }catch(e){ alert('Помилка збереження: '+e.message); }
+}
+
+// ══ НОВІ ФОРМУЛИ РЗПК (з вересня 2026) ══════════════════════
+async function saveTeamleadRetail(empId){
+  try{
+    const r = await api('/api/teamlead-retail-salary',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:Y, calc_month:M,
+      plan_target:parseFloat(document.getElementById('tlr-ptarget-'+empId).value)||0,
+      plan_fact:parseFloat(document.getElementById('tlr-pfact-'+empId).value)||0,
+      bonus_manual:parseFloat(document.getElementById('tlr-bonus-'+empId).value)||0,
+      penalty:parseFloat(document.getElementById('tlr-penalty-'+empId).value)||0,
+    })});
+    setSave('Збережено ✓',true);
+    financeData = await api(`/api/finance?year=${Y}&month=${M}`);
+    const row=(financeData?.rows||[]).find(x=>x.employee_id===empId);
+    document.getElementById('tlr-result-'+empId).innerHTML = row?.total!=null
+      ? `<div style="font-size:.85rem;font-weight:700;color:#2e7d52">Разом: ${fmtUAH(row.total)}</div>` : '';
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+async function saveTeamleadMo(empId){
+  try{
+    const r = await api('/api/teamlead-mo-salary',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:Y, calc_month:M,
+      returned_clients:parseInt(document.getElementById('tlm-clients-'+empId).value)||0,
+      bonus_manual:parseFloat(document.getElementById('tlm-bonus-'+empId).value)||0,
+      penalty:parseFloat(document.getElementById('tlm-penalty-'+empId).value)||0,
+    })});
+    setSave('Збережено ✓',true);
+    financeData = await api(`/api/finance?year=${Y}&month=${M}`);
+    const row=(financeData?.rows||[]).find(x=>x.employee_id===empId);
+    document.getElementById('tlm-result-'+empId).innerHTML = row?.total!=null
+      ? `<div style="font-size:.85rem;font-weight:700;color:#2e7d52">Разом: ${fmtUAH(row.total)}</div>` : '';
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+async function saveMoManager(empId){
+  try{
+    const r = await api('/api/mo-manager-salary',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:Y, calc_month:M,
+      margin_amount:parseFloat(document.getElementById('mom-mamt-'+empId).value)||0,
+      margin_pct:parseFloat(document.getElementById('mom-mpct-'+empId).value)||0,
+      new_clients_count:parseInt(document.getElementById('mom-clients-'+empId).value)||0,
+      discipline_ok:document.getElementById('mom-disc-'+empId).checked,
+      bonus_manual:parseFloat(document.getElementById('mom-bonus-'+empId).value)||0,
+      penalty:parseFloat(document.getElementById('mom-penalty-'+empId).value)||0,
+    })});
+    setSave('Збережено ✓',true);
+    financeData = await api(`/api/finance?year=${Y}&month=${M}`);
+    const row=(financeData?.rows||[]).find(x=>x.employee_id===empId);
+    document.getElementById('mom-result-'+empId).innerHTML = row?.total!=null
+      ? `<div style="font-size:.85rem;font-weight:700;color:#2e7d52">Разом: ${fmtUAH(row.total)}</div>` : '';
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+async function saveB2bManager(empId){
+  try{
+    const r = await api('/api/b2b-manager-salary',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, calc_year:Y, calc_month:M,
+      margin_amount:parseFloat(document.getElementById('b2b-mamt-'+empId).value)||0,
+      margin_pct:parseFloat(document.getElementById('b2b-mpct-'+empId).value)||0,
+      reseller_turnover:parseFloat(document.getElementById('b2b-turn-'+empId).value)||0,
+      new_resellers_count:parseInt(document.getElementById('b2b-newres-'+empId).value)||0,
+      discipline_ok:document.getElementById('b2b-disc-'+empId).checked,
+      bonus_manual:parseFloat(document.getElementById('b2b-bonus-'+empId).value)||0,
+      penalty:parseFloat(document.getElementById('b2b-penalty-'+empId).value)||0,
+    })});
+    setSave('Збережено ✓',true);
+    financeData = await api(`/api/finance?year=${Y}&month=${M}`);
+    const row=(financeData?.rows||[]).find(x=>x.employee_id===empId);
+    document.getElementById('b2b-result-'+empId).innerHTML = row?.total!=null
+      ? `<div style="font-size:.85rem;font-weight:700;color:#2e7d52">Разом: ${fmtUAH(row.total)}</div>` : '';
+  }catch(e){ alert('Помилка: '+e.message); }
 }
 
 // ══ FIXED-RATE (ставочник) у картці ═══════════════════
