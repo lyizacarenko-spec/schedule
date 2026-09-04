@@ -3585,7 +3585,7 @@ function renderFinance(){
   if(financeDeptFilter){
     const rows = financeDeptFilter==='__leaders__'
       ? d.rows.filter(r=>(isSalesDept(r.dept_code)||isOrderDept(r.dept_code))&&['rop','teamlead'].includes(r.role))
-      : d.rows.filter(r=>r.dept_code===financeDeptFilter);
+      : d.rows.filter(r=>r.dept_code===financeDeptFilter && !((isSalesDept(r.dept_code)||isOrderDept(r.dept_code))&&['rop','teamlead'].includes(r.role)));
     const dept=d.depts.find(x=>x.dept_code===financeDeptFilter);
     let h=financeMonthNav();
     h+=`<button onclick="financeDeptFilter=null;renderFinance()" style="background:#f5efe4;color:#6a5040;border-radius:6px;padding:5px 12px;font-size:.78rem;margin-bottom:12px">← всі відділи</button>`;
@@ -3693,7 +3693,7 @@ function renderFinance(){
     const pendingNote = dp.pending>0 ? `<div style="font-size:.66rem;color:#c08040;margin-top:2px;font-weight:400">⏳ ${dp.pending} на авансі — оборот ще не внесено</div>` : '';
     const deptRows = dp.dept_code==='__leaders__'
       ? d.rows.filter(r=>(isSalesDept(r.dept_code)||isOrderDept(r.dept_code))&&['rop','teamlead'].includes(r.role))
-      : d.rows.filter(r=>r.dept_code===dp.dept_code);
+      : d.rows.filter(r=>r.dept_code===dp.dept_code && !((isSalesDept(r.dept_code)||isOrderDept(r.dept_code))&&['rop','teamlead'].includes(r.role)));
     const fb = fundBreakdown(deptRows);
     const dpSum1=deptRows.reduce((a,r)=>a+real15teAmt(r),0);
     const dpSum2=deptRows.reduce((a,r)=>a+real1sheAmt(r),0);
@@ -4984,3 +4984,4 @@ async function editRole(empId){
 </div>
 </body>
 </html>
+  
