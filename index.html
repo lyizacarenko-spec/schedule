@@ -3533,38 +3533,27 @@ function fundBreakdownByPayout(rows){
   const p1={rate:0,pct:0,bonus:0,penalty:0}, p2={rate:0,pct:0,bonus:0,penalty:0};
   (rows||[]).forEach(r=>{
     if(r.scheme_type==='hot'){
-      // рахуємо розрахункові суми окремо для періоду 1 (15-те) і періоду 2 (1-ше),
-      // потім масштабуємо кожен під фактично виплачену суму (з урахуванням
-      // override1/override2, ручних правок бухгалтера) — інакше зведення
-      // "Ставка/%/Допки/Штрафи" показує розрахункові цифри, які розходяться
-      // з реально проставленими сумами виплат (обнулені вручну виплати все
-      // одно рахувались по-старому в загальній сумі — виправлений баг)
-      const calc1={rate:0,pct:0,bonus:0,penalty:0}, calc2={rate:0,pct:0,bonus:0,penalty:0};
+      // "холодка" виплачується разом з відповідним періодом гарячої ЗП —
+      // рахуємо лише ту частину (1-14/15-кінець), де реально стоїть
+      // галочка "виплачено", як і для решти схем нижче
       (r.breakdown||[]).forEach(item=>{
+        const isP1 = /\(1-14\)/.test(item.label);
+        if((isP1 && !r.paid1) || (!isP1 && !r.paid2)) return;
         const cat=categorizeSalaryLabel(item.label,item.amount);
-        const bucket=/\(1-14\)/.test(item.label)?calc1:calc2;
+        const bucket=isP1?p1:p2;
         if(cat==='rate') bucket.rate+=item.amount;
         else if(cat==='pct') bucket.pct+=item.amount;
         else if(cat==='penalty') bucket.penalty+=item.amount;
         else bucket.bonus+=item.amount;
       });
-      const pay1amtHot = r.pay1!=null?r.pay1:(r.payout1||0);
-      const pay2amtHot = r.pay2!=null?r.pay2:(r.payout2||0);
-      const applyScaledHot=(target,calc,actual)=>{
-        const calcSum=calc.rate+calc.pct+calc.bonus+calc.penalty;
-        const scale = calcSum ? actual/calcSum : 1;
-        target.rate+=calc.rate*scale;
-        target.pct+=calc.pct*scale;
-        target.bonus+=calc.bonus*scale;
-        target.penalty+=calc.penalty*scale;
-      };
-      applyScaledHot(p1,calc1,pay1amtHot);
-      applyScaledHot(p2,calc2,pay2amtHot);
       return;
     }
+    // передаємо в економіку тільки ФАКТИЧНО виплачені суми — якщо галочка
+    // "виплачено" не стоїть, ця сума взагалі не враховується (0), незалежно
+    // від того, чи є ручний override
     const fb=fundBreakdown([r]);
-    const pay1amt = r.pay1!=null?r.pay1:(r.payout1||0);
-    const pay2amt = r.pay2!=null?r.pay2:(r.payout2||0);
+    const pay1amt = r.paid1 ? (r.pay1!=null?r.pay1:(r.payout1||0)) : 0;
+    const pay2amt = r.paid2 ? (r.pay2!=null?r.pay2:(r.payout2||0)) : 0;
     const rateForAdvance = Math.min(pay1amt||0, Math.max(fb.rate,0));
     const remainderRate = fb.rate - rateForAdvance;
     // 'sales': аванс(ставка) реально платиться 1-го → p2; залишок(ставка+%+допки) — 15-го → p1
@@ -3572,9 +3561,10 @@ function fundBreakdownByPayout(rows){
     const remBucket = r.pay_schedule==='sales' ? p1 : p2;
     advBucket.rate += rateForAdvance;
     // залишок масштабуємо до ФАКТИЧНОЇ суми (з урахуванням ручних правок
-    // бухгалтера, amount_override) — інакше плитка Ставка/%/Допки/Штрафи
-    // показує розрахункові цифри, які розходяться з реально проставленими
-    // сумами виплат і не годяться для передачі в економіку.
+    // бухгалтера, amount_override, і лише якщо виплату позначено) —
+    // інакше плитка Ставка/%/Допки/Штрафи показує розрахункові цифри,
+    // які розходяться з реально проставленими сумами і не годяться
+    // для передачі в економіку.
     const remCalc = remainderRate + fb.pct + fb.bonus + fb.penalty;
     const remActual = remBucket===p1 ? pay1amt : pay2amt;
     if(remCalc && Math.abs(remActual-remCalc)>0.01){
@@ -3745,7 +3735,7 @@ function renderFinance(){
     <td style="text-align:right;color:#FE8B26;font-weight:800;font-size:1.02rem">${fmtUAH(totalFund)}</td>
     <td style="text-align:right;color:${col1};font-weight:800;font-size:1.02rem">${fmtUAH(grandSum1)}${rows1.length&&rows1.every(real15tePaid)?' ✓':''}</td>
     <td style="text-align:right;color:${col2};font-weight:800;font-size:1.02rem">${fmtUAH(grandSum2)}${rows2.length&&rows2.every(real1shePaid)?' ✓':''}</td>
-    <td colspan="8"></td>
+    <td colspan="6"></td>
   </tr>`;
   h+=`</tbody></table>`;
   const skipped=d.rows.filter(r=>r.total==null && r.note==='оклад не задано');
@@ -3784,7 +3774,7 @@ function financeTable(rows, detailed){
       if(val==null) return '<td style="text-align:right;color:#6a5040">—</td>';
       const advAmt = no===1 ? r.advance_p1 : r.advance_p2;
       const advNote = (advAmt>0) ? `<div style="font-size:.62rem;color:#c08040;margin-top:2px">⏱ аванс −${Math.round(advAmt*100)/100}</div>` : '';
-      const delta = (ovr!=null && calc!=null) ? Math.round((ovr-calc)*100)/100 : 0;
+      const delta = (isPaid && ovr!=null && calc!=null) ? Math.round((ovr-calc)*100)/100 : 0;
       const deltaHtml = delta!==0
         ? `<div style="font-size:.6rem;font-weight:700;color:${delta>0?'#7ac070':'#ef5350'}" title="${delta>0?'Переплатили':'Недоплатили'} відносно розрахунку">розр. ${fmtUAH(calc)} ${delta>0?'+':''}${delta}</div>`
         : '';
@@ -3907,8 +3897,8 @@ function financeTable(rows, detailed){
   h+=`<tr style="border-top:2px solid #F43313;background:#f5efe4">
     <td style="padding:10px 5px;color:#2c2218;font-weight:800">Разом</td>
     ${detailed?'<td></td><td></td><td></td><td></td>':''}
-    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(tblSum1)}</td><td></td><td></td>
-    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(tblSum2)}</td><td></td><td></td>
+    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(tblSum1)}</td><td></td>
+    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(tblSum2)}</td><td></td>
     <td style="text-align:right;color:#FE8B26;font-weight:800;font-size:1.05rem">${fmtUAH(tblTotal)}</td>
   </tr>`;
   h+=`</tbody></table>`;
