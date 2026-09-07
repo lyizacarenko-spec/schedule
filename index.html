@@ -3533,14 +3533,33 @@ function fundBreakdownByPayout(rows){
   const p1={rate:0,pct:0,bonus:0,penalty:0}, p2={rate:0,pct:0,bonus:0,penalty:0};
   (rows||[]).forEach(r=>{
     if(r.scheme_type==='hot'){
+      // рахуємо розрахункові суми окремо для періоду 1 (15-те) і періоду 2 (1-ше),
+      // потім масштабуємо кожен під фактично виплачену суму (з урахуванням
+      // override1/override2, ручних правок бухгалтера) — інакше зведення
+      // "Ставка/%/Допки/Штрафи" показує розрахункові цифри, які розходяться
+      // з реально проставленими сумами виплат (обнулені вручну виплати все
+      // одно рахувались по-старому в загальній сумі — виправлений баг)
+      const calc1={rate:0,pct:0,bonus:0,penalty:0}, calc2={rate:0,pct:0,bonus:0,penalty:0};
       (r.breakdown||[]).forEach(item=>{
         const cat=categorizeSalaryLabel(item.label,item.amount);
-        const bucket=/\(1-14\)/.test(item.label)?p1:p2;
+        const bucket=/\(1-14\)/.test(item.label)?calc1:calc2;
         if(cat==='rate') bucket.rate+=item.amount;
         else if(cat==='pct') bucket.pct+=item.amount;
         else if(cat==='penalty') bucket.penalty+=item.amount;
         else bucket.bonus+=item.amount;
       });
+      const pay1amtHot = r.pay1!=null?r.pay1:(r.payout1||0);
+      const pay2amtHot = r.pay2!=null?r.pay2:(r.payout2||0);
+      const applyScaledHot=(target,calc,actual)=>{
+        const calcSum=calc.rate+calc.pct+calc.bonus+calc.penalty;
+        const scale = calcSum ? actual/calcSum : 1;
+        target.rate+=calc.rate*scale;
+        target.pct+=calc.pct*scale;
+        target.bonus+=calc.bonus*scale;
+        target.penalty+=calc.penalty*scale;
+      };
+      applyScaledHot(p1,calc1,pay1amtHot);
+      applyScaledHot(p2,calc2,pay2amtHot);
       return;
     }
     const fb=fundBreakdown([r]);
@@ -4984,4 +5003,3 @@ async function editRole(empId){
 </div>
 </body>
 </html>
-  
