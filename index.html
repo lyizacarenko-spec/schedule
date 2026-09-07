@@ -3745,7 +3745,7 @@ function renderFinance(){
     <td style="text-align:right;color:#FE8B26;font-weight:800;font-size:1.02rem">${fmtUAH(totalFund)}</td>
     <td style="text-align:right;color:${col1};font-weight:800;font-size:1.02rem">${fmtUAH(grandSum1)}${rows1.length&&rows1.every(real15tePaid)?' ✓':''}</td>
     <td style="text-align:right;color:${col2};font-weight:800;font-size:1.02rem">${fmtUAH(grandSum2)}${rows2.length&&rows2.every(real1shePaid)?' ✓':''}</td>
-    <td colspan="6"></td>
+    <td colspan="8"></td>
   </tr>`;
   h+=`</tbody></table>`;
   const skipped=d.rows.filter(r=>r.total==null && r.note==='оклад не задано');
@@ -3907,8 +3907,8 @@ function financeTable(rows, detailed){
   h+=`<tr style="border-top:2px solid #F43313;background:#f5efe4">
     <td style="padding:10px 5px;color:#2c2218;font-weight:800">Разом</td>
     ${detailed?'<td></td><td></td><td></td><td></td>':''}
-    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(tblSum1)}</td><td></td>
-    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(tblSum2)}</td><td></td>
+    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(tblSum1)}</td><td></td><td></td>
+    <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(tblSum2)}</td><td></td><td></td>
     <td style="text-align:right;color:#FE8B26;font-weight:800;font-size:1.05rem">${fmtUAH(tblTotal)}</td>
   </tr>`;
   h+=`</tbody></table>`;
