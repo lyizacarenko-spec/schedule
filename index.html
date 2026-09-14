@@ -1895,7 +1895,11 @@ function openMgrCard(empId){
   const isTeamleadMo = isRzpkNewSchemes && (emp.team==='Малий опт'||emp.team==='Ресейл') && emp.role==='teamlead';
   const isMoManager = isRzpkNewSchemes && emp.team==='Малий опт' && !NO_PLAN_ROLES.includes(emp.role);
   const isB2bManager = isRzpkNewSchemes && emp.team==='Ресейл' && !NO_PLAN_ROLES.includes(emp.role);
-  const isFixedRate = !isPieceWh && !isHr && !isHrFix && !isWhHyb && !isMentorCard && !isRecruiterCard && !isHot && !isRop && !isTeamleadRetail && !isTeamleadMo && !isMoManager && !isB2bManager && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(emp.role));
+  // до вересня роль 'teamlead' у РЗПК трактуємо як звичайного менеджера —
+  // роль не має історії по місяцях, і заднім числом (напр. серпень) людина
+  // фактично ще була звичайним продажником, а не тімлідом
+  const effRoleForCard = (emp.dept_code==='rzpk' && emp.role==='teamlead' && !isRzpkNewSchemes) ? 'manager' : emp.role;
+  const isFixedRate = !isPieceWh && !isHr && !isHrFix && !isWhHyb && !isMentorCard && !isRecruiterCard && !isHot && !isRop && !isTeamleadRetail && !isTeamleadMo && !isMoManager && !isB2bManager && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(effRoleForCard));
   const scheme = schemeMap[emp.id] || {};
 
   document.getElementById('mgr-card-content').innerHTML=`
