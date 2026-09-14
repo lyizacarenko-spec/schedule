@@ -1889,7 +1889,8 @@ function openMgrCard(empId){
   // діють лише для місяця, який зараз переглядається (Y,M), як і на бекенді
   const rzpkCutoverYm = '2026-09';
   const curYmView = `${Y}-${String(M).padStart(2,'0')}`;
-  const isRzpkNewSchemes = emp.dept_code==='rzpk' && curYmView >= rzpkCutoverYm;
+  const empCutoverYmView = emp.role_teamlead_since ? String(emp.role_teamlead_since).slice(0,7) : rzpkCutoverYm;
+  const isRzpkNewSchemes = emp.dept_code==='rzpk' && curYmView >= empCutoverYmView;
   const isRetailV2 = isRzpkNewSchemes && emp.team==='Роздріб' && !NO_PLAN_ROLES.includes(emp.role);
   const isTeamleadRetail = isRzpkNewSchemes && emp.team==='Роздріб' && emp.role==='teamlead';
   const isTeamleadMo = isRzpkNewSchemes && (emp.team==='Малий опт'||emp.team==='Ресейл') && emp.role==='teamlead';
