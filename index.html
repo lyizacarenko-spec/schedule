@@ -1872,7 +1872,22 @@ function openMgrCard(empId){
   const s = statsData.find(x=>x.dept_code===emp.dept_code);
   const bd = s?.plan_breakdown||{};
   const empPlan = bd[emp.level]?.plan_per_person||0;
-  const canCalcSalary = hasSalaryCalc(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role);
+    // нові формули РЗПК (з вересня 2026) — визначаються по team+role,
+  // діють лише для місяця, який зараз переглядається (Y,M), як і на бекенді
+  const rzpkCutoverYm = '2026-09';
+  const curYmView = `${Y}-${String(M).padStart(2,'0')}`;
+  const empCutoverYmView = emp.role_teamlead_since ? String(emp.role_teamlead_since).slice(0,7) : rzpkCutoverYm;
+  const isRzpkNewSchemes = emp.dept_code==='rzpk' && curYmView >= empCutoverYmView;
+  // до дати переходу роль 'teamlead' у РЗПК трактуємо як emp.prev_role
+  // (роль, яку людина реально мала до переходу) — за замовчуванням
+  // 'manager' (як і було раніше), може бути й 'rop' для конкретної людини
+  const effRoleForCard = (emp.dept_code==='rzpk' && emp.role==='teamlead' && !isRzpkNewSchemes) ? (emp.prev_role||'manager') : emp.role;
+  const isRetailV2 = isRzpkNewSchemes && emp.team==='Роздріб' && !NO_PLAN_ROLES.includes(emp.role);
+  const isTeamleadRetail = isRzpkNewSchemes && emp.team==='Роздріб' && emp.role==='teamlead';
+  const isTeamleadMo = isRzpkNewSchemes && (emp.team==='Малий опт'||emp.team==='Ресейл') && emp.role==='teamlead';
+  const isMoManager = isRzpkNewSchemes && emp.team==='Малий опт' && !NO_PLAN_ROLES.includes(emp.role);
+  const isB2bManager = isRzpkNewSchemes && emp.team==='Ресейл' && !NO_PLAN_ROLES.includes(emp.role);
+  const canCalcSalary = hasSalaryCalc(emp.dept_code) && !NO_PLAN_ROLES.includes(effRoleForCard);
   const orderMode = isOrderDept(emp.dept_code);
   const levelPart = isSalesDept(emp.dept_code) && LEVEL_LABEL[emp.level] ? ` · ${LEVEL_LABEL[emp.level]}` : '';
   // ставочник: несейлз-відділ або керівна роль — оклад + премія/штраф
@@ -1884,22 +1899,7 @@ function openMgrCard(empId){
   const isRecruiterCard = isRecruiterScheme(emp.id);
   const isHot = isHotDept(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role);
   const salaryAllowed = canSeeSalary(emp);
-  const isRop = isRopMotiv(emp);
-  // нові формули РЗПК (з вересня 2026) — визначаються по team+role,
-  // діють лише для місяця, який зараз переглядається (Y,M), як і на бекенді
-  const rzpkCutoverYm = '2026-09';
-  const curYmView = `${Y}-${String(M).padStart(2,'0')}`;
-  const empCutoverYmView = emp.role_teamlead_since ? String(emp.role_teamlead_since).slice(0,7) : rzpkCutoverYm;
-  const isRzpkNewSchemes = emp.dept_code==='rzpk' && curYmView >= empCutoverYmView;
-  const isRetailV2 = isRzpkNewSchemes && emp.team==='Роздріб' && !NO_PLAN_ROLES.includes(emp.role);
-  const isTeamleadRetail = isRzpkNewSchemes && emp.team==='Роздріб' && emp.role==='teamlead';
-  const isTeamleadMo = isRzpkNewSchemes && (emp.team==='Малий опт'||emp.team==='Ресейл') && emp.role==='teamlead';
-  const isMoManager = isRzpkNewSchemes && emp.team==='Малий опт' && !NO_PLAN_ROLES.includes(emp.role);
-  const isB2bManager = isRzpkNewSchemes && emp.team==='Ресейл' && !NO_PLAN_ROLES.includes(emp.role);
-  // до вересня роль 'teamlead' у РЗПК трактуємо як звичайного менеджера —
-  // роль не має історії по місяцях, і заднім числом (напр. серпень) людина
-  // фактично ще була звичайним продажником, а не тімлідом
-  const effRoleForCard = (emp.dept_code==='rzpk' && emp.role==='teamlead' && !isRzpkNewSchemes) ? 'manager' : emp.role;
+  const isRop = isRopMotiv({...emp, role: effRoleForCard});
   const isFixedRate = !isPieceWh && !isHr && !isHrFix && !isWhHyb && !isMentorCard && !isRecruiterCard && !isHot && !isRop && !isTeamleadRetail && !isTeamleadMo && !isMoManager && !isB2bManager && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(effRoleForCard));
   const scheme = schemeMap[emp.id] || {};
 
