@@ -613,7 +613,7 @@ async function loadMonthData(){
 }
 
 // Дефолтний статус за кодом відділу і днем тижня
-function defaultStatusFor(deptCode, dow, empName){
+function defaultStatusFor(deptCode, dow, empName, dateStr){
   if(isOrderDept(deptCode)) return '9:30-17:30';
   if(empName==='Климюк Марія'){
     if(dow===0||dow===6) return 'вих';        // нд, сб
