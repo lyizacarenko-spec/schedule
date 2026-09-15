@@ -3504,7 +3504,7 @@ function financeSetView(v){ financeView=v; if(v==='average') renderFinance(); el
 //  bonus   — все решта позитивне: доплати, KPI, навчання, премії, корегування
 function categorizeSalaryLabel(label, amount){
   if(/%/.test(label)) return 'pct';
-  if(/Оклад|Ставка|Фікс|Переробка|Недопрацьовано|Упаковка|Фасовка|Вихід|Години × ставка/.test(label)) return 'rate';
+  if(/Оклад|Ставка|Фікс|Переробка|Недопрацьовано|Упаковка|Фасовка|Вихід|Години × ставка|Аванс/.test(label)) return 'rate';
   return amount < 0 ? 'penalty' : 'bonus';
 }
 function fundBreakdown(rows){
