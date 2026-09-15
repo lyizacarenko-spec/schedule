@@ -625,7 +625,7 @@ function defaultStatusFor(deptCode, dow, empName){
     return (dow===0||dow===6) ? 'вих' : '9:30-17:30';
   if(deptCode==='accounting')
     return (dow===0||dow===6) ? 'вих' : '9-17';
-  if(deptCode==='warehouse') return '9-19';
+    if(deptCode==='warehouse') return (dateStr && dateStr>='2026-10-01') ? '9:00-18:30' : '9-19';
   if(deptCode==='logistics')
     return dow===0 ? 'вих' : '8:30-16:30';
   if(['management','training','admin','marketing','it'].includes(deptCode) && (dow===0||dow===6)) return 'вих';
