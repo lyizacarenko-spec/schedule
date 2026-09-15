@@ -642,7 +642,7 @@ function getStatus(empId,date){
   // новенькі менеджери — порожньо (керівні ролі отримують дефолт)
   if(emp&&emp.level==='new'&&!NO_PLAN_ROLES.includes(emp.role)) return '';
   const dow = new Date(date).getDay();
-  return defaultStatusFor(emp?.dept_code, dow, emp?.name);
+  return defaultStatusFor(emp?.dept_code, dow, emp?.name, date);
 }
 
 // ══ RENDER ════════════════════════════════════════════
@@ -1129,7 +1129,7 @@ async function fillDefaultMonth(empId){
   days.forEach(d=>{
     if(emp.start_date && d.date < emp.start_date.slice(0,10)) return;
     const dow=new Date(d.date).getDay();
-    const st=defaultStatusFor(emp.dept_code,dow,emp.name);
+    const st=defaultStatusFor(emp.dept_code,dow,emp.name,d.date);
     if(!st) return;
     entries.push({employee_id:empId,entry_date:d.date,status:st});
   });
@@ -1163,7 +1163,7 @@ async function fillMissingForVisible(){
       if(emp.start_date && d.date < emp.start_date.slice(0,10)) return;
       if(emp.level==='new' && !NO_PLAN_ROLES.includes(emp.role)) return;
       const dow=new Date(d.date).getDay();
-      const st=defaultStatusFor(emp.dept_code,dow,emp.name);
+      const st=defaultStatusFor(emp.dept_code,dow,emp.name,d.date);
       if(!st) return;
       entries.push({employee_id:emp.id,entry_date:d.date,status:st});
     });
@@ -1736,7 +1736,7 @@ async function saveEmployee(){
       if(filled<navchDays){ status='навч'; filled++; }
       else if(autofill){
         const dow=new Date(d.date).getDay();
-        status=defaultStatusFor(deptObj?.code,dow,name);
+        status=defaultStatusFor(deptObj?.code,dow,name,d.date);
       }
       if(status) entries.push({employee_id:r.id,entry_date:d.date,status});
     }
