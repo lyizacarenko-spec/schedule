@@ -3537,6 +3537,17 @@ function real1shePaid(r){ return r.pay_schedule==='sales' ? !!r.paid1 : !!r.paid
 function fundBreakdownByPayout(rows){
   const p1={rate:0,pct:0,bonus:0,penalty:0}, p2={rate:0,pct:0,bonus:0,penalty:0};
   (rows||[]).forEach(r=>{
+    if(r.scheme_type==='hot_cold'){
+      // холодка — ОДНА фіксована сума без поділу на аванс/залишок (payout1
+      // завжди null, уся сума в payout2/pay2). Через "%" у мітці вона б
+      // потрапила в категорію pct і намагалась би масштабуватись відносно
+      // pay1amt (якого в холодки не існує) — сума губилась би з обох плиток.
+      // Тому рахуємо напряму: платиться і відображається як "1-ше" (payout2),
+      // враховуємо лише якщо реально позначено виплаченим.
+      const paidAmt = r.paid2 ? (r.pay2!=null?r.pay2:(r.payout2||0)) : 0;
+      if(paidAmt) p2.pct += paidAmt;
+      return;
+    }
     if(r.scheme_type==='hot'){
       // "холодка" виплачується разом з відповідним періодом гарячої ЗП —
       // рахуємо лише ту частину (1-14/15-кінець), де реально стоїть
