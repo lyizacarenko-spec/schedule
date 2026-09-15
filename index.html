@@ -3582,7 +3582,12 @@ function fundBreakdownByPayout(rows){
     // які розходяться з реально проставленими сумами і не годяться
     // для передачі в економіку.
     const remCalc = remainderRate + fb.pct + fb.bonus + fb.penalty;
-    const remActual = remBucket===p1 ? pay1amt : pay2amt;
+    // "Залишок" ЗАВЖДИ зберігається в полі payout2/pay2 — незалежно від
+    // того, в яку плитку (p1 чи p2) його потім кладе remBucket через
+    // реверс для 'sales'. Раніше тут помилково бралось pay1amt (аванс)
+    // для 'sales'-схем (remBucket===p1), через що сума масштабувалась
+    // до авансу замість реального залишку.
+    const remActual = pay2amt;
     if(remCalc && Math.abs(remActual-remCalc)>0.01){
       const scale = remActual/remCalc;
       remBucket.rate += remainderRate*scale;
