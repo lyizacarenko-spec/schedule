@@ -4259,8 +4259,12 @@ function renderFinancePaid(){
     const paid2amt = r.paid2 ? (r.pay2!=null?r.pay2:(r.payout2||0)) : 0;
     const paidTotal = paid1amt+paid2amt;
     if(paidTotal<=0) return;
-    const key=r.dept_code;
-    (byDept[key]=byDept[key]||{name:r.dept_name,items:[],sum:0}).items.push({name:r.name,amount:paidTotal});
+    // та сама групка "Лінійні керівники" (РОП/тімлід у відділах продажів),
+    // що й у зведенні "По відділах" — щоб структура збігалась скрізь
+    const isLeader = (isSalesDept(r.dept_code)||isOrderDept(r.dept_code)) && ['rop','teamlead'].includes(r.role);
+    const key = isLeader ? '__leaders__' : r.dept_code;
+    const name = isLeader ? 'Лінійні керівники' : r.dept_name;
+    (byDept[key]=byDept[key]||{name,items:[],sum:0}).items.push({name:r.name,amount:paidTotal});
     byDept[key].sum+=paidTotal;
   });
   const deptKeys=Object.keys(byDept).sort((a,b)=>byDept[b].sum-byDept[a].sum);
