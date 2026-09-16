@@ -1005,7 +1005,10 @@ function renderTable(){
        }
       // корисно для будь-якого відділу, не лише продажів/відмов —
       // склад теж часто має незаповнені дефолтні клітинки в графіку
-      rzpkFilterHtml += `<div style="margin-bottom:10px"><button onclick="fillMissingForVisible()" style="background:#d4edd8;color:#1a5c30;font-weight:700;border-radius:7px;padding:6px 14px;font-size:.8rem">📅 Дозаповнити відсутні дні (всім видимим)</button></div>`;
+      rzpkFilterHtml += `<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="fillMissingForVisible()" style="background:#d4edd8;color:#1a5c30;font-weight:700;border-radius:7px;padding:6px 14px;font-size:.8rem">📅 Дозаповнити відсутні дні (всім видимим)</button>
+        <button onclick="fillMissingForOneDay()" style="background:#e0ecf5;color:#1a4a70;font-weight:700;border-radius:7px;padding:6px 14px;font-size:.8rem">📆 Дозаповнити ОДИН день</button>
+      </div>`;
   document.getElementById('table-area').innerHTML=rzpkFilterHtml+h;
 }
 
@@ -1144,6 +1147,45 @@ async function fillDefaultMonth(empId){
 }
 
 // ══ ЗАПОВНИТИ ВІДСУТНІ ДНІ ВСІМ ВИДИМИМ У ВІДДІЛІ (не чіпає вже збережені) ══
+// Те саме, що fillMissingForVisible, але лише для ОДНІЄЇ конкретної дати —
+// зручно, коли пропущено графік за один день (напр. після ручного правки
+// "Дані складу" забули поставити сам робочий статус на цей день).
+async function fillMissingForOneDay(){
+  let emps=getVisEmps();
+  if(curDept==='rzpk' && rzpkSubFilter){
+    const target = rzpkSubFilter==='retail' ? ['Роздріб'] : ['Малий опт','Ресейл'];
+    emps = emps.filter(e=>target.includes(e.team));
+  }
+  if(isSalesDept(curDept) && leadersOnlyFilter){
+    emps = emps.filter(e=>NO_PLAN_ROLES.includes(e.role));
+  }
+  if(!emps.length){ alert('Немає видимих співробітників'); return; }
+  const defaultDate = `${Y}-${String(M).padStart(2,'0')}-${String(new Date().getDate()).padStart(2,'0')}`;
+  const dateInput = prompt('На яку дату дозаповнити (формат РРРР-ММ-ДД)?', defaultDate);
+  if(!dateInput) return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateInput)){ alert('Невірний формат дати. Приклад: 2026-09-14'); return; }
+  const entries=[];
+  emps.forEach(emp=>{
+    const k=`${emp.id}_${dateInput}`;
+    if(k in schedMap) return;
+    if(emp.start_date && dateInput < emp.start_date.slice(0,10)) return;
+    if(emp.level==='new' && !NO_PLAN_ROLES.includes(emp.role)) return;
+    const dow=new Date(dateInput).getDay();
+    const st=defaultStatusFor(emp.dept_code,dow,emp.name,dateInput);
+    if(!st) return;
+    entries.push({employee_id:emp.id,entry_date:dateInput,status:st});
+  });
+  if(!entries.length){ alert(`На ${dateInput} у всіх видимих уже є відмітка — дозаповнювати нічого`); return; }
+  if(!confirm(`Дозаповнити ${dateInput} для ${emps.length} осіб?\nБуде записано ${entries.length} записів. Існуючі відмітки НЕ будуть змінені.`)) return;
+  setSave('Дозаповнення...',false);
+  try{
+    await bulkSchedule(entries);
+    entries.forEach(en=>{ schedMap[`${en.employee_id}_${en.entry_date}`]=en; });
+    renderAll();
+    setSave(`Дозаповнено ${entries.length} записів на ${dateInput} ✓`,true);
+  }catch(e){ setSave('Помилка ✗',false); alert('Помилка: '+e.message); }
+}
+
 async function fillMissingForVisible(){
   let emps=getVisEmps();
   if(curDept==='rzpk' && rzpkSubFilter){
