@@ -4250,22 +4250,25 @@ function renderFinancePaid(){
   const deptKeys=Object.keys(byDept).sort((a,b)=>byDept[b].sum-byDept[a].sum);
   if(!deptKeys.length){ h+='<div style="padding:20px;text-align:center;color:#7a6048">Ще нічого не позначено виплаченим за цей місяць.</div>'; body.innerHTML=h; return; }
   let grandTotal=0;
-  deptKeys.forEach(k=>{
+  deptKeys.forEach((k,idx)=>{
     const dep=byDept[k];
     grandTotal+=dep.sum;
-    h+=`<div style="margin-bottom:16px;border-radius:8px;overflow:hidden;border:1px solid #e4dccc">
-      <div style="display:flex;justify-content:space-between;align-items:center;background:#f5efe4;padding:8px 12px">
-        <div style="font-weight:700;color:#FE8B26">${dep.name}</div>
+    const bodyId=`paid-dept-${idx}`;
+    h+=`<div style="margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid #e4dccc">
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#f5efe4;padding:8px 12px;cursor:pointer" onclick="const el=document.getElementById('${bodyId}');const arrow=this.querySelector('.paid-arrow');const open=el.style.display!=='none';el.style.display=open?'none':'block';arrow.textContent=open?'▸':'▾'">
+        <div style="font-weight:700;color:#FE8B26"><span class="paid-arrow" style="display:inline-block;width:14px">▸</span>${dep.name} <span style="color:#8a7860;font-weight:400;font-size:.72rem">(${dep.items.length})</span></div>
         <div style="font-weight:700;color:#5a4a38">${fmtUAH(dep.sum)}</div>
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:.8rem">
-        <tbody>
-          ${dep.items.sort((a,b)=>b.amount-a.amount).map(it=>`<tr style="border-top:1px solid #e4dccc">
-            <td style="padding:6px 12px;color:#5a4a38">${it.name}</td>
-            <td style="padding:6px 12px;text-align:right;color:#7ac070;font-weight:600">${fmtUAH(it.amount)}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
+      <div id="${bodyId}" style="display:none">
+        <table style="width:100%;border-collapse:collapse;font-size:.8rem">
+          <tbody>
+            ${dep.items.sort((a,b)=>b.amount-a.amount).map(it=>`<tr style="border-top:1px solid #e4dccc">
+              <td style="padding:6px 12px;color:#5a4a38">${it.name}</td>
+              <td style="padding:6px 12px;text-align:right;color:#7ac070;font-weight:600">${fmtUAH(it.amount)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
     </div>`;
   });
   h+=`<div style="margin-top:6px;padding:14px;background:#FE8B26;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
