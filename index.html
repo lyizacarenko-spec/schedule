@@ -3610,6 +3610,7 @@ function financeMonthNav(){
       <button onclick="financeSetView('weeks')" style="background:${financeView==='weeks'?'#d8c8b0':'#f5efe4'};color:#FE8B26;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">Склад по тижнях</button>
       <button onclick="financeSetView('average')" style="background:${financeView==='average'?'#d8c8b0':'#f5efe4'};color:#FE8B26;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">Середня за період</button>
       <button onclick="financeSetView('log')" style="background:${financeView==='log'?'#d8c8b0':'#f5efe4'};color:#FE8B26;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">📈 Історія ЗП</button>
+      <button onclick="financeSetView('paid')" style="background:${financeView==='paid'?'#d8c8b0':'#f5efe4'};color:#FE8B26;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">💳 Кому що видали</button>
     </div>
   </div>`;
 }
@@ -3620,7 +3621,7 @@ function financeChangeMonth(d){
   if(financeView==='log'){ return; }
   loadFinance();
 }
-function financeSetView(v){ financeView=v; if(v==='average') renderFinance(); else if(v==='weeks'){ renderFinance(); } else if(v==='log'){ renderFinance(); } else { financeDeptFilter=null; renderFinance(); } }
+function financeSetView(v){ financeView=v; if(v==='average') renderFinance(); else if(v==='weeks'){ renderFinance(); } else if(v==='log'){ renderFinance(); } else if(v==='paid'){ renderFinance(); } else { financeDeptFilter=null; renderFinance(); } }
 
 // Категоризація рядка деталізації ЗП для зведення "Фонд ЗП":
 //  rate    — оклад/ставка/фікс/переробка/відрядна оплата (упаковка, фасовка, вихід, години×ставка)
@@ -3733,6 +3734,7 @@ function renderFinance(){
   if(financeView==='average'){ renderFinanceAverage(); return; }
   if(financeView==='weeks'){ renderFinanceWeeks(); return; }
   if(financeView==='log'){ renderFinanceLog(); return; }
+  if(financeView==='paid'){ renderFinancePaid(); return; }
   const body=document.getElementById('finance-body');
   const d=financeData;
   if(!d){ body.innerHTML=financeMonthNav()+'<div class="loading">—</div>'; return; }
@@ -3853,12 +3855,18 @@ function renderFinance(){
     const fb = fundBreakdown(deptRows);
     const dpSum1=deptRows.reduce((a,r)=>a+real15teAmt(r),0);
     const dpSum2=deptRows.reduce((a,r)=>a+real1sheAmt(r),0);
+    const dpRows1=deptRows.filter(r=>real15teAmt(r)>0);
+    const dpRows2=deptRows.filter(r=>real1sheAmt(r)>0);
+    const dpPaid1 = dpRows1.length && dpRows1.every(real15tePaid);
+    const dpPaid2 = dpRows2.length && dpRows2.every(real1shePaid);
+    const dpCol1 = dpRows1.length ? (dpPaid1?'#2e7d52':'#F43313') : '#5a4a38';
+    const dpCol2 = dpRows2.length ? (dpPaid2?'#2e7d52':'#F43313') : '#5a4a38';
     h+=`<tr style="border-top:1px solid #5a4a38;cursor:pointer" onclick="financeDeptFilter='${dp.dept_code}';renderFinance()">
       <td style="padding:9px 6px;color:#5a4a38;font-weight:700">${dp.dept_name}${pendingNote}</td>
       <td style="text-align:center;color:#6a5040;font-weight:700">${dp.count>0?dp.count:'—'}</td>
       <td style="text-align:right;color:#FE8B26;font-weight:700">${dp.count>0?fmtUAH(dp.sum):'—'}</td>
-      <td style="text-align:right;color:#5a4a38;font-weight:700">${dpSum1?fmtUAH(dpSum1):'—'}</td>
-      <td style="text-align:right;color:#5a4a38;font-weight:700">${dpSum2?fmtUAH(dpSum2):'—'}</td>
+      <td style="text-align:right;color:${dpCol1};font-weight:700">${dpSum1?fmtUAH(dpSum1):'—'}${dpPaid1?' ✓':''}</td>
+      <td style="text-align:right;color:${dpCol2};font-weight:700">${dpSum2?fmtUAH(dpSum2):'—'}${dpPaid2?' ✓':''}</td>
       <td style="text-align:right;color:#6a5040;font-weight:700">${fb.rate?fmtUAH(fb.rate):'—'}</td>
       <td style="text-align:right;color:#6a5040;font-weight:700">${fb.pct?fmtUAH(fb.pct):'—'}</td>
       <td style="text-align:right;color:#7ac070;font-weight:700">${fb.bonus?fmtUAH(fb.bonus):'—'}</td>
@@ -4219,6 +4227,54 @@ async function savePayout(empId,no,value){
 // ── Середня за період ──
 let avgFrom=null, avgTo=null, avgDept='';
 // ── Склад по тижнях ──
+// ── "Кому що видали" — одна сторінка, всі люди одразу, згруповані по
+// відділах, ЛИШЕ фактично виплачені суми (з галочкою "виплачено"), і
+// загальна сума внизу. Використовує вже завантажені financeData (та сама
+// логіка, що й "По відділах"), окремого запиту до сервера не робить.
+function renderFinancePaid(){
+  const body=document.getElementById('finance-body');
+  const d=financeData;
+  if(!d){ body.innerHTML=financeMonthNav()+'<div class="loading">—</div>'; return; }
+  let h=financeMonthNav();
+  h+=`<div style="font-size:.75rem;color:#7a6048;margin-bottom:10px">Лише фактично виплачені суми (позначені галочкою «виплачено»), згруповано по відділах.</div>`;
+  const byDept={};
+  d.rows.forEach(r=>{
+    const paid1amt = r.paid1 ? (r.pay1!=null?r.pay1:(r.payout1||0)) : 0;
+    const paid2amt = r.paid2 ? (r.pay2!=null?r.pay2:(r.payout2||0)) : 0;
+    const paidTotal = paid1amt+paid2amt;
+    if(paidTotal<=0) return;
+    const key=r.dept_code;
+    (byDept[key]=byDept[key]||{name:r.dept_name,items:[],sum:0}).items.push({name:r.name,amount:paidTotal});
+    byDept[key].sum+=paidTotal;
+  });
+  const deptKeys=Object.keys(byDept).sort((a,b)=>byDept[b].sum-byDept[a].sum);
+  if(!deptKeys.length){ h+='<div style="padding:20px;text-align:center;color:#7a6048">Ще нічого не позначено виплаченим за цей місяць.</div>'; body.innerHTML=h; return; }
+  let grandTotal=0;
+  deptKeys.forEach(k=>{
+    const dep=byDept[k];
+    grandTotal+=dep.sum;
+    h+=`<div style="margin-bottom:16px;border-radius:8px;overflow:hidden;border:1px solid #e4dccc">
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#f5efe4;padding:8px 12px">
+        <div style="font-weight:700;color:#FE8B26">${dep.name}</div>
+        <div style="font-weight:700;color:#5a4a38">${fmtUAH(dep.sum)}</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem">
+        <tbody>
+          ${dep.items.sort((a,b)=>b.amount-a.amount).map(it=>`<tr style="border-top:1px solid #e4dccc">
+            <td style="padding:6px 12px;color:#5a4a38">${it.name}</td>
+            <td style="padding:6px 12px;text-align:right;color:#7ac070;font-weight:600">${fmtUAH(it.amount)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  });
+  h+=`<div style="margin-top:6px;padding:14px;background:#FE8B26;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+    <div style="font-weight:800;color:#fff;font-size:.95rem">Разом виплачено за ${MONTH_UA[financeMonth]} ${financeYear}</div>
+    <div style="font-weight:800;color:#fff;font-size:1.2rem">${fmtUAH(grandTotal)}</div>
+  </div>`;
+  body.innerHTML=h;
+}
+
 // ── Історія змін ЗП (мотивація/ставки) — хто/кого/коли/на скільки % ──
 async function renderFinanceLog(){
   const body=document.getElementById('finance-body');
