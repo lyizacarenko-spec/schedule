@@ -3594,6 +3594,7 @@ function financeMonthNav(){
       <button onclick="financeSetView('summary')" style="background:${financeView==='summary'?'#d8c8b0':'#f5efe4'};color:#FE8B26;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">По відділах</button>
       <button onclick="financeSetView('weeks')" style="background:${financeView==='weeks'?'#d8c8b0':'#f5efe4'};color:#FE8B26;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">Склад по тижнях</button>
       <button onclick="financeSetView('average')" style="background:${financeView==='average'?'#d8c8b0':'#f5efe4'};color:#FE8B26;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">Середня за період</button>
+      <button onclick="financeSetView('log')" style="background:${financeView==='log'?'#d8c8b0':'#f5efe4'};color:#FE8B26;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">📈 Історія ЗП</button>
     </div>
   </div>`;
 }
@@ -3601,9 +3602,10 @@ function financeChangeMonth(d){
   financeMonth+=d; if(financeMonth>12){financeMonth=1;financeYear++;} if(financeMonth<1){financeMonth=12;financeYear--;}
   if(financeView==='average'){ renderFinance(); return; }
   if(financeView==='weeks'){ renderFinanceWeeks(); return; }
+  if(financeView==='log'){ return; }
   loadFinance();
 }
-function financeSetView(v){ financeView=v; if(v==='average') renderFinance(); else if(v==='weeks'){ renderFinance(); } else { financeDeptFilter=null; renderFinance(); } }
+function financeSetView(v){ financeView=v; if(v==='average') renderFinance(); else if(v==='weeks'){ renderFinance(); } else if(v==='log'){ renderFinance(); } else { financeDeptFilter=null; renderFinance(); } }
 
 // Категоризація рядка деталізації ЗП для зведення "Фонд ЗП":
 //  rate    — оклад/ставка/фікс/переробка/відрядна оплата (упаковка, фасовка, вихід, години×ставка)
@@ -3715,6 +3717,7 @@ function fundBreakdownByPayout(rows){
 function renderFinance(){
   if(financeView==='average'){ renderFinanceAverage(); return; }
   if(financeView==='weeks'){ renderFinanceWeeks(); return; }
+  if(financeView==='log'){ renderFinanceLog(); return; }
   const body=document.getElementById('finance-body');
   const d=financeData;
   if(!d){ body.innerHTML=financeMonthNav()+'<div class="loading">—</div>'; return; }
@@ -4201,6 +4204,44 @@ async function savePayout(empId,no,value){
 // ── Середня за період ──
 let avgFrom=null, avgTo=null, avgDept='';
 // ── Склад по тижнях ──
+// ── Історія змін ЗП (мотивація/ставки) — хто/кого/коли/на скільки % ──
+async function renderFinanceLog(){
+  const body=document.getElementById('finance-body');
+  body.innerHTML=financeMonthNav()+'<div class="loading" style="color:#7a6048">Завантаження...</div>';
+  try{
+    const log=await api('/api/scheme-change-log');
+    let h=financeMonthNav();
+    h+=`<div style="font-size:.75rem;color:#7a6048;margin-bottom:10px">Останні зміни ставок, ролей і формул мотивації (видно лише по відділах, до яких є доступ).</div>`;
+    if(!log.length){ h+='<div style="padding:20px;text-align:center;color:#7a6048">Змін ще не було.</div>'; body.innerHTML=h; return; }
+    const TYPE_LABEL={salary_scheme:'Ставка/схема',role_motivation:'Роль/команда'};
+    h+=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
+      <thead><tr style="color:#7a6048;text-align:left">
+        <th style="padding:7px 5px">Дата</th>
+        <th style="padding:7px 5px">Хто змінив</th>
+        <th style="padding:7px 5px">Кого</th>
+        <th style="padding:7px 5px">Відділ</th>
+        <th style="padding:7px 5px">Тип</th>
+        <th style="padding:7px 5px">Зміна</th>
+      </tr></thead><tbody>`;
+    log.forEach(l=>{
+      const dt=new Date(l.changed_at);
+      const dtStr=dt.toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+      h+=`<tr style="border-top:1px solid #e4dccc">
+        <td style="padding:7px 5px;color:#5a4a38;white-space:nowrap">${dtStr}</td>
+        <td style="padding:7px 5px;color:#5a4a38">${l.changed_by||'—'}</td>
+        <td style="padding:7px 5px;color:#5a4a38;font-weight:600">${l.emp_name}</td>
+        <td style="padding:7px 5px;color:#7a6048">${l.dept_name||''}</td>
+        <td style="padding:7px 5px;color:#7a6048">${TYPE_LABEL[l.change_type]||l.change_type}</td>
+        <td style="padding:7px 5px;color:#c07020">${l.summary}</td>
+      </tr>`;
+    });
+    h+='</tbody></table>';
+    body.innerHTML=h;
+  }catch(e){
+    body.innerHTML=financeMonthNav()+`<div class="loading" style="color:#e06050">Помилка: ${e.message}</div>`;
+  }
+}
+
 async function renderFinanceWeeks(){
   const body=document.getElementById('finance-body');
   body.innerHTML=financeMonthNav()+'<div class="loading" style="color:#7a6048">Розрахунок...</div>';
