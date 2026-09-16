@@ -2287,6 +2287,7 @@ function openMgrCard(empId){
         </div>
       </div>`)) }
     </div>
+    ${salaryAllowed ? motivationBlockHtml(emp) : ''}
     <div style="font-size:.7rem;color:#8a7060;margin-bottom:6px">Календар ${MONTH_UA[M]} ${Y}</div>
     <div class="mgr-month">${calHtml}</div>
     <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
@@ -2649,6 +2650,114 @@ function adjBlockHtml(empId){
         </div>
         <div id="cold-result-${empId}" style="font-size:.72rem;color:#7a6050;margin-top:6px"></div>
       </div>`;
+    }
+
+    // ══ МОТИВАЦІЯ (адмін) — для керівників із доступом до ЗП цього відділу:
+    // самостійна зміна ролі/команди/дати переходу (продажі) і ставки/дати
+    // зміни ставки (ставочники), без потреби просити правити напряму в БД.
+    // Усі зміни логуються в scheme_change_log (хто/коли).
+    function motivationBlockHtml(emp){
+      const empId = emp.id;
+      const sc = schemeMap[empId] || {};
+      const isSalesLike = isSalesDept(emp.dept_code) || isOrderDept(emp.dept_code) || isHotDept(emp.dept_code);
+      const ROLE_OPTS=[['manager','Менеджер'],['senior','Старший менеджер'],['teamlead','Тімлід'],['rop','РОП'],['staff','Співробітник'],['head','Керівник']];
+      const roleOptsHtml = ROLE_OPTS.map(o=>`<option value="${o[0]}" ${emp.role===o[0]?'selected':''}>${o[1]}</option>`).join('');
+      const prevRoleOptsHtml = `<option value="">— (за замовч. manager)</option>` + ROLE_OPTS.map(o=>`<option value="${o[0]}" ${emp.prev_role===o[0]?'selected':''}>${o[1]}</option>`).join('');
+      const teamVal = emp.team||'';
+      const rtsVal = emp.role_teamlead_since ? String(emp.role_teamlead_since).slice(0,10) : '';
+      return `<div style="margin-top:14px;border:1px dashed #d4a060;border-radius:8px;padding:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="const el=document.getElementById('motiv-body-${empId}');el.style.display=el.style.display==='none'?'block':'none'">
+          <div style="font-size:.75rem;color:#c07020;font-weight:700">⚙️ Мотивація (адмін)</div>
+          <span style="font-size:.7rem;color:#c07020">▾</span>
+        </div>
+        <div id="motiv-body-${empId}" style="display:none;margin-top:10px">
+          ${isSalesLike ? `
+          <div style="font-size:.68rem;color:#8a7060;margin-bottom:6px">Роль/команда визначають формулу ЗП для відділів продажів. "Роль до переходу" — за якою формулою рахувати місяці ДО дати переходу (типово — менеджер).</div>
+          <div class="sal-row">
+            <div class="sal-field"><label>Роль (поточна, з дати переходу)</label><select id="motiv-role-${empId}">${roleOptsHtml}</select></div>
+            <div class="sal-field"><label>Команда</label><input type="text" id="motiv-team-${empId}" value="${teamVal}" placeholder="Роздріб / Малий опт / Ресейл"></div>
+          </div>
+          <div class="sal-row">
+            <div class="sal-field"><label>Дата переходу на нову роль/формулу</label><input type="date" id="motiv-rts-${empId}" value="${rtsVal}"></div>
+            <div class="sal-field"><label>Роль ДО переходу (для старих місяців)</label><select id="motiv-prevrole-${empId}">${prevRoleOptsHtml}</select></div>
+          </div>
+          <button onclick="saveMotivationRole(${empId})" style="width:100%;padding:7px;background:#c07020;color:#fff;border-radius:7px;font-weight:600;font-size:.8rem;margin-top:4px">💾 Зберегти роль/команду</button>
+          <div id="motiv-role-result-${empId}" style="font-size:.7rem;color:#7a6050;margin-top:6px"></div>
+          <div style="border-top:1px solid #e4dccc;margin:10px 0"></div>` : ''}
+          <div style="font-size:.68rem;color:#8a7060;margin-bottom:6px">Зміна ставки/окладу з конкретної дати (місяці до дати рахуються по старій ставці автоматично).</div>
+          <div class="sal-row">
+            <div class="sal-field"><label>Поточна (нова) ставка</label><input type="number" id="motiv-rate-${empId}" value="${sc.base_rate||''}" placeholder="0"></div>
+            <div class="sal-field"><label>Попередня ставка</label><input type="number" id="motiv-prevrate-${empId}" value="${sc.prev_base_rate??''}" placeholder="—"></div>
+          </div>
+          <div class="sal-row">
+            <div class="sal-field"><label>Дата зміни ставки</label><input type="date" id="motiv-ratedate-${empId}" value="${sc.rate_change_date?String(sc.rate_change_date).slice(0,10):''}"></div>
+          </div>
+          <button onclick="saveMotivationRate(${empId})" style="width:100%;padding:7px;background:#c07020;color:#fff;border-radius:7px;font-weight:600;font-size:.8rem;margin-top:4px">💾 Зберегти ставку</button>
+          <div id="motiv-rate-result-${empId}" style="font-size:.7rem;color:#7a6050;margin-top:6px"></div>
+          <div style="border-top:1px solid #e4dccc;margin:10px 0"></div>
+          <button onclick="loadMotivationLog(${empId})" style="background:none;color:#8a7060;font-size:.7rem;text-decoration:underline;cursor:pointer">📜 Історія змін</button>
+          <div id="motiv-log-${empId}" style="margin-top:6px"></div>
+        </div>
+      </div>`;
+    }
+
+    async function saveMotivationRole(empId){
+      const role = document.getElementById('motiv-role-'+empId).value;
+      const team = document.getElementById('motiv-team-'+empId).value.trim();
+      const role_teamlead_since = document.getElementById('motiv-rts-'+empId).value || null;
+      const prev_role = document.getElementById('motiv-prevrole-'+empId).value || null;
+      const resEl = document.getElementById('motiv-role-result-'+empId);
+      resEl.textContent = 'Збереження...';
+      try{
+        const updated = await api('/api/employee-motivation-role',{method:'PUT',body:JSON.stringify({
+          employee_id:empId, role, team: team||null, role_teamlead_since, prev_role
+        })});
+        const emp = employees.find(e=>e.id===empId);
+        if(emp){ Object.assign(emp, updated); }
+        resEl.textContent = '✓ Збережено';
+        resEl.style.color = '#2e7d52';
+      }catch(e){ resEl.textContent = 'Помилка: '+e.message; resEl.style.color='#ef5350'; }
+    }
+
+    async function saveMotivationRate(empId){
+      const base_rate = parseFloat(document.getElementById('motiv-rate-'+empId).value)||0;
+      const prevRateRaw = document.getElementById('motiv-prevrate-'+empId).value;
+      const prev_base_rate = prevRateRaw===''? null : parseFloat(prevRateRaw);
+      const rate_change_date = document.getElementById('motiv-ratedate-'+empId).value || null;
+      const resEl = document.getElementById('motiv-rate-result-'+empId);
+      resEl.textContent = 'Збереження...';
+      try{
+        const sc = schemeMap[empId] || {};
+        const updated = await api('/api/salary-schemes',{method:'PUT',body:JSON.stringify({
+          employee_id: empId,
+          scheme_type: sc.scheme_type || 'fixed_rate',
+          base_rate, norm_days: sc.norm_days||22, norm_type: sc.norm_type||'fixed',
+          fixed_amount: sc.fixed_amount||0,
+          prev_base_rate, rate_change_date,
+          prev_fixed_amount: sc.prev_fixed_amount ?? null,
+          fixed_amount_change_date: sc.fixed_amount_change_date || null,
+          prev_scheme_type: sc.prev_scheme_type || null,
+          scheme_type_change_date: sc.scheme_type_change_date || null,
+        })});
+        schemeMap[empId] = updated;
+        resEl.textContent = '✓ Збережено';
+        resEl.style.color = '#2e7d52';
+      }catch(e){ resEl.textContent = 'Помилка: '+e.message; resEl.style.color='#ef5350'; }
+    }
+
+    async function loadMotivationLog(empId){
+      const el = document.getElementById('motiv-log-'+empId);
+      el.innerHTML = '<div style="font-size:.68rem;color:#8a7060">Завантаження...</div>';
+      try{
+        const log = await api('/api/scheme-change-log?employee_id='+empId);
+        if(!log.length){ el.innerHTML = '<div style="font-size:.68rem;color:#8a7060">Змін ще не було</div>'; return; }
+        el.innerHTML = log.map(l=>{
+          const dt = new Date(l.changed_at).toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+          return `<div style="font-size:.65rem;color:#7a6050;padding:4px 0;border-bottom:1px solid #eee2d4">
+            <b>${dt}</b> · ${l.changed_by||'?'} · ${l.change_type}
+          </div>`;
+        }).join('');
+      }catch(e){ el.innerHTML = '<div style="font-size:.68rem;color:#ef5350">Помилка завантаження</div>'; }
     }
 
 function unlockFrate(){
