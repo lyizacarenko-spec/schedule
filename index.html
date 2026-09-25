@@ -4849,7 +4849,7 @@ async function renderUsers(){
       <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #ede8e0;font-size:.78rem;${u.is_active?'':'opacity:.45'}">
         <div style="flex:1">
           <div style="font-weight:600;color:#2c2218">${u.full_name}</div>
-          <div style="font-size:.68rem;color:#8a7060">${u.login} · ${ROLE[u.role]||u.role}${u.dept_codes?' · '+u.dept_codes:''}${u.can_finance?' · 💰Фінанси':''}</div>
+          <div style="font-size:.68rem;color:#8a7060">${u.login} · ${ROLE[u.role]||u.role}${u.dept_codes?' · '+u.dept_codes:''}${u.can_finance?' · 💰Фінанси':''}${u.vinnitsa_only?' · <span style="color:#F43313;font-weight:700">📍лише Вінниця</span>':(u.restricted_dept_codes?' · <span style="color:#c05a10;font-weight:700">📍+Вінниця: '+u.restricted_dept_codes+'</span>':'')}</div>
         </div>
         <button onclick='openEditUser(${JSON.stringify(u).replace(/'/g,"&apos;")})' style="background:#dce8d4;color:#2e6b1c;border-radius:5px;padding:3px 8px;font-size:.68rem">✏️ Редагувати</button>
         <button onclick="resetPass(${u.id},'${u.login}')" style="background:#e8e0d4;color:#7a6050;border-radius:5px;padding:3px 8px;font-size:.68rem">Скинути пароль</button>
@@ -4893,6 +4893,15 @@ function openEditUser(u){
         <input type="checkbox" id="eu-salary" ${u.can_salary?'checked':''} style="width:auto;margin:0">
         <label style="margin:0;font-size:.85rem;cursor:pointer" onclick="document.getElementById('eu-salary').click()">✏️ Може вводити ЗП</label>
       </div>
+      <div style="background:#f5efe4;border-radius:7px;padding:8px 10px;margin-bottom:14px">
+        <div style="font-size:.72rem;font-weight:700;color:#c05a10;margin-bottom:6px">📍 Філія Вінниця</div>
+        <label style="font-size:.68rem">Доступ до відділів Вінниці (через кому, порожньо = нема)</label>
+        <input type="text" id="eu-vindepts" value="${u.restricted_dept_codes||''}" placeholder="vin_sklad,vin_op,vin_keriv" style="width:100%;padding:7px;margin:4px 0 6px;border-radius:6px;border:1px solid #d4c8b8;box-sizing:border-box">
+        <div style="display:flex;align-items:center;gap:7px">
+          <input type="checkbox" id="eu-vinonly" ${u.vinnitsa_only?'checked':''} style="width:auto;margin:0">
+          <label style="margin:0;font-size:.75rem;cursor:pointer" onclick="document.getElementById('eu-vinonly').click()">Це акаунт САМОЇ Вінниці — не бачить Дніпро взагалі</label>
+        </div>
+      </div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button onclick="document.getElementById('eu-ov').remove()" style="background:#e8e0d4;color:#7a6050;border-radius:6px;padding:8px 16px">Скасувати</button>
         <button onclick="saveEditUser(${u.id})" style="background:#2e6b1c;color:#fff;border-radius:6px;padding:8px 16px">Зберегти</button>
@@ -4907,8 +4916,10 @@ async function saveEditUser(id){
   const dept_codes = document.getElementById('eu-depts').value.trim() || null;
   const can_finance = document.getElementById('eu-finance').checked;
   const can_salary = document.getElementById('eu-salary').checked;
+  const restricted_dept_codes = document.getElementById('eu-vindepts').value.trim() || null;
+  const vinnitsa_only = document.getElementById('eu-vinonly').checked;
   try{
-    await api('/api/users/'+id,{method:'PATCH',body:JSON.stringify({role,dept_codes,can_finance,can_salary})});
+    await api('/api/users/'+id,{method:'PATCH',body:JSON.stringify({role,dept_codes,can_finance,can_salary,restricted_dept_codes,vinnitsa_only})});
     document.getElementById('eu-ov').remove();
     renderUsers();
   }catch(e){ alert('Помилка: '+e.message); }
@@ -4920,6 +4931,8 @@ async function createUser(){
   const full_name=document.getElementById('nu-name').value.trim();
   const role=document.getElementById('nu-role').value;
   const depts=document.getElementById('nu-depts').value.trim();
+  const vindepts=document.getElementById('nu-vindepts').value.trim();
+  const vinonly=document.getElementById('nu-vinonly').checked;
   err.textContent='';
   if(!login||!password||!full_name){ err.textContent='Заповніть логін, пароль і ПІБ'; return; }
   if(password.length<5){ err.textContent='Пароль — мінімум 5 символів'; return; }
@@ -4927,10 +4940,13 @@ async function createUser(){
     await api('/api/users',{method:'POST',body:JSON.stringify({
       login, password, full_name, role,
       dept_codes: depts||null,
-      can_finance: role==='owner',
-      can_salary: role!=='schedule'
+      can_finance: role==='owner' || !!vindepts,
+      can_salary: role!=='schedule' || !!vindepts,
+      restricted_dept_codes: vindepts||null,
+      vinnitsa_only: vinonly
     })});
-    ['nu-login','nu-pass','nu-name','nu-depts'].forEach(id=>document.getElementById(id).value='');
+    ['nu-login','nu-pass','nu-name','nu-depts','nu-vindepts'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('nu-vinonly').checked=false;
     renderUsers();
     setSave('Користувача створено ✓',true);
   }catch(e){ err.textContent=String(e.message).replace(/[{}"]/g,'').replace('error:',''); }
@@ -5264,6 +5280,15 @@ async function editRole(empId){
       </div>
       <div style="font-size:.65rem;color:#8a7060;margin-bottom:8px">
         Коди: rzpk, hot, refuse, warehouse, logistics, marketing, admin, accounting, it, management, training
+      </div>
+      <div style="background:#f5efe4;border-radius:7px;padding:8px 10px;margin-bottom:10px">
+        <div style="font-size:.72rem;font-weight:700;color:#c05a10;margin-bottom:6px">📍 Філія Вінниця</div>
+        <label style="font-size:.68rem">Доступ до відділів Вінниці (через кому, порожньо = нема)</label>
+        <input type="text" id="nu-vindepts" placeholder="vin_sklad,vin_op,vin_keriv">
+        <div style="display:flex;align-items:center;gap:7px;margin-top:6px">
+          <input type="checkbox" id="nu-vinonly" style="width:auto;margin:0">
+          <label style="margin:0;font-size:.75rem;cursor:pointer" onclick="document.getElementById('nu-vinonly').click()">Це акаунт САМОЇ Вінниці — не бачить Дніпро взагалі</label>
+        </div>
       </div>
       <button onclick="createUser()" style="width:100%;background:#2e7d52;color:#fff;border-radius:7px;padding:9px;font-weight:600;font-size:.82rem">Створити</button>
       <div id="nu-err" style="color:#ef5350;font-size:.75rem;min-height:18px;margin-top:6px"></div>
