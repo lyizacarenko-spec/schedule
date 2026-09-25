@@ -417,7 +417,8 @@ const API = 'https://ikorka-schedule-production.up.railway.app';
 
 // ══ ГРУПИ ВІДДІЛІВ ══════════════════════════════════
 // Продажі — ЗП по % виконання плану, є рівні top/mid/jun
-const SALES_DEPTS = ['rzpk','retail','wholesale','resellers','hot'];
+// vin_op (Вінниця — Відділ продажу) — по аналогії з РЗПК-Роздріб Дніпра
+const SALES_DEPTS = ['rzpk','retail','wholesale','resellers','hot','vin_op'];
 // Реактивація/Відмови — ЗП по кількості замовлень
 const ORDER_DEPTS = ['refuse','reactivation'];
 // Ролі, які не рахуються в план відділу
@@ -1925,7 +1926,7 @@ function openMgrCard(empId){
   const rzpkCutoverYm = '2026-09';
   const curYmView = `${Y}-${String(M).padStart(2,'0')}`;
   const empCutoverYmView = emp.role_teamlead_since ? String(emp.role_teamlead_since).slice(0,7) : rzpkCutoverYm;
-  const isRzpkNewSchemes = emp.dept_code==='rzpk' && curYmView >= empCutoverYmView;
+  const isRzpkNewSchemes = (emp.dept_code==='rzpk' || emp.dept_code==='vin_op') && curYmView >= empCutoverYmView;
   // до дати переходу роль 'teamlead' у РЗПК трактуємо як emp.prev_role
   // (роль, яку людина реально мала до переходу) — за замовчуванням
   // 'manager' (як і було раніше), може бути й 'rop' для конкретної людини
@@ -3454,6 +3455,7 @@ const TEAMS_BY_DEPT = {
   resellers:    ['РОП','Тімлід','Нові співробітники','Віддалено'],
  rzpk:         ['РОП','Роздріб','Малий опт','Ресейл','Нові співробітники','Віддалено'],
   hot:          ['РОП','Гарячі продажі','Нові співробітники'],
+  vin_op:       ['РОП','Роздріб','Нові співробітники','Віддалено'],
 };
 
 let teamEmpId=null;
