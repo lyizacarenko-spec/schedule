@@ -662,8 +662,12 @@ function renderAll(){
 function renderBranchButton(){
   const btn=document.getElementById('btn-branch');
   if(!btn) return;
+  // кнопка потрібна лише тим, хто бачить ОБИДВІ філії одночасно (Дніпро +
+  // Вінниця) — vinnitsa_only-акаунтам (бачать лише Вінницю) чи звичайним
+  // Дніпровським (без жодного vin_* відділу) перемикати нема куди.
   const hasVin = departments.some(d=>isVinDept(d.code));
-  if(!hasVin){ btn.style.display='none'; return; }
+  const hasMain = departments.some(d=>!isVinDept(d.code));
+  if(!hasVin || !hasMain){ btn.style.display='none'; return; }
   btn.style.display='inline-block';
   const branch = isVinDept(curDept) ? 'vinnitsa' : 'main';
   if(branch==='vinnitsa'){
@@ -3642,7 +3646,13 @@ async function loadFinance(){
 }
 
 let financeBranch = 'main';
-function financeHasVin(){ return !!(financeData && financeData.depts && financeData.depts.some(d=>isVinDept(d.dept_code))); }
+function financeHasVin(){
+  if(!financeData || !financeData.depts) return false;
+  // так само, як у графіку — кнопка лише тим, хто бачить ОБИДВІ філії
+  const hasVin = financeData.depts.some(d=>isVinDept(d.dept_code));
+  const hasMain = financeData.depts.some(d=>!isVinDept(d.dept_code));
+  return hasVin && hasMain;
+}
 function toggleFinanceBranch(){
   financeBranch = financeBranch==='main' ? 'vinnitsa' : 'main';
   financeDeptFilter = null;
