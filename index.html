@@ -258,6 +258,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     <a class="btn btn-ghost" href="https://docs.google.com/spreadsheets/d/132hHyGfehSWe6mkpmKBUhUBsJtPGLPjPZH84d1HuvXI/edit" target="_blank" rel="noopener" id="btn-sheet-link" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e;text-decoration:none;display:inline-flex;align-items:center">📄 Таблиця ЗП ↗</a>
     <button class="btn btn-ghost" onclick="toggleArchive()" id="btn-archive">📦 Архів</button>
     <button class="btn" onclick="openFinance()" id="btn-finance" style="background:linear-gradient(135deg,#2c1810,#4a2818);color:#FE8B26;border:1px solid #d8c8b0;font-weight:700">💰 Фінанси</button>
+    <button class="btn" onclick="toggleBranch()" id="btn-branch" style="display:none;background:linear-gradient(135deg,#2c1810,#4a2818);color:#FE8B26;border:1px solid #d8c8b0;font-weight:700">📍 Філія Вінниця</button>
   </div>
   <div class="topbar-right">
    <div id="user-box" style="font-size:.75rem;color:#7a6050;font-weight:600"></div>
@@ -646,19 +647,51 @@ function getStatus(empId,date){
 }
 
 // ══ RENDER ════════════════════════════════════════════
+function isVinDept(code){ return !!code && code.startsWith('vin_'); }
+
 function renderAll(){
   document.getElementById('month-label').textContent=`${MONTH_UA[M]} ${Y}`;
+  renderBranchButton();
   renderDeptTabs();
   renderStats();
   renderTable();
   renderDailyPlanBar();
 }
 
+function renderBranchButton(){
+  const btn=document.getElementById('btn-branch');
+  if(!btn) return;
+  const hasVin = departments.some(d=>isVinDept(d.code));
+  if(!hasVin){ btn.style.display='none'; return; }
+  btn.style.display='inline-block';
+  const branch = isVinDept(curDept) ? 'vinnitsa' : 'main';
+  if(branch==='vinnitsa'){
+    btn.textContent='🏢 Дніпро';
+    btn.style.background='linear-gradient(135deg,#F43313,#C32119)';
+    btn.style.color='#fff';
+  } else {
+    btn.textContent='📍 Філія Вінниця';
+    btn.style.background='linear-gradient(135deg,#2c1810,#4a2818)';
+    btn.style.color='#FE8B26';
+  }
+}
+
+function toggleBranch(){
+  const branch = isVinDept(curDept) ? 'main' : 'vinnitsa';
+  const target = departments.find(d => isVinDept(d.code) === (branch==='vinnitsa'));
+  if(target) curDept = target.code;
+  rzpkSubFilter=null;
+  leadersOnlyFilter=false;
+  renderAll();
+}
+
 function renderDeptTabs(){
   const el=document.getElementById('dept-tabs');
   if(!el||!departments.length) return;
-  if(!departments.find(d=>d.code===curDept)) curDept=departments[0].code;
-  el.innerHTML=departments.map(d=>
+  const branch = isVinDept(curDept) ? 'vinnitsa' : 'main';
+  const visible = departments.filter(d => isVinDept(d.code) === (branch==='vinnitsa'));
+  if(!visible.find(d=>d.code===curDept)) curDept = visible[0] ? visible[0].code : departments[0].code;
+  el.innerHTML=visible.map(d=>
     `<button class="dept-tab ${d.code===curDept?'active':''}" id="tab-${d.code}" onclick="setDept('${d.code}')">${d.name}</button>`
   ).join('');
 }
