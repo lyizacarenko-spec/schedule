@@ -3633,11 +3633,23 @@ async function loadFinance(){
   }
 }
 
+let financeBranch = 'main';
+function financeHasVin(){ return !!(financeData && financeData.depts && financeData.depts.some(d=>isVinDept(d.dept_code))); }
+function toggleFinanceBranch(){
+  financeBranch = financeBranch==='main' ? 'vinnitsa' : 'main';
+  financeDeptFilter = null;
+  renderFinance();
+}
 function financeMonthNav(){
+  const hasVin = financeHasVin();
+  const branchBtn = hasVin
+    ? `<button onclick="toggleFinanceBranch()" style="background:${financeBranch==='vinnitsa'?'linear-gradient(135deg,#F43313,#C32119)':'linear-gradient(135deg,#2c1810,#4a2818)'};color:${financeBranch==='vinnitsa'?'#fff':'#FE8B26'};border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:700">${financeBranch==='vinnitsa'?'🏢 Дніпро':'📍 Філія Вінниця'}</button>`
+    : '';
   return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
     <button onclick="financeChangeMonth(-1)" style="background:#f5efe4;color:#6a5040;border-radius:6px;padding:5px 11px">◀</button>
     <div style="font-weight:700;color:#FE8B26;min-width:150px;text-align:center">${MONTH_UA[financeMonth]} ${financeYear}</div>
     <button onclick="financeChangeMonth(1)" style="background:#f5efe4;color:#6a5040;border-radius:6px;padding:5px 11px">▶</button>
+    ${branchBtn}
     <div style="margin-left:auto;display:flex;gap:6px">
       <button onclick="financeSetView('summary')" style="background:${financeView==='summary'?'#d8c8b0':'#f5efe4'};color:#FE8B26;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">По відділах</button>
       <button onclick="financeSetView('weeks')" style="background:${financeView==='weeks'?'#d8c8b0':'#f5efe4'};color:#FE8B26;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:600">Склад по тижнях</button>
@@ -3826,23 +3838,29 @@ function renderFinance(){
     return;
   }
 
-  // зведення по відділах
+  // зведення по відділах — фільтруємо по поточній філії (Дніпро/Вінниця)
+  const branchDepts = financeHasVin()
+    ? d.depts.filter(dp=>isVinDept(dp.dept_code)===(financeBranch==='vinnitsa'))
+    : d.depts;
+  const branchRows = financeHasVin()
+    ? d.rows.filter(r=>isVinDept(r.dept_code)===(financeBranch==='vinnitsa'))
+    : d.rows;
   let h=financeMonthNav();
-  if(!d.depts.length){
+  if(!branchDepts.length){
     h+=`<div style="padding:20px;text-align:center;color:#7a6048;font-size:.85rem">
       Немає порахованих зарплат за цей місяць.<br>
       <span style="font-size:.75rem">Оклади ставочників задаються в картці співробітника. Відділи продажів/відмов рахуються окремо в картці.</span>
     </div>`;
     body.innerHTML=h; return;
   }
-  const totalFund=d.depts.reduce((a,x)=>a+x.sum,0);
-  const totalPeople=d.depts.reduce((a,x)=>a+x.count,0);
-  const totalFbp=fundBreakdownByPayout(d.rows);
-  const totalSum1=d.rows.reduce((a,r)=>a+real15teAmt(r),0);
-  const totalSum2=d.rows.reduce((a,r)=>a+real1sheAmt(r),0);
+  const totalFund=branchDepts.reduce((a,x)=>a+x.sum,0);
+  const totalPeople=branchDepts.reduce((a,x)=>a+x.count,0);
+  const totalFbp=fundBreakdownByPayout(branchRows);
+  const totalSum1=branchRows.reduce((a,r)=>a+real15teAmt(r),0);
+  const totalSum2=branchRows.reduce((a,r)=>a+real1sheAmt(r),0);
   const catRowTop=(label,val,color)=>`<div><div style="font-size:.62rem;color:#7a6048">${label}</div><div style="font-size:.9rem;font-weight:700;color:${color}">${val?fmtUAH(val):'—'}</div></div>`;
-  const topRows1=d.rows.filter(r=>real15teAmt(r)>0);
-  const topRows2=d.rows.filter(r=>real1sheAmt(r)>0);
+  const topRows1=branchRows.filter(r=>real15teAmt(r)>0);
+  const topRows2=branchRows.filter(r=>real1sheAmt(r)>0);
   const topPaid1 = topRows1.length && topRows1.every(real15tePaid);
   const topPaid2 = topRows2.length && topRows2.every(real1shePaid);
   h+=`<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
@@ -3880,11 +3898,11 @@ function renderFinance(){
       <th style="text-align:right">💼 Ставка</th><th style="text-align:right">📈 %</th><th style="text-align:right">🎁 Допки</th><th style="text-align:right">⚠️ Штрафи</th>
       <th style="text-align:right">Середня</th><th style="text-align:right">Мін</th><th style="text-align:right">Макс</th><th></th>
     </tr></thead><tbody>`;
-  d.depts.forEach(dp=>{
+  branchDepts.forEach(dp=>{
     const pendingNote = dp.pending>0 ? `<div style="font-size:.66rem;color:#c08040;margin-top:2px;font-weight:400">⏳ ${dp.pending} на авансі — оборот ще не внесено</div>` : '';
     const deptRows = dp.dept_code==='__leaders__'
-      ? d.rows.filter(r=>(isSalesDept(r.dept_code)||isOrderDept(r.dept_code))&&['rop','teamlead'].includes(r.role))
-      : d.rows.filter(r=>r.dept_code===dp.dept_code && !((isSalesDept(r.dept_code)||isOrderDept(r.dept_code))&&['rop','teamlead'].includes(r.role)));
+      ? branchRows.filter(r=>(isSalesDept(r.dept_code)||isOrderDept(r.dept_code))&&['rop','teamlead'].includes(r.role))
+      : branchRows.filter(r=>r.dept_code===dp.dept_code && !((isSalesDept(r.dept_code)||isOrderDept(r.dept_code))&&['rop','teamlead'].includes(r.role)));
     const fb = fundBreakdown(deptRows);
     const dpSum1=deptRows.reduce((a,r)=>a+real15teAmt(r),0);
     const dpSum2=deptRows.reduce((a,r)=>a+real1sheAmt(r),0);
