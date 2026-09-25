@@ -2980,6 +2980,11 @@ function monthWeekdaysCount(){
   return getDays(Y,M).filter(d=>!d.isW).length;
 }
 
+// Персональний виняток (той самий, що на бекенді): Усачов Сергій (234,
+// Склад) і Усачов Артем (236, Керівник), філія Вінниця — повний оклад
+// щомісяця, без прив'язки до відпрацьованих днів.
+const FLAT_OKLAD_NO_PRORATION_IDS = [234, 236];
+
 // Розрахунок ставочника на клієнті (та сама логіка, що на бекенді)
 function calcFrate(empId){
   const base=parseFloat(document.getElementById('frate-base-'+empId).value)||0;
@@ -2992,15 +2997,16 @@ function calcFrate(empId){
   const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','8:30-16:30','удаленка','запізн','відробіт'];
   let worked=0;
   days.forEach(d=>{ if(WORKS.includes(getStatus(empId,d.date))) worked++; });
-  const diff=worked-targetDays;
+  const isFlatOklad = FLAT_OKLAD_NO_PRORATION_IDS.includes(empId);
+  const diff=isFlatOklad?0:(worked-targetDays);
   const dayAdjust=diff*dayPrice;
   const list=adjMap[empId]||[];
   const adjTotal=list.reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
 // новачок (прийнятий у цьому місяці) → відпрацьовані дні × ціна дня
   const emp0=employees.find(e=>e.id===empId);
   const sd=emp0?.start_date ? String(emp0.start_date).slice(0,10) : null;
-  const isNewStaff = sd && parseInt(sd.slice(0,4))===Y && parseInt(sd.slice(5,7))===M;
-  const total = isNewStaff ? (worked*dayPrice+adjTotal) : (base+dayAdjust+adjTotal);
+  const isNewStaff = !isFlatOklad && sd && parseInt(sd.slice(0,4))===Y && parseInt(sd.slice(5,7))===M;
+  const total = isFlatOklad ? (base+adjTotal) : isNewStaff ? (worked*dayPrice+adjTotal) : (base+dayAdjust+adjTotal);
   let payout1=base/2;                       // аванс 15-го
   if(payout1>total) payout1=Math.max(0,total);
   const payout2=Math.max(0,total-payout1);  // залишок 1-го наст. місяця
