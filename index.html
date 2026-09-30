@@ -375,6 +375,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
           <option value="hourly">Погодинна</option>
           <option value="hourly_fixed">Погодинна + фікс</option>
           <option value="warehouse_hybrid">Гібридна (оклад+фасовка, начальник складу)</option>
+          <option value="shift_rate">Позмінна (ставка за зміну, графік 2/2)</option>
         </select>
       </div>
       <div id="ae-baserate-wrap">
@@ -435,6 +436,7 @@ const STATUSES = [
   {v:'9-19',      label:'9-19',      cls:'cs-work', h:10},
   {v:'9-19:30',   label:'9-19:30',   cls:'cs-work', h:10.5},
   {v:'8:30-16:30',label:'8:30-16:30',cls:'cs-work', h:8},
+  {v:'9-21',      label:'9-21',      cls:'cs-work', h:12},
   {v:'вих',     label:'вих',     cls:'cs-off',  h:0},
   {v:'больн',   label:'больн',   cls:'cs-sick', h:0},
   {v:'відпуск', label:'відпуск', cls:'cs-vac',  h:0},
@@ -628,8 +630,10 @@ function defaultStatusFor(deptCode, dow, empName, dateStr){
   if(deptCode==='accounting')
     return (dow===0||dow===6) ? 'вих' : '9-17';
     if(deptCode==='warehouse') return (dateStr && dateStr>='2026-10-01') ? '9:00-18:30' : '9-19';
+  // логісти: з 1 жовтня 2026 — графік 2/2, зміна 9:00-21:00, без авто-вих
+  // (вихідні 2/2 не прив'язані до днів тижня — ставляться вручну)
   if(deptCode==='logistics')
-    return dow===0 ? 'вих' : '8:30-16:30';
+    return (dateStr && dateStr>='2026-10-01') ? '9-21' : (dow===0 ? 'вих' : '8:30-16:30');
   if(['management','training','admin','marketing','it'].includes(deptCode) && (dow===0||dow===6)) return 'вих';
   return '10-18';
 }
@@ -1733,6 +1737,9 @@ function onAeSchemeTypeChange(){
   } else if(t==='hourly_fixed'){
     label.textContent='Ставка за годину (грн)'; baseWrap.style.display='block';
     fixedWrap.style.display='block'; normWrap.style.display='none';
+  } else if(t==='shift_rate'){
+    label.textContent='Ставка за зміну (грн)'; baseWrap.style.display='block';
+    fixedWrap.style.display='none'; normWrap.style.display='none';
   } else {
     label.textContent='Оклад (грн/міс)'; baseWrap.style.display='block';
     fixedWrap.style.display='none'; normWrap.style.display='block';
@@ -1948,12 +1955,13 @@ function openMgrCard(empId){
   const isHr = isHourly(emp.id);
   const isHrFix = isHrFixed(emp.id);
   const isWhHyb = isWhHybrid(emp.id);
+  const isShiftRate = isShiftRateScheme(emp.id);
   const isMentorCard = isMentorScheme(emp.id);
   const isRecruiterCard = isRecruiterScheme(emp.id);
   const isHot = isHotDept(emp.dept_code) && !NO_PLAN_ROLES.includes(emp.role);
   const salaryAllowed = canSeeSalary(emp);
   const isRop = isRopMotiv({...emp, role: effRoleForCard});
-  const isFixedRate = !isPieceWh && !isHr && !isHrFix && !isWhHyb && !isMentorCard && !isRecruiterCard && !isHot && !isRop && !isTeamleadRetail && !isTeamleadMo && !isMoManager && !isB2bManager && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(effRoleForCard));
+  const isFixedRate = !isPieceWh && !isHr && !isHrFix && !isWhHyb && !isShiftRate && !isMentorCard && !isRecruiterCard && !isHot && !isRop && !isTeamleadRetail && !isTeamleadMo && !isMoManager && !isB2bManager && (!hasSalaryCalc(emp.dept_code) || NO_PLAN_ROLES.includes(effRoleForCard));
   const scheme = schemeMap[emp.id] || {};
 
   document.getElementById('mgr-card-content').innerHTML=`
@@ -2205,6 +2213,23 @@ function openMgrCard(empId){
         ${adjBlockHtml(emp.id)}
         ${advBlockHtml(emp.id)}
         <div id="frate-result-${emp.id}" style="margin-top:8px"></div>`;
+      })() : isShiftRate ? (()=>{
+        const rate=parseFloat(scheme.base_rate)||0;
+        let shifts=0;
+        getDays(Y,M).forEach(d=>{ if(sh(getStatus(emp.id,d.date))>0) shifts++; });
+        const shiftPay=shifts*rate;
+        return `<div style="font-size:.78rem;color:#8a7060;margin-bottom:10px">Позмінна оплата (графік 2/2): ставка ${rate?fmtM(rate):'—'} за кожну відпрацьовану зміну. Вихідні співробітник ставить собі сам («вих» у графіку).</div>
+        <div class="sal-row">
+          <div class="sal-field"><label>Ставка за зміну (грн)</label><input type="number" id="shrate-rate-${emp.id}" placeholder="1700" value="${rate||''}"></div>
+        </div>
+        <button onclick="saveShiftRate(${emp.id})" style="width:100%;padding:8px;background:#2e7d52;color:#fff;border-radius:7px;font-weight:600;font-size:.82rem;margin-top:4px">💾 Зберегти ставку</button>
+        <div class="sal-result" style="margin-top:10px">
+          <div class="sal-result-row"><span>Відпрацьовано змін</span><span>${shifts}</span></div>
+          <div class="sal-result-row green"><span>💰 Разом за ${MONTH_UA[M]}</span><span>${fmtFull(shiftPay)}</span></div>
+        </div>
+        ${adjBlockHtml(emp.id)}
+        ${advBlockHtml(emp.id)}
+        <div id="frate-result-${emp.id}" style="margin-top:8px"></div>`;
       })() : isRecruiterCard ? (()=>{
         const base=parseFloat(scheme.base_rate)||0;
         const trainCand=parseInt(recruiterData[emp.id]?.train_candidates)||0;
@@ -2381,7 +2406,7 @@ function openMgrCard(empId){
     });
     loadAdvances(emp.id).then(()=>renderAdvList(emp.id));
   }
-  if(salaryAllowed && (isPieceWh||isHr||isHrFix||isWhHyb)){
+  if(salaryAllowed && (isPieceWh||isHr||isHrFix||isWhHyb||isShiftRate)){
     loadAdjustments(emp.id).then(()=>{ renderAdjList(emp.id); });
     loadAdvances(emp.id).then(()=>renderAdvList(emp.id));
   }
@@ -2854,6 +2879,20 @@ async function saveHrFixed(empId){
     schemeMap[empId]=sc;
     openMgrCard(empId);
     setSave('Збережено ✓',true);
+  }catch(e){ alert('Помилка: '+e.message); }
+}
+
+async function saveShiftRate(empId){
+  const rate=parseFloat(document.getElementById('shrate-rate-'+empId).value)||0;
+  if(!rate){ alert('Введи ставку за зміну'); return; }
+  setSave('Збереження...',false);
+  try{
+    const sc=await api('/api/salary-schemes',{method:'PUT',body:JSON.stringify({
+      employee_id:empId, scheme_type:'shift_rate', base_rate:rate
+    })});
+    schemeMap[empId]=sc;
+    openMgrCard(empId);
+    setSave('Ставку збережено ✓',true);
   }catch(e){ alert('Помилка: '+e.message); }
 }
 
@@ -4081,6 +4120,7 @@ function financeTable(rows, detailed){
    const isPiece=r.scheme_type==='piece_warehouse';
     const isHrRow=r.scheme_type==='hourly';
     const isHrFixed=r.scheme_type==='hourly_fixed';
+    const isShiftRateRow=r.scheme_type==='shift_rate';
     const isSales=r.scheme_type==='percent_plan';
     const isOrderRow=r.scheme_type==='orders_count';
     const isRopRow=r.scheme_type==='rop';
@@ -4088,12 +4128,14 @@ function financeTable(rows, detailed){
     if(isPiece) tag=' <span style="font-size:.62rem;color:#7a6048">відрядн.</span>';
     else if(isHrRow) tag=' <span style="font-size:.62rem;color:#7a6048">почас.</span>';
     else if(isHrFixed) tag=` <span style="font-size:.62rem;color:#7a6048">фікс+${r.hours_total}г</span>`;
+    else if(isShiftRateRow) tag=` <span style="font-size:.62rem;color:#7a6048">${r.worked_days} змін</span>`;
     else if(isSales) tag=` <span style="font-size:.62rem;color:#7a6048">${r.pct}% плану</span>`;
     else if(isOrderRow) tag=` <span style="font-size:.62rem;color:#7a6048">${r.orders} зам.</span>`;
     let baseCol;
     if(isPiece) baseCol=fmtUAH(r.piece_total);
     else if(isHrRow) baseCol=r.hours_total+'г×'+r.base_rate;
     else if(isHrFixed) baseCol=fmtUAH(r.fixed_amount)+' + '+r.hours_total+'г×'+r.base_rate;
+    else if(isShiftRateRow) baseCol=r.worked_days+'зм×'+r.base_rate;
     else if(isSales||isOrderRow||isRopRow) baseCol=fmtUAH(r.rate);
     else baseCol=fmtUAH(r.base_rate);
     let adjCol, adjCellTitle=adjTitle;
@@ -4693,6 +4735,7 @@ function isRecruiterScheme(empId){ return schemeMap[empId]?.scheme_type === 'rec
 function hrRate(empId){ return parseFloat(schemeMap[empId]?.base_rate)||150; }
 // ══ СКЛАД — гібрид начальника складу (фікс + фасовка) ══
 function isWhHybrid(empId){ return schemeMap[empId]?.scheme_type === 'warehouse_hybrid'; }
+function isShiftRateScheme(empId){ return schemeMap[empId]?.scheme_type === 'shift_rate'; }
 function fasovkaDayAmount(r){
   if(!r) return 0;
   return (r.glass||0)*1 + (r.plastic||0)*1.5;
