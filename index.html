@@ -4475,10 +4475,10 @@ async function renderFinanceWeeks(){
     const d=await api(`/api/finance/warehouse-weeks?year=${financeYear}&month=${financeMonth}`);
     let h=financeMonthNav();
     if(!d.emps.length){ h+='<div style="padding:20px;text-align:center;color:#7a6048">Немає складських співробітників зі схемою.</div>'; body.innerHTML=h; return; }
-    h+=`<div style="font-size:.75rem;color:#7a6048;margin-bottom:10px">Тижні пн-нд, обриваються кінцем місяця. Виплата — наступний понеділок.</div>`;
+    h+=`<div style="font-size:.75rem;color:#7a6048;margin-bottom:10px">2 виплати на місяць: 1-15 (виплата 15-го) і 16-кінець (виплата 1-го наступного).</div>`;
     h+=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
       <thead><tr style="color:#7a6048;text-align:left">
-        <th style="padding:7px 5px">Тиждень</th>
+        <th style="padding:7px 5px">Період</th>
         <th style="text-align:center">Виплата</th>
         ${d.emps.map(e=>`<th style="text-align:right;font-size:.7rem">${e.name.split(' ')[0]}</th>`).join('')}
         <th style="text-align:right">Разом</th>
