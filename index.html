@@ -4404,16 +4404,15 @@ async function renderFinanceLog(){
   }
 }
 
-// ── Склад по тижнях (лише вантажники з фіксом — hourly_fixed): фікс уже в
-// головній таблиці Фінансів (2 рази на місяць), тут — лише почасова частина ──
+// ── Склад по тижнях ──
 async function renderFinanceWeeks(){
   const body=document.getElementById('finance-body');
   body.innerHTML=financeMonthNav()+'<div class="loading" style="color:#7a6048">Розрахунок...</div>';
   try{
     const d=await api(`/api/finance/warehouse-weeks?year=${financeYear}&month=${financeMonth}`);
     let h=financeMonthNav();
-    if(!d.emps.length){ h+='<div style="padding:20px;text-align:center;color:#7a6048">Немає співробітників зі схемою "фікс+годинна" цього місяця.</div>'; body.innerHTML=h; return; }
-    h+=`<div style="font-size:.75rem;color:#7a6048;margin-bottom:10px">Почасова частина вантажників з фіксом (фікс уже враховано в головній таблиці). Тижні пн-нд, обриваються кінцем місяця. Виплата — наступний понеділок.</div>`;
+    if(!d.emps.length){ h+='<div style="padding:20px;text-align:center;color:#7a6048">Немає складських співробітників зі схемою.</div>'; body.innerHTML=h; return; }
+    h+=`<div style="font-size:.75rem;color:#7a6048;margin-bottom:10px">Тижні пн-нд, обриваються кінцем місяця. Виплата — наступний понеділок.</div>`;
     h+=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
       <thead><tr style="color:#7a6048;text-align:left">
         <th style="padding:7px 5px">Тиждень</th>
@@ -4493,10 +4492,9 @@ function toggleWeekDetail(key){
   if(tgl) tgl.textContent = show?'▾':'▸';
 }
 
-// Ручна сума "факт виплачено" для годинної частини hourly_fixed по тижнях —
-// може відрізнятись від розрахованої (округлення до 20 грн чи інша
-// домовлена сума). Порожнє поле = прибрати override і повернутись до
-// розрахованої суми.
+// Ручна сума "факт виплачено" для складу по тижнях — може відрізнятись від
+// розрахованої (округлення до 20 грн чи інша домовлена сума). Порожнє поле =
+// прибрати override і повернутись до розрахованої суми.
 async function saveWarehousePay(empId,payDateIso,value){
   const v = value===''? null : parseFloat(value);
   try{
