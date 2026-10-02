@@ -842,7 +842,7 @@ function getVisEmps(){
 }
 
 function showDayShiftCount(date,label){
-  const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','8:30-16:30','удаленка','запізн','відробіт'];
+  const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','10-19','8:30-16:30','удаленка','запізн','відробіт'];
   const isWork=(s)=> WORKS.includes(s) || /^\d{1,2}(:\d{2})?-\d{1,2}(:\d{2})?$/.test(s||'');
   const emps=getVisEmps();
   const working=emps.filter(e=>isWork(getStatus(e.id,date)));
@@ -918,7 +918,7 @@ function renderTable(){
   if(s3 && s3.plan_total){
     const today3 = new Date().toISOString().slice(0,10);
     const bd3 = s3.plan_breakdown||{};
-    const WORK_ST3 = ['10-18','11-18','10-17','9:30-17:30','удаленка','відробіт','запізн'];
+    const WORK_ST3 = ['10-18','11-18','10-17','9:30-17:30','10-19','удаленка','відробіт','запізн'];
     const planPerDay3 = {};
     ['top','mid','jun'].forEach(lvl=>{
       const pm=bd3[lvl]?.plan_per_person||0;
@@ -971,7 +971,7 @@ function renderTable(){
       g.emps.forEach(e=>{
         if(NO_PLAN_ROLES.includes(e.role)) return;
         const v=getStatus(e.id,today2);
-        const working=['10-18','11-18','10-17','9:30-17:30','удаленка','відробіт'].includes(v);
+        const working=['10-18','11-18','10-17','9:30-17:30','10-19','удаленка','відробіт'].includes(v);
         if(!working) return;
         const indivPlan = salaryMap[e.id]?.plan_amount;
         if(indivPlan>0){
@@ -1871,7 +1871,7 @@ function renderDailyPlanBar(){
     const workingToday = deptEmps.filter(e=>{
       if(NO_PLAN_ROLES.includes(e.role)) return false;
       const v = getStatus(e.id, today);
-      return ['10-18','11-18','10-17','9:30-17:30','удаленка','відробіт','запізн'].includes(v);
+      return ['10-18','11-18','10-17','9:30-17:30','10-19','удаленка','відробіт','запізн'].includes(v);
     }).length;
 
     const days = getDays(Y,M);
@@ -1887,7 +1887,7 @@ function renderDailyPlanBar(){
     });
 
     const bd2 = s.plan_breakdown||{};
-    const WORK_ST = ['10-18','11-18','10-17','9:30-17:30','удаленка','відробіт','запізн'];
+    const WORK_ST = ['10-18','11-18','10-17','9:30-17:30','10-19','удаленка','відробіт','запізн'];
     let todayPlan2 = 0;
     deptEmps.forEach(e=>{
       if(NO_PLAN_ROLES.includes(e.role)||e.level==='new') return;
@@ -2212,7 +2212,7 @@ function openMgrCard(empId){
       })() : isWhHyb ? (()=>{
         const base=whHybBaseRate(emp.id);
         const dayPrice=base/22;
-        const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','8:30-16:30','удаленка','запізн','відробіт'];
+        const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','10-19','8:30-16:30','удаленка','запізн','відробіт'];
         let worked=0,fasMonth=0,fasDays=0;
         getDays(Y,M).forEach(d=>{
           if(WORKS.includes(getStatus(emp.id,d.date))) worked++;
@@ -3061,7 +3061,7 @@ function calcFrate(empId){
   const dayPrice=base/22;
   const targetDays = normType==='month_workdays' ? monthWeekdaysCount() : 22;
   const days=getDays(Y,M);
-  const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','8:30-16:30','удаленка','запізн','відробіт'];
+  const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','10-19','8:30-16:30','удаленка','запізн','відробіт'];
   let worked=0;
   days.forEach(d=>{ if(WORKS.includes(getStatus(empId,d.date))) worked++; });
   const isFlatOklad = FLAT_OKLAD_NO_PRORATION_IDS.includes(empId);
@@ -3143,7 +3143,7 @@ function calcMentor(empId){
   const dayPrice=base/22;
   const targetDays = normType==='month_workdays' ? monthWeekdaysCount() : 22;
   const days=getDays(Y,M);
-  const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','8:30-16:30','удаленка','запізн','відробіт'];
+  const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','10-19','8:30-16:30','удаленка','запізн','відробіт'];
   let worked=0;
   days.forEach(d=>{ if(WORKS.includes(getStatus(empId,d.date))) worked++; });
   const diff=worked-targetDays;
@@ -3212,7 +3212,7 @@ function calcRecruiter(empId){
   const dayPrice=base/22;
   const targetDays = normType==='month_workdays' ? monthWeekdaysCount() : 22;
   const days=getDays(Y,M);
-  const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','8:30-16:30','удаленка','запізн','відробіт'];
+  const WORKS=['10-18','11-18','10-17','9:30-17:30','9-17','9-18','9-19','9-19:30','10-19','8:30-16:30','удаленка','запізн','відробіт'];
   let worked=0;
   days.forEach(d=>{ if(WORKS.includes(getStatus(empId,d.date))) worked++; });
   const diff=worked-targetDays;
@@ -4191,8 +4191,15 @@ function financeTable(rows, detailed){
     </tr>`:''}`;
   });
   // підсумковий рядок — суми точно під колонками 15-те / 1-ше / Всього
-  const tblSum1=rows.reduce((a,r)=>a+(r.pay1!=null?r.pay1:(r.payout1||0)),0);
-  const tblSum2=rows.reduce((a,r)=>a+(r.pay2!=null?r.pay2:(r.payout2||0)),0);
+  // ВАЖЛИВО: для sales-графіка (продажі/РОП/тімліди) колонки рендеряться
+  // переставленими (firstNo=2 "15-те", secondNo=1 "1-ше") — підсумок має
+  // рахуватись по тій самій парі no, інакше суми стають під чужими заголовками.
+  const sumByNo = (no) => rows.reduce((a,r)=>{
+    const val = no===1 ? (r.pay1!=null?r.pay1:r.payout1) : (r.pay2!=null?r.pay2:r.payout2);
+    return a+(val||0);
+  },0);
+  const tblSum1=sumByNo(firstNo);
+  const tblSum2=sumByNo(secondNo);
   const tblTotal=rows.reduce((a,r)=>{
     const p1=r.pay1!=null?parseFloat(r.pay1):(r.payout1!=null?parseFloat(r.payout1):null);
     const p2=r.pay2!=null?parseFloat(r.pay2):(r.payout2!=null?parseFloat(r.payout2):null);
