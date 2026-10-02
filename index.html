@@ -3984,10 +3984,14 @@ function renderFinance(){
       ? branchRows.filter(r=>(isSalesDept(r.dept_code)||isOrderDept(r.dept_code))&&['rop','teamlead'].includes(r.role))
       : branchRows.filter(r=>r.dept_code===dp.dept_code && !((isSalesDept(r.dept_code)||isOrderDept(r.dept_code))&&['rop','teamlead'].includes(r.role)));
     const fb = fundBreakdown(deptRows);
-    const dpSum1=deptRows.reduce((a,r)=>a+real15teAmt(r),0);
-    const dpSum2=deptRows.reduce((a,r)=>a+real1sheAmt(r),0);
-    const dpRows1=deptRows.filter(r=>real15teAmt(r)>0);
-    const dpRows2=deptRows.filter(r=>real1sheAmt(r)>0);
+    // не враховуємо тих, у кого total ще null (оборот не внесено, "на авансі")
+    // — так само, як "Фонд" на бекенді вже їх не рахує; інакше 15-те/1-ше
+    // виходять завищеними відносно Фонду на суму ще не підтверджених авансів
+    const dpRowsCalc = deptRows.filter(r=>r.total!=null);
+    const dpSum1=dpRowsCalc.reduce((a,r)=>a+real15teAmt(r),0);
+    const dpSum2=dpRowsCalc.reduce((a,r)=>a+real1sheAmt(r),0);
+    const dpRows1=dpRowsCalc.filter(r=>real15teAmt(r)>0);
+    const dpRows2=dpRowsCalc.filter(r=>real1sheAmt(r)>0);
     const dpPaid1 = dpRows1.length && dpRows1.every(real15tePaid);
     const dpPaid2 = dpRows2.length && dpRows2.every(real1shePaid);
     const dpCol1 = dpRows1.length ? (dpPaid1?'#2e7d52':'#F43313') : '#5a4a38';
@@ -4009,11 +4013,13 @@ function renderFinance(){
     </tr>`;
   });
   // підсумковий рядок — скільки грошей треба всього на 15-те, скільки на 1-ше, і разом
-  const grandSum1=d.rows.reduce((a,r)=>a+real15teAmt(r),0);
-  const grandSum2=d.rows.reduce((a,r)=>a+real1sheAmt(r),0);
+  // (так само не враховуємо тих, у кого оборот ще не внесено — total==null)
+  const grandRowsCalc = d.rows.filter(r=>r.total!=null);
+  const grandSum1=grandRowsCalc.reduce((a,r)=>a+real15teAmt(r),0);
+  const grandSum2=grandRowsCalc.reduce((a,r)=>a+real1sheAmt(r),0);
   // зелений — якщо ВСІ, у кого є сума на цю виплату, вже позначені "виплачено"; інакше червоний (ще треба видати)
-  const rows1=d.rows.filter(r=>real15teAmt(r)>0);
-  const rows2=d.rows.filter(r=>real1sheAmt(r)>0);
+  const rows1=grandRowsCalc.filter(r=>real15teAmt(r)>0);
+  const rows2=grandRowsCalc.filter(r=>real1sheAmt(r)>0);
   const col1 = rows1.length && rows1.every(real15tePaid) ? '#2e7d52' : '#F43313';
   const col2 = rows2.length && rows2.every(real1shePaid) ? '#2e7d52' : '#F43313';
   h+=`<tr style="border-top:2px solid #F43313;background:#f5efe4">
@@ -4047,7 +4053,9 @@ function financeTable(rows, detailed){
   // а не те, яка сума до якої дати належить (це критично — галочки
   // "виплачено" прив'язані до конкретного payout_no в базі, і має лишитись
   // так само, інакше вчорашні позначення "виплачено" розсинхронізуються).
-  const scheduleSales = (rows||[]).find(r=>r.pay_schedule)?.pay_schedule === 'sales';
+  // ВИНЯТОК: у РЗПК (на явне прохання) порядок НЕ міняємо — 1-ше показуємо
+  // першим, 15-те другим (природний хронологічний порядок у межах місяця).
+  const scheduleSales = financeDeptFilter!=='rzpk' && (rows||[]).find(r=>r.pay_schedule)?.pay_schedule === 'sales';
   const firstNo = scheduleSales ? 2 : 1;
   const secondNo = scheduleSales ? 1 : 2;
   const firstLabel = scheduleSales ? payLabel2(rows) : payLabel1(rows);
