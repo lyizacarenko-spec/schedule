@@ -4053,9 +4053,7 @@ function financeTable(rows, detailed){
   // а не те, яка сума до якої дати належить (це критично — галочки
   // "виплачено" прив'язані до конкретного payout_no в базі, і має лишитись
   // так само, інакше вчорашні позначення "виплачено" розсинхронізуються).
-  // ВИНЯТОК: у РЗПК (на явне прохання) порядок НЕ міняємо — 1-ше показуємо
-  // першим, 15-те другим (природний хронологічний порядок у межах місяця).
-  const scheduleSales = financeDeptFilter!=='rzpk' && (rows||[]).find(r=>r.pay_schedule)?.pay_schedule === 'sales';
+  const scheduleSales = (rows||[]).find(r=>r.pay_schedule)?.pay_schedule === 'sales';
   const firstNo = scheduleSales ? 2 : 1;
   const secondNo = scheduleSales ? 1 : 2;
   const firstLabel = scheduleSales ? payLabel2(rows) : payLabel1(rows);
