@@ -4056,8 +4056,12 @@ function financeTable(rows, detailed){
   const scheduleSales = (rows||[]).find(r=>r.pay_schedule)?.pay_schedule === 'sales';
   const firstNo = scheduleSales ? 2 : 1;
   const secondNo = scheduleSales ? 1 : 2;
-  const firstLabel = scheduleSales ? payLabel2(rows) : payLabel1(rows);
-  const secondLabel = scheduleSales ? payLabel1(rows) : payLabel2(rows);
+  let firstLabel = scheduleSales ? payLabel2(rows) : payLabel1(rows);
+  let secondLabel = scheduleSales ? payLabel1(rows) : payLabel2(rows);
+  // РЗПК (на явне прохання): поміняти місцями тільки ТЕКСТ заголовків,
+  // суми/чекбокси/прив'язка до payout_no лишаються як були (не чіпаємо
+  // firstNo/secondNo) — це суто косметична заміна напису.
+  if (financeDeptFilter === 'rzpk') { [firstLabel, secondLabel] = [secondLabel, firstLabel]; }
   let h=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
     <thead><tr style="color:#7a6048;text-align:left">
       <th style="padding:7px 5px">Співробітник</th>
