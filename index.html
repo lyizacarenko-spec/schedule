@@ -4027,7 +4027,7 @@ function renderFinance(){
   // виплаченим — зелені галочки) і "Разом потрібно" (тільки те, що ще не
   // виплачено — червоні суми), окремо по 15-те і по 1-ше
   // (так само не враховуємо тих, у кого оборот ще не внесено — total==null)
-  const grandRowsCalc = d.rows.filter(r=>r.total!=null);
+  const grandRowsCalc = branchRows.filter(r=>r.total!=null);
   const paidSum1 = grandRowsCalc.reduce((a,r)=>a+(disp15tePaid(r)?disp15teAmt(r):0),0);
   const paidSum2 = grandRowsCalc.reduce((a,r)=>a+(disp1shePaid(r)?disp1sheAmt(r):0),0);
   const dueSum1  = grandRowsCalc.reduce((a,r)=>a+(!disp15tePaid(r)?disp15teAmt(r):0),0);
