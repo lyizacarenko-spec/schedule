@@ -4192,8 +4192,12 @@ function financeTable(rows, detailed){
         // немає, тож просто завжди рендеримо реальні клітинки замість
         // жорсткого прочерку.
         const otherGroup = payCell(r,2)+reviewCell(r,2)+chkCell(r,2);
-        const g1 = scheduleSales ? otherGroup : advGroup;
-        const g2 = scheduleSales ? advGroup : otherGroup;
+        // Групуємо за фактичним firstNo/secondNo (а не напряму за
+        // scheduleSales) — інакше для РЗПК з вересня 2026, де firstNo
+        // тепер завжди =1 (не 2, як дає scheduleSales), ця "авансова"
+        // гілка рендерила б payout2-клітинки під заголовком "1-ше".
+        const g1 = (firstNo === 1) ? advGroup : otherGroup;
+        const g2 = (firstNo === 1) ? otherGroup : advGroup;
         h+=`<tr style="border-top:1px solid #5a4a38;${rowBg}">
           <td style="padding:8px 5px;color:#5a4a38">${r.name} <span style="font-size:.62rem;color:#c08040">аванс</span></td>
           ${detailed?`<td style="text-align:center;color:#8a7860">—</td><td style="text-align:center;color:#6a5040">${(r.worked_graph!=null?r.worked_graph:r.worked_days)||0}</td><td style="text-align:center;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td>`:''}
