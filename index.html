@@ -3797,13 +3797,16 @@ function real1shePaid(r){ return r.pay_schedule==='sales' ? !!r.paid1 : !!r.paid
 // Тут — той самий розворот, але для зведення "По відділах"/картки відділу, де
 // суми й "виплачено"-галочки є лише читанням (без інтерактивних чекбоксів),
 // тож можна міняти місцями самі суми, а не тільки текст.
-// НОВІ грейдові/командні схеми РЗПК (retail_v2_*, teamlead_*, mo_manager,
-// b2b_manager — з вересня/жовтня 2026) мають СТАНДАРТНИЙ графік (аванс
-// 1-3 числа = payout1, залишок+бонуси 15-17 = payout2), БЕЗ реверсу —
-// інакше бонуси й переробіток (завжди в payout2) показувались би як уже
-// виплачені 1-го, хоча реально йдуть 15-го.
-const NEW_RZPK_SCHEME_TYPES_SUM = ['retail_v2_legacy','retail_v2_newcomer','retail_v2_grade','teamlead_retail','teamlead_mo','mo_manager','b2b_manager'];
-function isOldRzpkSchemeRow(r){ return r.dept_code==='rzpk' && !NEW_RZPK_SCHEME_TYPES_SUM.includes(r.scheme_type); }
+// Новий СТАНДАРТНИЙ графік виплат (аванс 1-3 числа = payout1, залишок+
+// бонуси 15-17 = payout2, БЕЗ реверсу) діє лише з грейдової реформи —
+// тобто з жовтня 2026 (місяць перегляду Y/M, а не конкретна формула:
+// у вересні реальні виплати РЗПК ще йшли по-старому, навпаки, незалежно
+// від того, яка формула це рахувала).
+const RZPK_PAYOUT_REVERSE_CUTOFF_YM = '2026-10';
+function isOldRzpkSchemeRow(r){
+  const viewYm = `${Y}-${String(M).padStart(2,'0')}`;
+  return r.dept_code==='rzpk' && viewYm < RZPK_PAYOUT_REVERSE_CUTOFF_YM;
+}
 function disp15teAmt(r){ return isOldRzpkSchemeRow(r) ? real1sheAmt(r) : real15teAmt(r); }
 function disp1sheAmt(r){ return isOldRzpkSchemeRow(r) ? real15teAmt(r) : real1sheAmt(r); }
 function disp15tePaid(r){ return isOldRzpkSchemeRow(r) ? real1shePaid(r) : real15tePaid(r); }
@@ -4090,21 +4093,18 @@ function financeTable(rows, detailed){
   const secondNo = scheduleSales ? 1 : 2;
   let firstLabel = scheduleSales ? payLabel2(rows) : payLabel1(rows);
   let secondLabel = scheduleSales ? payLabel1(rows) : payLabel2(rows);
-  // РЗПК, СТАРА схема (percent_plan до вересня 2026 — на явне прохання,
-  // бо реальні виплати тоді йшли навпаки): поміняти місцями тільки ТЕКСТ
-  // заголовків, суми/чекбокси/прив'язка до payout_no лишаються як були
-  // (не чіпаємо firstNo/secondNo) — це суто косметична заміна напису.
-  // НОВІ грейдові/командні схеми РЗПК (retail_v2_*, teamlead_*, mo_manager,
-  // b2b_manager — з вересня/жовтня 2026) мають СТАНДАРТНИЙ графік виплат
-  // (аванс 1-3 числа наступного місяця = payout1, залишок+бонуси 15-17 =
-  // payout2 — як у документі), БЕЗ реверсу — інакше бонуси/переробіток
-  // (які завжди лежать у payout2) показувались би під заголовком "1-ше",
-  // хоча реально ще не виплачені і підуть 15-го.
-  const NEW_RZPK_SCHEME_TYPES = ['retail_v2_legacy','retail_v2_newcomer','retail_v2_grade','teamlead_retail','teamlead_mo','mo_manager','b2b_manager'];
-  const rzpkRows = (rows||[]).filter(r=>r.dept_code==='rzpk');
-  const hasOldRzpkScheme = rzpkRows.some(r=>!NEW_RZPK_SCHEME_TYPES.includes(r.scheme_type));
-  const hasNewRzpkScheme = rzpkRows.some(r=>NEW_RZPK_SCHEME_TYPES.includes(r.scheme_type));
-  if (financeDeptFilter === 'rzpk' && hasOldRzpkScheme && !hasNewRzpkScheme) { [firstLabel, secondLabel] = [secondLabel, firstLabel]; }
+  // РЗПК, до жовтня 2026 (на явне прохання, бо реальні виплати тоді йшли
+  // навпаки відносно стандартної 'sales'-формули — незалежно від конкретної
+  // формули розрахунку): поміняти місцями тільки ТЕКСТ заголовків, суми/
+  // чекбокси/прив'язка до payout_no лишаються як були (не чіпаємо
+  // firstNo/secondNo) — це суто косметична заміна напису.
+  // З жовтня 2026 (грейдова реформа) графік виплат СТАНДАРТНИЙ (аванс
+  // 1-3 числа наступного місяця = payout1, залишок+бонуси 15-17 = payout2
+  // — як у документі), БЕЗ реверсу — інакше бонуси/переробіток (які завжди
+  // лежать у payout2) показувались би під заголовком "1-ше", хоча реально
+  // ще не виплачені і підуть 15-го.
+  const rzpkViewYm = `${Y}-${String(M).padStart(2,'0')}`;
+  if (financeDeptFilter === 'rzpk' && rzpkViewYm < RZPK_PAYOUT_REVERSE_CUTOFF_YM) { [firstLabel, secondLabel] = [secondLabel, firstLabel]; }
   let h=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
     <thead><tr style="color:#7a6048;text-align:left">
       <th style="padding:7px 5px">Співробітник</th>
