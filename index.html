@@ -3790,17 +3790,24 @@ function real15teAmt(r){ return r.pay_schedule==='sales' ? (r.pay2!=null?r.pay2:
 function real1sheAmt(r){ return r.pay_schedule==='sales' ? (r.pay1!=null?r.pay1:(r.payout1||0)) : (r.pay2!=null?r.pay2:(r.payout2||0)); }
 function real15tePaid(r){ return r.pay_schedule==='sales' ? !!r.paid2 : !!r.paid1; }
 function real1shePaid(r){ return r.pay_schedule==='sales' ? !!r.paid1 : !!r.paid2; }
-// РЗПК (звичайні менеджери percent_plan/orders_count, dept_code==='rzpk'): за явним
+// РЗПК, СТАРА схема (percent_plan/orders_count, до вересня 2026): за явним
 // проханням, реальний день виплати по цій схемі протилежний загальній 'sales'-формулі —
 // те, що формула рахує як payout1, фактично видають на "15-те", а payout2 — на "1-ше"
 // (вже враховано окремо для детальної таблиці РЗПК через підпис у financeTable()).
 // Тут — той самий розворот, але для зведення "По відділах"/картки відділу, де
 // суми й "виплачено"-галочки є лише читанням (без інтерактивних чекбоксів),
 // тож можна міняти місцями самі суми, а не тільки текст.
-function disp15teAmt(r){ return r.dept_code==='rzpk' ? real1sheAmt(r) : real15teAmt(r); }
-function disp1sheAmt(r){ return r.dept_code==='rzpk' ? real15teAmt(r) : real1sheAmt(r); }
-function disp15tePaid(r){ return r.dept_code==='rzpk' ? real1shePaid(r) : real15tePaid(r); }
-function disp1shePaid(r){ return r.dept_code==='rzpk' ? real15tePaid(r) : real1shePaid(r); }
+// НОВІ грейдові/командні схеми РЗПК (retail_v2_*, teamlead_*, mo_manager,
+// b2b_manager — з вересня/жовтня 2026) мають СТАНДАРТНИЙ графік (аванс
+// 1-3 числа = payout1, залишок+бонуси 15-17 = payout2), БЕЗ реверсу —
+// інакше бонуси й переробіток (завжди в payout2) показувались би як уже
+// виплачені 1-го, хоча реально йдуть 15-го.
+const NEW_RZPK_SCHEME_TYPES_SUM = ['retail_v2_legacy','retail_v2_newcomer','retail_v2_grade','teamlead_retail','teamlead_mo','mo_manager','b2b_manager'];
+function isOldRzpkSchemeRow(r){ return r.dept_code==='rzpk' && !NEW_RZPK_SCHEME_TYPES_SUM.includes(r.scheme_type); }
+function disp15teAmt(r){ return isOldRzpkSchemeRow(r) ? real1sheAmt(r) : real15teAmt(r); }
+function disp1sheAmt(r){ return isOldRzpkSchemeRow(r) ? real15teAmt(r) : real1sheAmt(r); }
+function disp15tePaid(r){ return isOldRzpkSchemeRow(r) ? real1shePaid(r) : real15tePaid(r); }
+function disp1shePaid(r){ return isOldRzpkSchemeRow(r) ? real15tePaid(r) : real1shePaid(r); }
 
 // Те саме, але окремо для виплати 15-го (p1) і 1-го (p2) — з урахуванням реверсу
 // для pay_schedule='sales'. Для "гарячих" (два незалежні періоди 1-14/15-кінець)
@@ -4083,10 +4090,21 @@ function financeTable(rows, detailed){
   const secondNo = scheduleSales ? 1 : 2;
   let firstLabel = scheduleSales ? payLabel2(rows) : payLabel1(rows);
   let secondLabel = scheduleSales ? payLabel1(rows) : payLabel2(rows);
-  // РЗПК (на явне прохання): поміняти місцями тільки ТЕКСТ заголовків,
-  // суми/чекбокси/прив'язка до payout_no лишаються як були (не чіпаємо
-  // firstNo/secondNo) — це суто косметична заміна напису.
-  if (financeDeptFilter === 'rzpk') { [firstLabel, secondLabel] = [secondLabel, firstLabel]; }
+  // РЗПК, СТАРА схема (percent_plan до вересня 2026 — на явне прохання,
+  // бо реальні виплати тоді йшли навпаки): поміняти місцями тільки ТЕКСТ
+  // заголовків, суми/чекбокси/прив'язка до payout_no лишаються як були
+  // (не чіпаємо firstNo/secondNo) — це суто косметична заміна напису.
+  // НОВІ грейдові/командні схеми РЗПК (retail_v2_*, teamlead_*, mo_manager,
+  // b2b_manager — з вересня/жовтня 2026) мають СТАНДАРТНИЙ графік виплат
+  // (аванс 1-3 числа наступного місяця = payout1, залишок+бонуси 15-17 =
+  // payout2 — як у документі), БЕЗ реверсу — інакше бонуси/переробіток
+  // (які завжди лежать у payout2) показувались би під заголовком "1-ше",
+  // хоча реально ще не виплачені і підуть 15-го.
+  const NEW_RZPK_SCHEME_TYPES = ['retail_v2_legacy','retail_v2_newcomer','retail_v2_grade','teamlead_retail','teamlead_mo','mo_manager','b2b_manager'];
+  const rzpkRows = (rows||[]).filter(r=>r.dept_code==='rzpk');
+  const hasOldRzpkScheme = rzpkRows.some(r=>!NEW_RZPK_SCHEME_TYPES.includes(r.scheme_type));
+  const hasNewRzpkScheme = rzpkRows.some(r=>NEW_RZPK_SCHEME_TYPES.includes(r.scheme_type));
+  if (financeDeptFilter === 'rzpk' && hasOldRzpkScheme && !hasNewRzpkScheme) { [firstLabel, secondLabel] = [secondLabel, firstLabel]; }
   let h=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
     <thead><tr style="color:#7a6048;text-align:left">
       <th style="padding:7px 5px">Співробітник</th>
