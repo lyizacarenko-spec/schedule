@@ -4149,9 +4149,17 @@ function financeTable(rows, detailed){
     if(r.total==null){
       if(r.payout1!=null){
         const advGroup = payCell(r,1)+reviewCell(r,1)+chkCell(r,1);
-        const dashGroup = '<td style="text-align:right;color:#6a5040">—</td><td></td><td></td>';
-        const g1 = scheduleSales ? dashGroup : advGroup;
-        const g2 = scheduleSales ? advGroup : dashGroup;
+        // ІНША виплата (payout2) теж може мати вручну внесену суму/позначку
+        // "виплачено" (override2/paid2), навіть коли оборот за місяць ще не
+        // введено (r.total==null, "стадія авансу") — напр. колишню
+        // РЗПК-зарплату вже видали 1-го числа, а оборот у Гарячих продажах
+        // за цей місяць ще рахується. payCell/reviewCell/chkCell самі
+        // показують "—", якщо жодної суми (ні розрахованої, ні override)
+        // немає, тож просто завжди рендеримо реальні клітинки замість
+        // жорсткого прочерку.
+        const otherGroup = payCell(r,2)+reviewCell(r,2)+chkCell(r,2);
+        const g1 = scheduleSales ? otherGroup : advGroup;
+        const g2 = scheduleSales ? advGroup : otherGroup;
         h+=`<tr style="border-top:1px solid #5a4a38;${rowBg}">
           <td style="padding:8px 5px;color:#5a4a38">${r.name} <span style="font-size:.62rem;color:#c08040">аванс</span></td>
           ${detailed?`<td style="text-align:center;color:#8a7860">—</td><td style="text-align:center;color:#6a5040">${(r.worked_graph!=null?r.worked_graph:r.worked_days)||0}</td><td style="text-align:center;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td>`:''}
