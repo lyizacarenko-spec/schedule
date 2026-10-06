@@ -2365,15 +2365,23 @@ function openMgrCard(empId){
           <div class="sal-field"><label>% повернень</label><input type="number" id="sal-ret-${emp.id}" placeholder="0" min="0" max="100" value="${salaryMap[emp.id]?.returns_pct||''}"></div>
           <div class="sal-field"><label>Відпрац. днів</label><input type="number" id="sal-days-${emp.id}" value="${salaryMap[emp.id]?.worked_days||wd}"></div>
         </div>
-        ${isRetailV2?`
+        ${isRetailV2?(()=>{
+          // з жовтня 2026 — грейдова система, сума за 1 показник залежить
+          // від грейду (Джун 1500 / Мідл 2000 / Топ 2500); до жовтня —
+          // стара формула, завжди +2000 незалежно від грейду
+          const gradeCutoverYm='2026-10';
+          const useGrade = curYmView >= gradeCutoverYm;
+          const perIndicator = useGrade ? ({jun:1500,mid:2000,top:2500}[emp.level]||1500) : 2000;
+          return `
         <div style="display:flex;gap:14px;margin:8px 0;flex-wrap:wrap">
           <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
-            <input type="checkbox" id="sal-avgcheck-${emp.id}" ${salaryMap[emp.id]?.avg_check_ok?'checked':''} style="width:auto"> Середній чек (+2000)</label>
+            <input type="checkbox" id="sal-avgcheck-${emp.id}" ${salaryMap[emp.id]?.avg_check_ok?'checked':''} style="width:auto"> Середній чек (+${perIndicator})</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
-            <input type="checkbox" id="sal-calls-ok-${emp.id}" ${salaryMap[emp.id]?.calls_ok?'checked':''} style="width:auto"> К-сть дзвінків (+2000)</label>
+            <input type="checkbox" id="sal-calls-ok-${emp.id}" ${salaryMap[emp.id]?.calls_ok?'checked':''} style="width:auto"> К-сть дзвінків (+${perIndicator})</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
-            <input type="checkbox" id="sal-approval-${emp.id}" ${salaryMap[emp.id]?.approval_ok?'checked':''} style="width:auto"> Аппрув (+2000)</label>
-        </div>`:''}
+            <input type="checkbox" id="sal-approval-${emp.id}" ${salaryMap[emp.id]?.approval_ok?'checked':''} style="width:auto"> Аппрув (+${perIndicator})</label>
+        </div>`;
+        })():''}
         <div class="sal-row" style="margin-top:4px">
           <div class="sal-field"><label>Доплата старш. мен. (грн)</label><input type="number" id="sal-bonus-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.senior_bonus||''}"></div>
           <div class="sal-field"><label>Штраф (грн)</label><input type="number" id="sal-penalty-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.penalty||''}"></div>
