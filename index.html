@@ -4089,22 +4089,30 @@ function financeTable(rows, detailed){
   // "виплачено" прив'язані до конкретного payout_no в базі, і має лишитись
   // так само, інакше вчорашні позначення "виплачено" розсинхронізуються).
   const scheduleSales = (rows||[]).find(r=>r.pay_schedule)?.pay_schedule === 'sales';
-  const firstNo = scheduleSales ? 2 : 1;
-  const secondNo = scheduleSales ? 1 : 2;
+  let firstNo = scheduleSales ? 2 : 1;
+  let secondNo = scheduleSales ? 1 : 2;
   let firstLabel = scheduleSales ? payLabel2(rows) : payLabel1(rows);
   let secondLabel = scheduleSales ? payLabel1(rows) : payLabel2(rows);
-  // РЗПК, до жовтня 2026 (на явне прохання, бо реальні виплати тоді йшли
-  // навпаки відносно стандартної 'sales'-формули — незалежно від конкретної
-  // формули розрахунку): поміняти місцями тільки ТЕКСТ заголовків, суми/
-  // чекбокси/прив'язка до payout_no лишаються як були (не чіпаємо
-  // firstNo/secondNo) — це суто косметична заміна напису.
-  // З жовтня 2026 (грейдова реформа) графік виплат СТАНДАРТНИЙ (аванс
-  // 1-3 числа наступного місяця = payout1, залишок+бонуси 15-17 = payout2
-  // — як у документі), БЕЗ реверсу — інакше бонуси/переробіток (які завжди
-  // лежать у payout2) показувались би під заголовком "1-ше", хоча реально
-  // ще не виплачені і підуть 15-го.
   const rzpkViewYm = `${Y}-${String(M).padStart(2,'0')}`;
-  if (financeDeptFilter === 'rzpk' && rzpkViewYm < RZPK_PAYOUT_REVERSE_CUTOFF_YM) { [firstLabel, secondLabel] = [secondLabel, firstLabel]; }
+  if (financeDeptFilter === 'rzpk') {
+    if (rzpkViewYm >= RZPK_PAYOUT_REVERSE_CUTOFF_YM) {
+      // З вересня 2026: для РЗПК ФІЗИЧНИЙ порядок колонок завжди "1-ше"
+      // зліва, "15-те" справа (хронологічний/інтуїтивний порядок) — щоб
+      // не було плутанини при ручному введенні override-сум у таблиці
+      // (саме через стару "15-те спершу" розкладку одного разу значення
+      // були введені не в ті поля). Прив'язка payCell/chkCell/reviewCell
+      // до payout_no (1="1-ше", 2="15-те") лишається незмінною — більше
+      // не застосовуємо до РЗПК загальний sales-реверс фізичних колонок.
+      firstNo = 1; secondNo = 2;
+      firstLabel = payLabel1(rows); secondLabel = payLabel2(rows);
+    } else {
+      // До вересня 2026 (на явне прохання, бо реальні виплати тоді йшли
+      // навпаки відносно стандартної 'sales'-формули): це вже закриті
+      // історичні місяці, тут лишаємо стару поведінку — міняємо місцями
+      // тільки ТЕКСТ заголовків, суми/чекбокси/firstNo/secondNo не чіпаємо.
+      [firstLabel, secondLabel] = [secondLabel, firstLabel];
+    }
+  }
   let h=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
     <thead><tr style="color:#7a6048;text-align:left">
       <th style="padding:7px 5px">Співробітник</th>
