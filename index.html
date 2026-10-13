@@ -252,6 +252,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
   <div class="toolbar">
     <button class="btn btn-green"  onclick="openRevModal()">💰 Виручка</button>
     <button class="btn btn-ghost"  onclick="openPlanModal()">📊 Плани</button>
+    <button class="btn btn-ghost" onclick="openOdooModal()" id="btn-odoo" style="display:none">🔗 Odoo</button>
     <button class="btn btn-ghost" onclick="openIndivPlanModal()">🎯 Індивід. плани</button>
     <button class="btn btn-orange" onclick="openAddEmpModal()">＋ Співробітник</button>
     <button class="btn btn-ghost" onclick="openExportModal()" id="btn-export" style="background:#1a3a27;color:#4caf79;border-color:#2d5c3e">📊 Експорт ЗП</button>
@@ -309,6 +310,29 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeIndivPlanModal()">Закрити</button>
     </div>
+  </div>
+</div>
+
+<!-- ODOO MODAL -->
+<div class="modal-ov" id="odoo-modal-ov">
+  <div class="modal" style="max-width:640px">
+    <h3>🔗 Продажі з Odoo</h3>
+    <div id="odoo-status" style="font-size:.8rem;color:#6a5040;margin-bottom:10px">—</div>
+    <button class="btn-save" style="width:100%;margin-bottom:12px" onclick="odooSyncNow()">↻ Оновити зараз (поточний місяць)</button>
+    <details style="margin-bottom:12px;font-size:.8rem">
+      <summary style="cursor:pointer;font-weight:700">Перезаписати ручні суми з Odoo за період</summary>
+      <div style="margin-top:8px">Ручні суми менеджерів за ці дні буде замінено цифрами з Odoo. Суми «по відділу» не чіпаються.</div>
+      <label>Від</label><input type="date" id="odoo-from">
+      <label>До</label><input type="date" id="odoo-to">
+      <button class="btn-save" style="width:100%;background:#b4552d" onclick="odooOverwrite()">Перезаписати з Odoo</button>
+    </details>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:6px 0">
+      <b style="font-size:.85rem">Хто є хто в Odoo</b>
+      <button class="btn-cancel" onclick="odooAutoLink()">Автоприв'язка за ПІБ</button>
+    </div>
+    <div style="font-size:.72rem;color:#7a6050;margin-bottom:6px">Без прив'язки продажі людини з Odoo не підтягуються.</div>
+    <div id="odoo-matches" style="font-size:.8rem">—</div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeOdooModal()">Закрити</button></div>
   </div>
 </div>
 
@@ -553,6 +577,8 @@ function applyPermissions(){
   if(btnSheetLink) btnSheetLink.style.display = hasFullFinance ? '' : 'none';
   const btnUsers=document.getElementById('btn-users');
   if(btnUsers) btnUsers.style.display = ME?.role==='owner' ? '' : 'none';
+  const btnOdoo=document.getElementById('btn-odoo');
+  if(btnOdoo) btnOdoo.style.display = ME?.role==='owner' ? '' : 'none';
   const uBox=document.getElementById('user-box');
   if(uBox) uBox.textContent = ME ? ME.full_name : '';
 }
@@ -590,6 +616,7 @@ async function loadMonthData(){
     api('/api/employees'+empQs),
   ]);
   employees = empList;
+  api('/api/odoo/status').then(st=>{ odooStatus=st; renderStats(); }).catch(()=>{ odooStatus=null; });
   salaryMap={};
   salData.forEach(s=>{ salaryMap[s.employee_id]=s; });
   // схеми окладів (ставочники) — не критично, тому окремо і без падіння
@@ -780,6 +807,7 @@ function renderStats(){
         <span style="font-size:.82rem;font-weight:700;color:${cls==='ok'?'#2e7d52':cls==='warn'?'#ffc107':'#ef5350'}">&nbsp;${pct}%</span>
       </div>
       <div class="pbar"><div class="pbar-fill ${cls}" style="width:${Math.min(pct,100)}%"></div></div>
+      ${odooLine(dept.code)}
       <div class="plan-breakdown">
         ${['top','mid','jun'].map(lvl=>{
           const b=bd[lvl]||{cnt:0,plan_per_person:0,subtotal:0};
@@ -1708,6 +1736,85 @@ async function saveRevenue(){
     await loadMonthData();
     setSave('Виручку збережено ✓',true);
   }catch(e){alert('Помилка: '+e.message);}
+}
+
+// ══ ODOO: автофакт продажів ═══════════════════════════
+const ODOO_DEPTS = ['rzpk','retail','wholesale','resellers','hot'];
+let odooStatus = null, odooMatches = [];
+function odooTime(t){ return t ? new Date(t).toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'; }
+function odooLine(code){
+  if(!ODOO_DEPTS.includes(code) || !odooStatus?.configured) return '';
+  const bad = odooStatus.last && odooStatus.last.ok===false;
+  return `<div style="font-size:.68rem;color:${bad?'#c0392b':'#7a6050'};margin-top:4px">🔗 Odoo: ${bad?'помилка — '+String(odooStatus.last.message||'').slice(0,80):'оновлено '+odooTime(odooStatus.last_ok_at)}</div>`;
+}
+function escO(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+async function openOdooModal(){
+  document.getElementById('odoo-modal-ov').classList.add('open');
+  const t=new Date(); const iso=d=>d.toISOString().slice(0,10);
+  document.getElementById('odoo-from').value=`${Y}-${String(M).padStart(2,'0')}-01`;
+  document.getElementById('odoo-to').value=iso(t);
+  await refreshOdooModal();
+}
+function closeOdooModal(){ document.getElementById('odoo-modal-ov').classList.remove('open'); }
+async function refreshOdooModal(){
+  const st=document.getElementById('odoo-status');
+  try{
+    odooStatus=await api('/api/odoo/status');
+    if(!odooStatus.configured){ st.innerHTML='⚠️ Odoo не підключено: немає змінних ODOO_* у Railway.'; }
+    else{
+      const l=odooStatus.last;
+      st.innerHTML = `Автооновлення щогодини. Останнє успішне: <b>${odooTime(odooStatus.last_ok_at)}</b>`+
+        (l?`<br>Останній запуск: ${odooTime(l.finished_at||l.started_at)} — ${l.ok===false?'<span style="color:#c0392b">помилка: '+escO(l.message)+'</span>':l.ok?'ок, записано '+l.written+(l.skipped_manual?', пропущено ручних '+l.skipped_manual:''):'йде…'}`:'');
+    }
+  }catch(e){ st.textContent='Помилка: '+e.message; }
+  const box=document.getElementById('odoo-matches');
+  try{
+    odooMatches=await api('/api/odoo/matches');
+    box.innerHTML = odooMatches.map(r=>{
+      const opts=['<option value="">— не прив\'язано —</option>']
+        .concat(r.candidates.map(c=>`<option value="${c.id}" ${c.id===r.odoo_user_id?'selected':''}>${escO(c.name)}${c.active?'':' (архів)'}${c.score===2?'':' ?'}</option>`));
+      if(r.odoo_user_id && !r.candidates.some(c=>c.id===r.odoo_user_id)) opts.push(`<option value="${r.odoo_user_id}" selected>${escO(r.odoo_user_name||('id '+r.odoo_user_id))}</option>`);
+      opts.push('<option value="__id">ввести id вручну…</option>');
+      return `<div style="display:flex;gap:6px;align-items:center;border-bottom:1px solid #d0c6b8;padding:4px 0"><div style="flex:1 1 40%;min-width:0">${escO(r.name)}<div style="font-size:.66rem;color:#8a7060">${escO(r.dept)}</div></div>
+        <div style="flex:1 1 55%;min-width:0"><select style="width:100%;min-width:0;max-width:100%;box-sizing:border-box;margin:0;font-size:.78rem;padding:4px" onchange="odooLinkSel(${r.employee_id},this)">${opts.join('')}</select></div>
+        <div style="flex:0 0 18px">${r.odoo_user_id?'✅':'⚪'}</div></div>`;
+    }).join('');
+  }catch(e){ box.textContent='Помилка: '+e.message; }
+}
+async function odooLinkSel(empId,sel){
+  let v=sel.value;
+  if(v==='__id'){ v=prompt('ID користувача в Odoo (число):'); if(v===null){ await refreshOdooModal(); return; } }
+  try{ await api(`/api/employees/${empId}/odoo-user`,{method:'PUT',body:JSON.stringify({odoo_user_id:v||null})}); setSave('Прив\'язку збережено ✓',true); }
+  catch(e){ alert('Помилка: '+e.message); }
+  await refreshOdooModal();
+}
+async function odooAutoLink(){
+  try{
+    const r=await api('/api/odoo/matches/auto',{method:'POST',body:'{}'});
+    alert(`Прив'язано: ${r.linked.length}\nПотребують вибору: ${r.ambiguous.length}\nНе знайдено в Odoo: ${r.notFound.length}`+(r.notFound.length?'\n— '+r.notFound.join('\n— '):''));
+  }catch(e){ alert('Помилка: '+e.message); }
+  await refreshOdooModal();
+}
+async function odooSyncNow(){
+  setSave('Оновлення з Odoo...',false);
+  try{
+    const r=await api('/api/odoo/sync',{method:'POST',body:'{}'});
+    setSave('Odoo ✓',true);
+    alert(`Оновлено ${r.from} — ${r.to}\nЗаписано: ${r.written}, обнулено: ${r.zeroed}`+(r.skipped_manual?`\nПропущено ручних сум: ${r.skipped_manual} (щоб замінити — «Перезаписати з Odoo»)`:'')+'\n'+Object.entries(r.by_dept||{}).map(([k,v])=>`${k}: ${fmtM(v)} ₴`).join('\n'));
+  }catch(e){ alert('Помилка: '+e.message); }
+  await refreshOdooModal(); await loadMonthData();
+}
+async function odooOverwrite(){
+  const from=document.getElementById('odoo-from').value, to=document.getElementById('odoo-to').value;
+  if(!from||!to||from>to){ alert('Вкажіть період'); return; }
+  if(!confirm(`Замінити ручні суми менеджерів за ${from} — ${to} цифрами з Odoo?`)) return;
+  setSave('Перезапис з Odoo...',false);
+  try{
+    const r=await api('/api/odoo/sync',{method:'POST',body:JSON.stringify({from,to,overwrite:true})});
+    setSave('Odoo ✓',true);
+    alert(`Готово ${r.from} — ${r.to}\nЗаписано: ${r.written}, обнулено: ${r.zeroed}\n`+Object.entries(r.by_dept||{}).map(([k,v])=>`${k}: ${fmtM(v)} ₴`).join('\n'));
+  }catch(e){ alert('Помилка: '+e.message); }
+  await refreshOdooModal(); await loadMonthData();
 }
 
 // ══ ADD EMPLOYEE ══════════════════════════════════════
