@@ -1772,7 +1772,7 @@ async function refreshOdooModal(){
     odooMatches=await api('/api/odoo/matches');
     box.innerHTML = odooMatches.map(r=>{
       const opts=['<option value="">— не прив\'язано —</option>']
-        .concat(r.candidates.map(c=>`<option value="${c.id}" ${c.id===r.odoo_user_id?'selected':''}>${escO(c.name)}${c.active?'':' (архів)'}${c.score===2?'':' ?'}</option>`));
+        .concat(r.candidates.map(c=>`<option value="${c.id}" ${c.id===r.odoo_user_id?'selected':''}>${escO(c.name)}${c.active?'':' (архів)'}${c.score===3?'':' ?'}${c.sales?' · '+c.sales+' зам.':''}</option>`));
       if(r.odoo_user_id && !r.candidates.some(c=>c.id===r.odoo_user_id)) opts.push(`<option value="${r.odoo_user_id}" selected>${escO(r.odoo_user_name||('id '+r.odoo_user_id))}</option>`);
       opts.push('<option value="__id">ввести id вручну…</option>');
       return `<div style="display:flex;gap:6px;align-items:center;border-bottom:1px solid #d0c6b8;padding:4px 0"><div style="flex:1 1 40%;min-width:0">${escO(r.name)}<div style="font-size:.66rem;color:#8a7060">${escO(r.dept)}</div></div>
