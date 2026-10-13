@@ -1817,6 +1817,27 @@ async function odooOverwrite(){
   await refreshOdooModal(); await loadMonthData();
 }
 
+// Картка ЗП: підставити Факт оборот і % повернень з Odoo (лише в поля, без збереження)
+async function odooFillSalary(empId){
+  const note=document.getElementById('odoo-sal-note-'+empId);
+  if(note){ note.style.color='#7a6050'; note.textContent='Завантаження з Odoo…'; }
+  try{
+    const r=await api(`/api/odoo/salary-facts?employee_id=${empId}&year=${Y}&month=${M}`);
+    const f=document.getElementById('sal-fact-'+empId), rt=document.getElementById('sal-ret-'+empId);
+    if(f) f.value=r.fact; if(rt) rt.value=r.returns_pct;
+    const t=new Date(r.as_of).toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    if(note){
+      note.style.color = r.final ? '#2e7d52' : '#b4552d';
+      note.innerHTML = `✓ Дані Odoo на ${t}: ${r.orders} зам., повернень ${r.returns}. `+
+        (r.final ? 'Цифри остаточні.' : `<b>Ще можуть змінитись до ${r.final_after.split('-').reverse().join('.')}</b> (докапують повернення).`)+
+        ' Перевірте → «Розрахувати» → «Зберегти».';
+    }
+  }catch(e){
+    let msg=e.message; try{ msg=JSON.parse(msg).error||msg; }catch(_){}
+    if(note){ note.style.color='#c0392b'; note.textContent='Помилка: '+msg; }
+  }
+}
+
 // ══ ADD EMPLOYEE ══════════════════════════════════════
 function openAddEmpModal(){
   const sel = document.getElementById('ae-dept');
@@ -2466,6 +2487,11 @@ function openMgrCard(empId){
           <div class="sal-field"><label>Штраф (грн)</label><input type="number" id="sal-penalty-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.penalty||''}"></div>
           <div class="sal-field"><label>Примітка</label><input type="text" id="sal-note-${emp.id}" placeholder="" value="${salaryMap[emp.id]?.note||''}"></div>
         </div>`:`
+        ${['rzpk','retail','wholesale','resellers'].includes(emp.dept_code) && odooStatus?.configured ? `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+          <button onclick="odooFillSalary(${emp.id})" style="padding:6px 12px;background:#1a5c8a;color:#fff;border-radius:7px;font-weight:600;font-size:.78rem">⬇ Підтягнути з Odoo</button>
+          <span id="odoo-sal-note-${emp.id}" style="font-size:.7rem;color:#7a6050">Факт оборот і % повернень — як у дашборді РЗПК. Нічого не зберігається, поки не натиснете «Зберегти».</span>
+        </div>` : ''}
         <div class="sal-row">
           <div class="sal-field"><label>Індивід. план (грн)</label><input type="number" id="sal-plan-${emp.id}" placeholder="260000" value="${salaryMap[emp.id]?.plan_amount||''}"></div>
           <div class="sal-field"><label>Факт оборот (грн)</label><input type="number" id="sal-fact-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.fact_amount||''}"></div>
