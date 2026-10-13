@@ -1739,7 +1739,7 @@ async function saveRevenue(){
 }
 
 // ══ ODOO: автофакт продажів ═══════════════════════════
-const ODOO_DEPTS = ['rzpk','retail','wholesale','resellers','hot'];
+const ODOO_DEPTS = ['rzpk','retail','wholesale','resellers','hot','vin_op'];
 let odooStatus = null, odooMatches = [];
 function odooTime(t){ return t ? new Date(t).toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'; }
 function odooLine(code){
@@ -2487,7 +2487,7 @@ function openMgrCard(empId){
           <div class="sal-field"><label>Штраф (грн)</label><input type="number" id="sal-penalty-${emp.id}" placeholder="0" value="${salaryMap[emp.id]?.penalty||''}"></div>
           <div class="sal-field"><label>Примітка</label><input type="text" id="sal-note-${emp.id}" placeholder="" value="${salaryMap[emp.id]?.note||''}"></div>
         </div>`:`
-        ${['rzpk','retail','wholesale','resellers'].includes(emp.dept_code) && odooStatus?.configured ? `
+        ${['rzpk','retail','wholesale','resellers','vin_op'].includes(emp.dept_code) && odooStatus?.configured ? `
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
           <button onclick="odooFillSalary(${emp.id})" style="padding:6px 12px;background:#1a5c8a;color:#fff;border-radius:7px;font-weight:600;font-size:.78rem">⬇ Підтягнути з Odoo</button>
           <span id="odoo-sal-note-${emp.id}" style="font-size:.7rem;color:#7a6050">Факт оборот і % повернень — як у дашборді РЗПК. Нічого не зберігається, поки не натиснете «Зберегти».</span>
