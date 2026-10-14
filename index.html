@@ -2168,7 +2168,9 @@ function openMgrCard(empId){
       </div>
       <div id="sal-unlock-block" style="${ropUnlocked?'display:block':'display:none'}">
         <div style="font-size:.75rem;color:#8a7060;margin-bottom:10px">
-          👔 Мотивація РОПа · ставка ${fmtM(ROP_DEPTS_CFG[emp.dept_code].rate)} + KPI ${fmtM(ROP_DEPTS_CFG[emp.dept_code].kpi)}×2
+          ${(emp.dept_code==='rzpk' && (Y*100+M)>=202610)
+            ? '👔 Мотивація РОПа РЗПК · ставка 35 000 + бонус за план (90%/95%/100%) + 3,5% від перевиконання (маржа ≥50%) + СРЧ 3 000 + апрув 3 000'
+            : `👔 Мотивація РОПа · ставка ${fmtM(ROP_DEPTS_CFG[emp.dept_code].rate)} + KPI ${fmtM(ROP_DEPTS_CFG[emp.dept_code].kpi)}×2`}
         </div>
         <div class="sal-row">
           <div class="sal-field"><label>План відділу (ціль)</label><input type="number" id="rop-ptarget-${emp.id}" placeholder="5000000"></div>
@@ -2176,18 +2178,20 @@ function openMgrCard(empId){
         </div>
         <div style="display:flex;gap:16px;margin:8px 0">
           <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
-            <input type="checkbox" id="rop-srch-${emp.id}" style="width:auto"> СРЧ виконано (+${fmtM(ROP_DEPTS_CFG[emp.dept_code].kpi)})</label>
+            <input type="checkbox" id="rop-srch-${emp.id}" style="width:auto"> СРЧ виконано (+${fmtM((emp.dept_code==='rzpk' && (Y*100+M)>=202610)?3000:ROP_DEPTS_CFG[emp.dept_code].kpi)})</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
-            <input type="checkbox" id="rop-apr-${emp.id}" style="width:auto"> Апрув виконано (+${fmtM(ROP_DEPTS_CFG[emp.dept_code].kpi)})</label>
+            <input type="checkbox" id="rop-apr-${emp.id}" style="width:auto"> Апрув виконано (+${fmtM((emp.dept_code==='rzpk' && (Y*100+M)>=202610)?3000:ROP_DEPTS_CFG[emp.dept_code].kpi)})</label>
+          ${(emp.dept_code==='rzpk' && (Y*100+M)>=202610)?`<label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
+            <input type="checkbox" id="rop-margin-${emp.id}" style="width:auto"> Маржа відділу ≥50% (для 3,5%)</label>`:''}
         </div>
         ${emp.dept_code==='hot'?`
         <div class="sal-row">
           <div class="sal-field"><label>Особисті: гаряча база (2%)</label><input type="number" id="rop-ownhot-${emp.id}" placeholder="0"></div>
           <div class="sal-field"><label>Постійні клієнти (5%)</label><input type="number" id="rop-owncold-${emp.id}" placeholder="0"></div>
         </div>`:`
-        <div class="sal-row">
+        ${(emp.dept_code==='rzpk' && (Y*100+M)>=202610)?'':`<div class="sal-row">
           <div class="sal-field"><label>Сума особистих замовлень (${emp.dept_code==='refuse'?'7':'5'}%)</label><input type="number" id="rop-own-${emp.id}" placeholder="0"></div>
-        </div>`}
+        </div>`}`}
         <div class="sal-row">
           <div class="sal-field"><label>Доплата</label><input type="number" id="rop-bonus-${emp.id}" placeholder="0"></div>
           <div class="sal-field"><label>Штраф</label><input type="number" id="rop-penalty-${emp.id}" placeholder="0"></div>
@@ -2621,6 +2625,7 @@ function openMgrCard(empId){
         const ck=(id,v)=>{const el=document.getElementById(id); if(el) el.checked=!!v;};
         ck(`rop-srch-${emp.id}`,p.srch_ok);
         ck(`rop-apr-${emp.id}`,p.apr_ok);
+        ck(`rop-margin-${emp.id}`,p.margin_ok);
       }
       showRopResult(emp.id);
       loadAdjustments(emp.id).then(()=>renderAdjList(emp.id));
@@ -5034,6 +5039,7 @@ async function saveRopSalary(empId){
       plan_fact:g('rop-pfact-'+empId),
       srch_ok:c('rop-srch-'+empId),
       apr_ok:c('rop-apr-'+empId),
+      margin_ok:c('rop-margin-'+empId),
       own_sum:g('rop-own-'+empId),
       own_hot:g('rop-ownhot-'+empId),
       own_cold:g('rop-owncold-'+empId),
@@ -5057,7 +5063,7 @@ async function showRopResult(empId){
       <div class="sal-result-row"><span>Ставка</span><span>${fmtFull(row.rate)}</span></div>
       <div class="sal-result-row"><span>Виконання плану</span><span>${row.plan_pct}%</span></div>
       <div class="sal-result-row"><span>СРЧ ${row.srch_ok?'✅':'❌'} · Апрув ${row.apr_ok?'✅':'❌'}</span><span style="color:${row.pay_kpi?'#2e7d52':'#aaa'}">${row.pay_kpi?'+'+fmtFull(row.pay_kpi):'0,00 ₴'}</span></div>
-      <div class="sal-result-row"><span>${isHotRop?'Бонус за перевиконання':'Доплата за план'}</span><span style="color:${row.pay_plan?'#2e7d52':'#aaa'}">${row.pay_plan?'+'+fmtFull(row.pay_plan):'0,00 ₴'}</span></div>
+      <div class="sal-result-row"><span>${isHotRop?'Бонус за перевиконання':(row.rop_v2?`Бонус за план${row.over_bonus?' (в т.ч. 3,5% від перевиконання: '+fmtFull(row.over_bonus)+')':(row.plan_pct>100&&!row.margin_ok?' · перевиконання без маржі ≥50% не оплачується':'')}`:'Доплата за план')}</span><span style="color:${row.pay_plan?'#2e7d52':'#aaa'}">${row.pay_plan?'+'+fmtFull(row.pay_plan):'0,00 ₴'}</span></div>
     ${row.pay_own?`<div class="sal-result-row"><span>${isHotRop?'Особисті (2% + 5%)':(row.dept_code==='refuse'?'Особисті замовлення 7%':'Особисті замовлення 5%')}</span><span style="color:#2e7d52">+${fmtFull(row.pay_own)}</span></div>`:''}
       ${row.bonus>0?`<div class="sal-result-row"><span>Доплата</span><span style="color:#2e7d52">+${fmtFull(row.bonus)}</span></div>`:''}
       ${row.penalty>0?`<div class="sal-result-row"><span>Штраф</span><span style="color:#ef5350">−${fmtFull(row.penalty)}</span></div>`:''}
