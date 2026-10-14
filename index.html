@@ -2168,7 +2168,7 @@ function openMgrCard(empId){
       </div>
       <div id="sal-unlock-block" style="${ropUnlocked?'display:block':'display:none'}">
         <div style="font-size:.75rem;color:#8a7060;margin-bottom:10px">
-          ${(emp.dept_code==='rzpk' && (Y*100+M)>=202610)
+          ${(emp.dept_code==='rzpk' && (Y*100+M)>=202609)
             ? '👔 Мотивація РОПа РЗПК · ставка 35 000 + бонус за план (90%/95%/100%) + 3,5% від перевиконання (маржа ≥50%) + СРЧ 3 000 + апрув 3 000'
             : `👔 Мотивація РОПа · ставка ${fmtM(ROP_DEPTS_CFG[emp.dept_code].rate)} + KPI ${fmtM(ROP_DEPTS_CFG[emp.dept_code].kpi)}×2`}
         </div>
@@ -2178,10 +2178,10 @@ function openMgrCard(empId){
         </div>
         <div style="display:flex;gap:16px;margin:8px 0">
           <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
-            <input type="checkbox" id="rop-srch-${emp.id}" style="width:auto"> СРЧ виконано (+${fmtM((emp.dept_code==='rzpk' && (Y*100+M)>=202610)?3000:ROP_DEPTS_CFG[emp.dept_code].kpi)})</label>
+            <input type="checkbox" id="rop-srch-${emp.id}" style="width:auto"> СРЧ виконано (+${fmtM((emp.dept_code==='rzpk' && (Y*100+M)>=202609)?3000:ROP_DEPTS_CFG[emp.dept_code].kpi)})</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
-            <input type="checkbox" id="rop-apr-${emp.id}" style="width:auto"> Апрув виконано (+${fmtM((emp.dept_code==='rzpk' && (Y*100+M)>=202610)?3000:ROP_DEPTS_CFG[emp.dept_code].kpi)})</label>
-          ${(emp.dept_code==='rzpk' && (Y*100+M)>=202610)?`<label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
+            <input type="checkbox" id="rop-apr-${emp.id}" style="width:auto"> Апрув виконано (+${fmtM((emp.dept_code==='rzpk' && (Y*100+M)>=202609)?3000:ROP_DEPTS_CFG[emp.dept_code].kpi)})</label>
+          ${(emp.dept_code==='rzpk' && (Y*100+M)>=202609)?`<label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
             <input type="checkbox" id="rop-margin-${emp.id}" style="width:auto"> Маржа відділу ≥50% (для 3,5%)</label>`:''}
         </div>
         ${emp.dept_code==='hot'?`
@@ -2189,7 +2189,7 @@ function openMgrCard(empId){
           <div class="sal-field"><label>Особисті: гаряча база (2%)</label><input type="number" id="rop-ownhot-${emp.id}" placeholder="0"></div>
           <div class="sal-field"><label>Постійні клієнти (5%)</label><input type="number" id="rop-owncold-${emp.id}" placeholder="0"></div>
         </div>`:`
-        ${(emp.dept_code==='rzpk' && (Y*100+M)>=202610)?'':`<div class="sal-row">
+        ${(emp.dept_code==='rzpk' && (Y*100+M)>=202609)?'':`<div class="sal-row">
           <div class="sal-field"><label>Сума особистих замовлень (${emp.dept_code==='refuse'?'7':'5'}%)</label><input type="number" id="rop-own-${emp.id}" placeholder="0"></div>
         </div>`}`}
         <div class="sal-row">
