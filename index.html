@@ -1513,6 +1513,7 @@ async function savePlans(){
         const deptTotal=parseFloat(deptTotalEl?.value)||0;
         const deptTotalOrig=parseFloat(deptTotalEl?.dataset.orig)||0;
         const deptTotalWasEdited = Math.round(deptTotal)!==Math.round(deptTotalOrig);
+        let rzpkTotalEdited = false;
         if(deptTotalWasEdited && deptTotal>0){
           const cnt=Object.values(bd).reduce((a,b)=>a+(b.cnt||0),0)||1;
           const perPerson=Math.round(deptTotal/cnt);
@@ -1522,6 +1523,17 @@ async function savePlans(){
               department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:perPerson
             })});
           }
+          // Окремі плани по командах мають ПРІОРИТЕТ над загальним (див. /api/stats),
+          // тому без їх очищення нове загальне число ніяк не впливає на підсумок.
+          // Редагували загальну суму — прибираємо командні плани цього місяця.
+          for(const team of RZPK_TEAMS){
+            for(const lvl of ['top','mid','jun']){
+              await api('/api/plans',{method:'DELETE',body:JSON.stringify({
+                department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,team
+              })});
+            }
+          }
+          rzpkTotalEdited = true;
         } else {
           for(const lvl of ['top','mid','jun']){
             const el=document.getElementById(`plan-${dept.id}-${lvl}`);
@@ -1539,6 +1551,9 @@ async function savePlans(){
           }
         }
         // 2) точніший режим — опційні окремі плани по командах
+        // (пропускаємо, якщо щойно змінили загальний план — інакше командні
+        // поля зі старими значеннями одразу перезаписали б його назад)
+        if(rzpkTotalEdited) continue;
         for(const team of RZPK_TEAMS){
           const teamPlanId = team.replace(/\s+/g,'_');
           const scopeId = `${dept.id}-${teamPlanId}`;
@@ -2199,6 +2214,7 @@ function openMgrCard(empId){
       <div style="font-size:.75rem;color:#8a7060;margin-bottom:10px">👔 Тімлід малого опту і реселерів · ставка 35 000 + бонус за повернутих клієнтів</div>
       <div class="sal-row">
         <div class="sal-field"><label>Повернуто клієнтів (шт)</label><input type="number" id="tlm-clients-${emp.id}" placeholder="25"></div>
+        <div class="sal-field"><label>Особистий оборот (грн) · 5% на 1-ше, з жовтня 2026</label><input type="number" id="tlm-own-${emp.id}" placeholder="0"></div>
       </div>
       <div class="sal-row">
         <div class="sal-field"><label>Доплата</label><input type="number" id="tlm-bonus-${emp.id}" placeholder="0"></div>
@@ -2578,6 +2594,17 @@ function openMgrCard(empId){
   if(salaryAllowed && canCalcSalary && !isHot && ropUnlocked){
     appendPayoutsFromFinance(emp.id);
   }
+  // Тімлід МО/Ресейл: підвантажуємо збережені значення в поля
+  if(salaryAllowed && isTeamleadMo){
+    api(`/api/teamlead-mo-salary?year=${Y}&month=${M}&employee_id=${emp.id}`).then(rs=>{
+      const p=(rs||[])[0]; if(!p) return;
+      const set=(id,v)=>{const el=document.getElementById(id); if(el&&v&&parseFloat(v)) el.value=v;};
+      set(`tlm-clients-${emp.id}`,p.returned_clients);
+      set(`tlm-own-${emp.id}`,p.own_turnover);
+      set(`tlm-bonus-${emp.id}`,p.bonus_manual);
+      set(`tlm-penalty-${emp.id}`,p.penalty);
+    }).catch(()=>{});
+  }
   // Гарячі: підвантажуємо збережені суми і показуємо розрахунок
   if(salaryAllowed && isRop && ropUnlocked){
     loadRopData(emp.id).then(()=>{
@@ -2784,6 +2811,7 @@ async function saveTeamleadMo(empId){
     const r = await api('/api/teamlead-mo-salary',{method:'PUT',body:JSON.stringify({
       employee_id:empId, calc_year:Y, calc_month:M,
       returned_clients:parseInt(document.getElementById('tlm-clients-'+empId).value)||0,
+      own_turnover:parseFloat(document.getElementById('tlm-own-'+empId).value)||0,
       bonus_manual:parseFloat(document.getElementById('tlm-bonus-'+empId).value)||0,
       penalty:parseFloat(document.getElementById('tlm-penalty-'+empId).value)||0,
     })});
