@@ -4010,7 +4010,8 @@ function disp1shePaid(r){ return isOldRzpkSchemeRow(r) ? real15tePaid(r) : real1
 // Те саме, але окремо для виплати 15-го (p1) і 1-го (p2) — з урахуванням реверсу
 // для pay_schedule='sales'. Для "гарячих" (два незалежні періоди 1-14/15-кінець)
 // беремо мітки напряму (там своя, вже правильна, схема виплат).
-function fundBreakdownByPayout(rows){
+function fundBreakdownByPayout(rows, all){
+  // all=true — рахувати ВСІ суми за розрахунком (не лише ті, де стоїть галочка «виплачено»)
   const p1={rate:0,pct:0,bonus:0,penalty:0}, p2={rate:0,pct:0,bonus:0,penalty:0};
   (rows||[]).forEach(r=>{
     if(r.scheme_type==='hot_cold'){
@@ -4019,7 +4020,7 @@ function fundBreakdownByPayout(rows){
       // таблицею (payLabel1/payLabel2) payout2 відповідає колонці "15-те
       // наст. (залишок+%)" — тобто гроші йдуть у плитку "На 15-те", не "На
       // 1-ше". Рахуємо напряму, лише якщо реально позначено виплаченим.
-      const paidAmt = r.paid2 ? (r.pay2!=null?r.pay2:(r.payout2||0)) : 0;
+      const paidAmt = (all||r.paid2) ? (r.pay2!=null?r.pay2:(r.payout2||0)) : 0;
       if(paidAmt) p1.pct += paidAmt;
       return;
     }
@@ -4029,7 +4030,7 @@ function fundBreakdownByPayout(rows){
       // галочка "виплачено", як і для решти схем нижче
       (r.breakdown||[]).forEach(item=>{
         const isP1 = /\(1-14\)/.test(item.label);
-        if((isP1 && !r.paid1) || (!isP1 && !r.paid2)) return;
+        if(!all && ((isP1 && !r.paid1) || (!isP1 && !r.paid2))) return;
         const cat=categorizeSalaryLabel(item.label,item.amount);
         const bucket=isP1?p1:p2;
         if(cat==='rate') bucket.rate+=item.amount;
@@ -4043,8 +4044,8 @@ function fundBreakdownByPayout(rows){
     // "виплачено" не стоїть, ця сума взагалі не враховується (0), незалежно
     // від того, чи є ручний override
     const fb=fundBreakdown([r]);
-    const pay1amt = r.paid1 ? (r.pay1!=null?r.pay1:(r.payout1||0)) : 0;
-    const pay2amt = r.paid2 ? (r.pay2!=null?r.pay2:(r.payout2||0)) : 0;
+    const pay1amt = (all||r.paid1) ? (r.pay1!=null?r.pay1:(r.payout1||0)) : 0;
+    const pay2amt = (all||r.paid2) ? (r.pay2!=null?r.pay2:(r.payout2||0)) : 0;
     const rateForAdvance = Math.min(pay1amt||0, Math.max(fb.rate,0));
     const remainderRate = fb.rate - rateForAdvance;
     // 'sales': аванс(ставка) реально платиться 1-го → p2; залишок(ставка+%+допки) — 15-го → p1
@@ -4102,7 +4103,8 @@ function renderFinance(){
     }
     h+=financeTable(rows,true);
     if(dept){
-      const fbp=fundBreakdownByPayout(rows);
+      const fbp=fundBreakdownByPayout(rows, true);   // усі суми за розрахунком, незалежно від галочок
+      const isSalesBd = rows.some(r=>r.pay_schedule==='sales');
       const sum1=rows.reduce((a,r)=>a+disp15teAmt(r),0);
       const sum2=rows.reduce((a,r)=>a+disp1sheAmt(r),0);
       const catRow=(label,val,color)=>`<div><div style="font-size:.62rem;color:#7a6048">${label}</div><div style="font-size:.92rem;font-weight:700;color:${color}">${val?fmtUAH(val):'—'}</div></div>`;
@@ -4118,21 +4120,23 @@ function renderFinance(){
         </div>
         <div id="fund-bd" style="display:none;gap:24px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid #5a4a38">
           <div style="min-width:220px">
-            <div style="font-size:.72rem;font-weight:700;color:#F43313;margin-bottom:8px">💵 На 15-те (аванс)</div>
+            <div style="font-size:.72rem;font-weight:700;color:#F43313;margin-bottom:8px">💵 На 15-те ${isSalesBd?'(залишок ставки + % + допки)':'(аванс)'} — ${fmtUAH(sum1)}</div>
             <div style="display:flex;gap:16px;flex-wrap:wrap">
               ${catRow('💼 Ставка',fbp.p1.rate,'#5a4a38')}
               ${catRow('📈 %',fbp.p1.pct,'#5a4a38')}
               ${catRow('🎁 Допки',fbp.p1.bonus,'#7ac070')}
               ${catRow('⚠️ Штрафи',fbp.p1.penalty?-Math.abs(fbp.p1.penalty):0,'#ef5350')}
+              ${(()=>{const res=sum1-(fbp.p1.rate+fbp.p1.pct+fbp.p1.bonus+fbp.p1.penalty);return Math.abs(res)>1?catRow('❓ Без розбивки',res,'#a07030'):'';})()}
             </div>
           </div>
           <div style="min-width:220px">
-            <div style="font-size:.72rem;font-weight:700;color:#F43313;margin-bottom:8px">💰 На 1-ше (залишок)</div>
+            <div style="font-size:.72rem;font-weight:700;color:#F43313;margin-bottom:8px">💰 На 1-ше ${isSalesBd?'(аванс)':'(залишок)'} — ${fmtUAH(sum2)}</div>
             <div style="display:flex;gap:16px;flex-wrap:wrap">
               ${catRow('💼 Ставка',fbp.p2.rate,'#5a4a38')}
               ${catRow('📈 %',fbp.p2.pct,'#5a4a38')}
               ${catRow('🎁 Допки',fbp.p2.bonus,'#7ac070')}
               ${catRow('⚠️ Штрафи',fbp.p2.penalty?-Math.abs(fbp.p2.penalty):0,'#ef5350')}
+              ${(()=>{const res=sum2-(fbp.p2.rate+fbp.p2.pct+fbp.p2.bonus+fbp.p2.penalty);return Math.abs(res)>1?catRow('❓ Без розбивки',res,'#a07030'):'';})()}
             </div>
           </div>
         </div>
