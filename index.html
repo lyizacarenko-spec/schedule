@@ -1502,6 +1502,36 @@ async function saveIndivPlan(empId){
 
 async function savePlans(){
   const visDepts=planDeptFilter ? departments.filter(d=>d.code===planDeptFilter) : departments.filter(d=>isSalesDept(d.code));
+  // ЗАКРІПЛЕНИЙ ПЛАН: якщо план на цей місяць уже встановлений — зміна лише
+  // після підтвердження (показуємо що було → що стане).
+  {
+    const fm=n=>Math.round(n).toLocaleString('uk-UA').replace(/,/g,' ');
+    const changes=[];
+    const levLbl={top:'Топ',mid:'Мід',jun:'Джун'};
+    for(const dept of visDepts){
+      const scopes=[{id:dept.id,team:null,label:dept.name}];
+      if(dept.code==='rzpk') RZPK_TEAMS.forEach(t=>scopes.push({id:`${dept.id}-${t.replace(/\s+/g,'_')}`,team:t,label:dept.name+' / '+t}));
+      for(const sc of scopes){
+        const totEl=document.getElementById(`plan-dept-total-${sc.id}`);
+        const tNew=parseFloat(totEl?.value)||0, tOld=parseFloat(totEl?.dataset.orig)||0;
+        if(totEl && tOld>0 && Math.round(tNew)!==Math.round(tOld)){
+          changes.push(`${sc.label}: загальний план ${fm(tOld)} → ${fm(tNew)} ₴`);
+          continue;
+        }
+        for(const lvl of ['top','mid','jun']){
+          const el=document.getElementById(`plan-${sc.id}-${lvl}`);
+          if(!el) continue;
+          const ex=(planData||[]).find(p=>p.department_id===dept.id && p.level===lvl && (p.team||null)===sc.team);
+          if(!ex) continue;
+          const oldV=parseFloat(ex.plan_amount)||0;
+          const newV=el.value===''?0:(parseFloat(el.value)||0);
+          if(Math.round(oldV)!==Math.round(newV))
+            changes.push(`${sc.label}, ${levLbl[lvl]}: ${fm(oldV)} → ${fm(newV)} ₴ на людину`);
+        }
+      }
+    }
+    if(changes.length && !confirm('⚠️ План на цей місяць уже встановлений.\n\nЗмінити?\n\n'+changes.join('\n'))) return;
+  }
   setSave('Збереження...',false);
   try{
     for(const dept of visDepts){
@@ -4046,8 +4076,9 @@ function fundBreakdownByPayout(rows, all){
     const fb=fundBreakdown([r]);
     const pay1amt = (all||r.paid1) ? (r.pay1!=null?r.pay1:(r.payout1||0)) : 0;
     const pay2amt = (all||r.paid2) ? (r.pay2!=null?r.pay2:(r.payout2||0)) : 0;
-    const rateForAdvance = Math.min(pay1amt||0, Math.max(fb.rate,0));
-    const remainderRate = fb.rate - rateForAdvance;
+    // all=true: весь аванс — це ставка (і для рядків без розбивки), решта ставки — у залишок
+    const rateForAdvance = all ? (pay1amt||0) : Math.min(pay1amt||0, Math.max(fb.rate,0));
+    const remainderRate = all ? Math.max(0, fb.rate - rateForAdvance) : (fb.rate - rateForAdvance);
     // 'sales': аванс(ставка) реально платиться 1-го → p2; залишок(ставка+%+допки) — 15-го → p1
     const advBucket = r.pay_schedule==='sales' ? p2 : p1;
     const remBucket = r.pay_schedule==='sales' ? p1 : p2;
@@ -4064,7 +4095,17 @@ function fundBreakdownByPayout(rows, all){
     // для 'sales'-схем (remBucket===p1), через що сума масштабувалась
     // до авансу замість реального залишку.
     const remActual = pay2amt;
-    if(remCalc && Math.abs(remActual-remCalc)>0.01){
+    if(all && !remCalc && remActual){
+      // немає розбивки (рядок без деталізації) — вся сума залишку йде в «Ставку»
+      remBucket.rate += remActual;
+    } else if(all && remCalc && remActual>remCalc+0.01){
+      // ручна сума БІЛЬША за розрахунок: ставку/допки/штрафи лишаємо як розраховано,
+      // а різниця (те, що вписали вручну понад розрахунок) — це «%»
+      remBucket.rate += remainderRate;
+      remBucket.pct += fb.pct + (remActual-remCalc);
+      remBucket.bonus += fb.bonus;
+      remBucket.penalty += fb.penalty;
+    } else if(remCalc && Math.abs(remActual-remCalc)>0.01){
       const scale = remActual/remCalc;
       remBucket.rate += remainderRate*scale;
       remBucket.pct += fb.pct*scale;
@@ -4118,6 +4159,12 @@ function renderFinance(){
           <div><div style="font-size:.65rem;color:#7a6048">Людей</div><div style="font-size:1.05rem;font-weight:700;color:#6a5040">${dept.count}</div></div>
           <button onclick="const el=document.getElementById('fund-bd');el.style.display=el.style.display==='none'?'flex':'none';this.textContent=el.style.display==='none'?'▾ Деталізація фонду':'▴ Сховати деталізацію'" style="margin-left:auto;background:#F43313;color:#fff;font-weight:700;border-radius:6px;padding:6px 12px;font-size:.75rem">▾ Деталізація фонду</button>
         </div>
+        ${(()=>{
+          const pend=rows.filter(r=>r.total==null && ((r.payout1||0)+(r.payout2||0)+(r.pay1||0)+(r.pay2||0))>0);
+          if(!pend.length) return '';
+          const pendSum=pend.reduce((a,r)=>a+(r.pay1!=null?r.pay1:(r.payout1||0))+(r.pay2!=null?r.pay2:(r.payout2||0)),0);
+          return `<div style="font-size:.7rem;color:#a07030;margin-top:8px">⚠️ «Фонд ЗП» (${fmtUAH(dept.sum)}) рахує лише тих, у кого ЗП уже порахована повністю (${dept.count} осіб). Ще без розрахунку (не внесено оборот): ${pend.length} осіб — їхні виплати ${fmtUAH(pendSum)} входять у «Разом» і в 15-те/1-ше, але не у «Фонд ЗП».</div>`;
+        })()}
         <div id="fund-bd" style="display:none;gap:24px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid #5a4a38">
           <div style="min-width:220px">
             <div style="font-size:.72rem;font-weight:700;color:#F43313;margin-bottom:8px">💵 На 15-те ${isSalesBd?'(залишок ставки + % + допки)':'(аванс)'} — ${fmtUAH(sum1)}</div>
@@ -4139,6 +4186,7 @@ function renderFinance(){
               ${(()=>{const res=sum2-(fbp.p2.rate+fbp.p2.pct+fbp.p2.bonus+fbp.p2.penalty);return Math.abs(res)>1?catRow('❓ Без розбивки',res,'#a07030'):'';})()}
             </div>
           </div>
+          <div style="width:100%;font-size:.68rem;color:#8a7060;margin-top:6px">Ручні суми, вписані понад розрахунок, віднесено до «%». Рядки без розбивки (лише аванс) — до «Ставки».</div>
         </div>
       </div>`;
     }
