@@ -1311,7 +1311,7 @@ async function openPlanModal(deptCode){
         <div style="font-size:.78rem;color:#F43313;font-weight:700;margin-bottom:10px">${dept.name}</div>
 
         <div style="margin-bottom:12px">
-          <div style="font-size:.72rem;color:#8a7060;margin-bottom:4px">Загальний план відділу на місяць (грн) — простий режим, одне число на весь РЗПК</div>
+          <div style="font-size:.72rem;color:#8a7060;margin-bottom:4px">Загальний план відділу на місяць (грн) — одне число на весь РЗПК ${s.plan_locked?'<b style="color:#2e7d52">🔒 закріплено — не залежить від кількості людей, зміна лише з підтвердженням</b>':'<span style="color:#b07a20">не закріплено — натисни «Зберегти», щоб закріпити</span>'}</div>
           <input type="number" id="plan-dept-total-${dept.id}" value="${total||''}" data-orig="${total||0}"
             placeholder="наприклад 5000000"
             style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:8px 12px;font-size:.92rem;outline:none;margin-bottom:4px"
@@ -1348,7 +1348,7 @@ async function openPlanModal(deptCode){
       <div style="font-size:.78rem;color:#F43313;font-weight:700;margin-bottom:10px">${dept.name}</div>
 
       <div style="margin-bottom:12px">
-        <div style="font-size:.72rem;color:#8a7060;margin-bottom:4px">Загальний план відділу на місяць (грн)</div>
+        <div style="font-size:.72rem;color:#8a7060;margin-bottom:4px">Загальний план відділу на місяць (грн) ${s.plan_locked?'<b style="color:#2e7d52">🔒 закріплено — не залежить від кількості людей, зміна лише з підтвердженням</b>':'<span style="color:#b07a20">не закріплено — натисни «Зберегти», щоб закріпити</span>'}</div>
         <input type="number" id="plan-dept-total-${dept.id}" value="${total||''}" data-orig="${total||0}"
           placeholder="наприклад 5400000"
           style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:8px 12px;font-size:.92rem;outline:none;margin-bottom:4px"
@@ -1500,6 +1500,27 @@ async function saveIndivPlan(empId){
   }catch(e){ if(st){ st.textContent='✗'; st.style.color='#ef5350'; } alert('Помилка: '+e.message); }
 }
 
+// Загальний план відділу, який буде закріплено при збереженні:
+// вписали суму — вона; змінили лише ставки по рівнях — Σ(ставка×кількість); нічого — поточний.
+function planNewTotal(dept){
+  const s=statsData.find(x=>x.dept_code===dept.code)||{plan_breakdown:{}};
+  const bd=s.plan_breakdown||{};
+  const el=document.getElementById(`plan-dept-total-${dept.id}`);
+  const orig=parseFloat(el?.dataset.orig)||0;
+  const typed=parseFloat(el?.value)||0;
+  if(el && Math.round(typed)!==Math.round(orig)) return typed;
+  let sum=0, changed=false;
+  for(const lvl of ['top','mid','jun']){
+    const inp=document.getElementById(`plan-${dept.id}-${lvl}`);
+    if(!inp) continue;
+    const val=inp.value===''?0:(parseFloat(inp.value)||0);
+    const old=bd[lvl]?.plan_per_person||0;
+    if(Math.round(val)!==Math.round(old)) changed=true;
+    sum+=val*(bd[lvl]?.cnt||0);
+  }
+  return changed?sum:orig;
+}
+
 async function savePlans(){
   const visDepts=planDeptFilter ? departments.filter(d=>d.code===planDeptFilter) : departments.filter(d=>isSalesDept(d.code));
   // ЗАКРІПЛЕНИЙ ПЛАН: якщо план на цей місяць уже встановлений — зміна лише
@@ -1513,7 +1534,7 @@ async function savePlans(){
       if(dept.code==='rzpk') RZPK_TEAMS.forEach(t=>scopes.push({id:`${dept.id}-${t.replace(/\s+/g,'_')}`,team:t,label:dept.name+' / '+t}));
       for(const sc of scopes){
         const totEl=document.getElementById(`plan-dept-total-${sc.id}`);
-        const tNew=parseFloat(totEl?.value)||0, tOld=parseFloat(totEl?.dataset.orig)||0;
+        const tNew=sc.team===null?planNewTotal(dept):(parseFloat(totEl?.value)||0), tOld=parseFloat(totEl?.dataset.orig)||0;
         if(totEl && tOld>0 && Math.round(tNew)!==Math.round(tOld)){
           changes.push(`${sc.label}: загальний план ${fm(tOld)} → ${fm(tNew)} ₴`);
           continue;
@@ -1534,6 +1555,12 @@ async function savePlans(){
   }
   setSave('Збереження...',false);
   try{
+    // ЗАКРІПЛЕННЯ загального плану відділу на місяць (не залежить від кількості людей)
+    for(const dept of visDepts){
+      await api('/api/plan-locks',{method:'PUT',body:JSON.stringify({
+        department_id:dept.id,plan_year:Y,plan_month:M,total_amount:planNewTotal(dept)
+      })});
+    }
     for(const dept of visDepts){
       if(dept.code==='rzpk'){
         // 1) простий режим — загальний план відділу (team=NULL, дефолт для всіх команд)
@@ -1543,28 +1570,10 @@ async function savePlans(){
         const deptTotal=parseFloat(deptTotalEl?.value)||0;
         const deptTotalOrig=parseFloat(deptTotalEl?.dataset.orig)||0;
         const deptTotalWasEdited = Math.round(deptTotal)!==Math.round(deptTotalOrig);
+        // Загальна сума тепер ЗАКРІПЛЮЄТЬСЯ окремо (plan_locks, див. нижче) і більше
+        // не розподіляється порівну по рівнях — ставки по рівнях лишаються як є.
         let rzpkTotalEdited = false;
-        if(deptTotalWasEdited && deptTotal>0){
-          const cnt=Object.values(bd).reduce((a,b)=>a+(b.cnt||0),0)||1;
-          const perPerson=Math.round(deptTotal/cnt);
-          for(const lvl of ['top','mid','jun']){
-            if(!(bd[lvl]?.cnt>0)) continue;
-            await api('/api/plans',{method:'PUT',body:JSON.stringify({
-              department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:perPerson
-            })});
-          }
-          // Окремі плани по командах мають ПРІОРИТЕТ над загальним (див. /api/stats),
-          // тому без їх очищення нове загальне число ніяк не впливає на підсумок.
-          // Редагували загальну суму — прибираємо командні плани цього місяця.
-          for(const team of RZPK_TEAMS){
-            for(const lvl of ['top','mid','jun']){
-              await api('/api/plans',{method:'DELETE',body:JSON.stringify({
-                department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,team
-              })});
-            }
-          }
-          rzpkTotalEdited = true;
-        } else {
+        {
           for(const lvl of ['top','mid','jun']){
             const el=document.getElementById(`plan-${dept.id}-${lvl}`);
             if(!el) continue;
@@ -1629,18 +1638,8 @@ async function savePlans(){
       const deptTotalOrig=parseFloat(deptTotalEl?.dataset.orig)||0;
       const totalWasEdited = Math.round(deptTotal) !== Math.round(deptTotalOrig);
 
-      if(totalWasEdited && deptTotal>0){
-        // Редагували загальну суму — перерозподіляємо порівну на всіх, ІГНОРУЮЧИ старі поля по рівнях
-        const cnt=Object.values(bd).reduce((a,b)=>a+(b.cnt||0),0)||1;
-        const perPerson=Math.round(deptTotal/cnt);
-        for(const lvl of ['top','mid','jun']){
-          if(!(bd[lvl]?.cnt>0)) continue;
-          await api('/api/plans',{method:'PUT',body:JSON.stringify({
-            department_id:dept.id,plan_year:Y,plan_month:M,level:lvl,plan_amount:perPerson
-          })});
-        }
-      } else {
-        // Редагували по рівнях (або нічого не міняли) — зберігаємо як є
+      {
+        // Загальна сума закріплюється окремо (plan_locks), ставки по рівнях зберігаємо як є
         for(const lvl of ['top','mid','jun']){
           const el=document.getElementById(`plan-${dept.id}-${lvl}`);
           if(!el) continue;
