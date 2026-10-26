@@ -111,6 +111,7 @@ td.rev-td{background:#ede8e0;font-size:.7rem;color:#2e7d52;font-weight:600;borde
 td.rev-td:hover{background:#1a2535}
 td.rev-td.empty{color:#2a3040}
 td.wk{background:#e8e4dc}
+td.nodata{background:#ffe0b2!important;box-shadow:inset 0 0 0 2px #ff9800}
 td.today-cell{background:#fff3ef;border-left:2px solid #F43313;border-right:2px solid #F43313}
 td.director-cell{background:#f0f5ff}
 .cs-director{background:#d4e4f8;color:#1a5c8a;border:1px solid #a8c4dc}
@@ -672,7 +673,7 @@ function defaultStatusFor(deptCode, dow, empName, dateStr){
     return (dow===0||dow===6) ? 'вих' : '9:30-17:30';
   if(deptCode==='accounting')
     return (dow===0||dow===6) ? 'вих' : '9-17';
-    if(deptCode==='warehouse') return (dateStr && dateStr>='2026-10-01') ? '9:00-18:30' : '9-19';
+    if(deptCode==='warehouse') return (dateStr && dateStr>='2026-10-01' && dateStr<'2026-11-01') ? '9:00-18:30' : '9-19';
   if(deptCode==='rzpk') return (dateStr && dateStr>='2026-10-01') ? '10-19' : '10-18';
   // логісти: з 1 жовтня 2026 — графік 2/2, зміна 9:00-21:00. Для співробітників
   // з відомою фазою циклу (SHIFT22_PHASE) — цикл генерується автоматично;
@@ -1050,7 +1051,16 @@ function renderTable(){
         const h2=sh(v);if(h2>0){wd++;hrs+=h2;}
         const isToday3=d.date===todayDate;
         const isDirector=['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name);
-        const cellCls=isToday3?'today-cell':(d.isW?'wk':(isDirector?'director-cell':''));
+        let cellCls=isToday3?'today-cell':(d.isW?'wk':(isDirector?'director-cell':''));
+        // працював, день уже минув, а дані по ЗП (фасовка/упаковка/години) не внесені — підсвічуємо
+        if(h2>0 && d.date<todayDate){
+          const es=effectiveSchemeType(emp.id,d.date);
+          const k=`${emp.id}_${d.date}`;
+          let missing=false;
+          if(es==='piece_warehouse'||es==='warehouse_hybrid') missing=!whMap[k];
+          else if(es==='hourly'||es==='hourly_fixed') missing=!(hrMap[k] && parseFloat(hrMap[k].hours)>0);
+          if(missing) cellCls+=' nodata';
+        }
         const chipCls=isDirector&&sc(v)==='cs-work'?'cs-director':sc(v);
         row+=`<td class="${cellCls}" data-emp="${emp.id}" data-date="${d.date}"
                onclick="openPopup(event,${emp.id},'${d.date}','${v}',this)">
@@ -1098,7 +1108,7 @@ function renderTable(){
        }
       // корисно для будь-якого відділу, не лише продажів/відмов —
       // склад теж часто має незаповнені дефолтні клітинки в графіку
-      rzpkFilterHtml += `<div style="margin-bottom:10px"><button onclick="fillMissingForVisible()" style="background:#d4edd8;color:#1a5c30;font-weight:700;border-radius:7px;padding:6px 14px;font-size:.8rem">📅 Дозаповнити відсутні дні (всім видимим)</button></div>`;
+      rzpkFilterHtml += `<div style="margin-bottom:10px"><button onclick="fillMissingForVisible()" style="background:#d4edd8;color:#1a5c30;font-weight:700;border-radius:7px;padding:6px 14px;font-size:.8rem">📅 Дозаповнити відсутні дні (всім видимим)</button> <span style="font-size:.72rem;color:#8a5a00;background:#ffe0b2;border-radius:6px;padding:4px 9px;margin-left:8px">🟧 помаранчева клітинка — день відпрацьовано, а дані для ЗП (фасовка / упаковка / години) не внесені</span></div>`;
   document.getElementById('table-area').innerHTML=rzpkFilterHtml+h;
 }
 
