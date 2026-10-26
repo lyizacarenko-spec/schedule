@@ -1053,7 +1053,7 @@ function renderTable(){
         const isDirector=['Желюбовська Анастасія','Галаєва Анна'].includes(emp.name);
         let cellCls=isToday3?'today-cell':(d.isW?'wk':(isDirector?'director-cell':''));
         // працював, день уже минув, а дані по ЗП (фасовка/упаковка/години) не внесені — підсвічуємо
-        if(h2>0 && d.date<todayDate){
+        if(emp.dept_code==='warehouse' && h2>0 && d.date<todayDate){
           const es=effectiveSchemeType(emp.id,d.date);
           const k=`${emp.id}_${d.date}`;
           let missing=false;
@@ -1108,7 +1108,7 @@ function renderTable(){
        }
       // корисно для будь-якого відділу, не лише продажів/відмов —
       // склад теж часто має незаповнені дефолтні клітинки в графіку
-      rzpkFilterHtml += `<div style="margin-bottom:10px"><button onclick="fillMissingForVisible()" style="background:#d4edd8;color:#1a5c30;font-weight:700;border-radius:7px;padding:6px 14px;font-size:.8rem">📅 Дозаповнити відсутні дні (всім видимим)</button> <span style="font-size:.72rem;color:#8a5a00;background:#ffe0b2;border-radius:6px;padding:4px 9px;margin-left:8px">🟧 помаранчева клітинка — день відпрацьовано, а дані для ЗП (фасовка / упаковка / години) не внесені</span></div>`;
+      rzpkFilterHtml += `<div style="margin-bottom:10px"><button onclick="fillMissingForVisible()" style="background:#d4edd8;color:#1a5c30;font-weight:700;border-radius:7px;padding:6px 14px;font-size:.8rem">📅 Дозаповнити відсутні дні (всім видимим)</button>${curDept==='warehouse'?' <span style="font-size:.72rem;color:#8a5a00;background:#ffe0b2;border-radius:6px;padding:4px 9px;margin-left:8px">🟧 помаранчева клітинка — день відпрацьовано, а дані для ЗП (фасовка / упаковка / години) не внесені</span>':''}</div>`;
   document.getElementById('table-area').innerHTML=rzpkFilterHtml+h;
 }
 
