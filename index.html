@@ -4810,7 +4810,7 @@ async function renderFinanceWeeks(){
   const body=document.getElementById('finance-body');
   body.innerHTML=financeMonthNav()+'<div class="loading" style="color:#7a6048">Розрахунок...</div>';
   try{
-    const d=await api(`/api/finance/warehouse-weeks?year=${financeYear}&month=${financeMonth}`);
+    const d=await api(`/api/finance/warehouse-weeks?year=${financeYear}&month=${financeMonth}&branch=${financeBranch==='vinnitsa'?'vin':'main'}`);
     let h=financeMonthNav();
     if(!d.emps.length){ h+='<div style="padding:20px;text-align:center;color:#7a6048">Немає складських співробітників зі схемою.</div>'; body.innerHTML=h; return; }
     const curYmWeeks = `${financeYear}-${String(financeMonth).padStart(2,'0')}`;
