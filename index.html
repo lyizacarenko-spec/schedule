@@ -933,8 +933,10 @@ function renderTable(){
       groupsRaw[key].emps.push(e);
       return;
     }
-    const teamKey = e.team || e.dept_code;
-    if(!groupsRaw[teamKey]) groupsRaw[teamKey]={name:e.team||e.dept_name,code:e.dept_code,id:departments.find(d=>d.code===e.dept_code)?.id,emps:[]};
+    // РЗПК: тімліди (напр. Кіндюшенко) йдуть у блок РОП — під РОП, а не серед менеджерів каналу
+    const toRop = curDept==='rzpk' && e.role==='teamlead';
+    const teamKey = toRop ? 'РОП' : (e.team || e.dept_code);
+    if(!groupsRaw[teamKey]) groupsRaw[teamKey]={name:toRop?'РОП':(e.team||e.dept_name),code:e.dept_code,id:departments.find(d=>d.code===e.dept_code)?.id,emps:[]};
     groupsRaw[teamKey].emps.push(e);
   });
   const ADMIN_ORDER = ['Мединська Ірина','Чубострoєва Валентина','Овсюченко Луїза','Демидов Сергій','Озерна Карина','Пальчун Дмитро'];
