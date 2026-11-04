@@ -879,6 +879,27 @@ function showDayShiftCount(date,label){
   alert(`${label}: у зміні ${working.length} з ${emps.length}\n\n${names||'—'}`);
 }
 
+// Кольори команд РЗПК (як у таблиці): лідер темніший, співробітники світліші
+const SQUAD_PALETTE = [
+  {k:'Кіндюшенко', dark:'#d46a6a', light:'#f2c9c9', fg:'#3a1a1a', dfg:'#fff'},
+  {k:'Ларин',      dark:'#9bc28b', light:'#d6e8cd', fg:'#22361b', dfg:'#1f3318'},
+  {k:'Шульгін',    dark:'#7ba3d9', light:'#c6d9f0', fg:'#1b2e4a', dfg:'#12233d'},
+  {k:'Захарчук',   dark:'#9a5278', light:'#d9b8cb', fg:'#3d1d2f', dfg:'#fff'},
+  {k:'Назаров',    dark:'#f4d06f', light:'#fdf1c8', fg:'#4a3a0c', dfg:'#3d2f08'},
+];
+const SQUAD_EXTRA = [
+  {dark:'#e0a070', light:'#f6dcc6', fg:'#4a2c14', dfg:'#3d220e'},
+  {dark:'#78c0b8', light:'#cbe8e4', fg:'#16403b', dfg:'#10332f'},
+  {dark:'#b09ad0', light:'#ddd3ee', fg:'#33264d', dfg:'#271c3d'},
+];
+function squadColorFor(leaderId){
+  const ld = employees.find(x=>x.id===leaderId);
+  const nm = ld ? ld.name : '';
+  const hit = SQUAD_PALETTE.find(p=>nm.includes(p.k));
+  if(hit) return hit;
+  return SQUAD_EXTRA[(leaderId||0) % SQUAD_EXTRA.length];
+}
+
 function renderTable(){
   const days=getDays(Y,M);
   let emps=getVisEmps();
@@ -899,7 +920,19 @@ function renderTable(){
     'Нові співробітники','Віддалено'
   ];
   const groupsRaw={};
+  // РЗПК: команди старших менеджерів (поле squad_leader_id, окремо від team —
+  // team керує формулами ЗП). Заголовок групи = старший, під ним його люди.
+  const squadLeaderIds = new Set(curDept==='rzpk'
+    ? employees.filter(x=>x.dept_code==='rzpk' && x.squad_leader_id).map(x=>x.squad_leader_id) : []);
   emps.forEach(e=>{
+    const lid = curDept==='rzpk' ? (e.squad_leader_id || (squadLeaderIds.has(e.id) ? e.id : null)) : null;
+    if(lid){
+      const key='squad:'+lid;
+      const ld=employees.find(x=>x.id===lid);
+      if(!groupsRaw[key]) groupsRaw[key]={name:'👥 Команда: '+(ld?ld.name:'—'),code:e.dept_code,id:departments.find(d=>d.code===e.dept_code)?.id,emps:[],leaderId:lid};
+      groupsRaw[key].emps.push(e);
+      return;
+    }
     const teamKey = e.team || e.dept_code;
     if(!groupsRaw[teamKey]) groupsRaw[teamKey]={name:e.team||e.dept_name,code:e.dept_code,id:departments.find(d=>d.code===e.dept_code)?.id,emps:[]};
     groupsRaw[teamKey].emps.push(e);
@@ -907,6 +940,7 @@ function renderTable(){
   const ADMIN_ORDER = ['Мединська Ірина','Чубострoєва Валентина','Овсюченко Луїза','Демидов Сергій','Озерна Карина','Пальчун Дмитро'];
   Object.values(groupsRaw).forEach(g=>{
     g.emps.sort((a,b)=>{
+      if(g.leaderId){ if(a.id===g.leaderId) return -1; if(b.id===g.leaderId) return 1; }
       const ai=ADMIN_ORDER.indexOf(a.name), bi=ADMIN_ORDER.indexOf(b.name);
       if(ai!==-1||bi!==-1){
         if(ai!==-1&&bi!==-1) return ai-bi;
@@ -920,7 +954,12 @@ function renderTable(){
     });
   });
   const groups={};
-  TEAM_ORDER.forEach(t=>{ if(groupsRaw[t]) groups[t]=groupsRaw[t]; });
+  // спочатку РОП/Керівник/Тімлід, потім команди старших, далі решта груп
+  ['РОП','Керівник','Тімлід'].forEach(t=>{ if(groupsRaw[t]) groups[t]=groupsRaw[t]; });
+  Object.keys(groupsRaw).filter(k=>k.startsWith('squad:'))
+    .sort((a,b)=>groupsRaw[a].name.localeCompare(groupsRaw[b].name,'uk'))
+    .forEach(k=>{ groups[k]=groupsRaw[k]; });
+  TEAM_ORDER.forEach(t=>{ if(groupsRaw[t] && !groups[t]) groups[t]=groupsRaw[t]; });
   Object.keys(groupsRaw).forEach(t=>{ if(!groups[t]) groups[t]=groupsRaw[t]; });
 
   const todayDate = new Date().toISOString().slice(0,10);
@@ -1025,7 +1064,8 @@ function renderTable(){
       h+=`<tr class="group-row"><td colspan="${days.length+5}" style="font-size:.68rem">${deptDayHtml}</td></tr>`;
     }
     firstGroup = false;
-    h+=`<tr class="group-row"><td colspan="${days.length+5}">${g.name}${teamDayHtml}</td></tr>`;
+    const gc = g.leaderId ? squadColorFor(g.leaderId) : null;
+    h+=`<tr class="group-row"><td colspan="${days.length+5}"${gc?` style="background:${gc.dark};color:${gc.dfg}"`:''}>${g.name}${teamDayHtml}</td></tr>`;
 
     g.emps.forEach(emp=>{
       let wd=0,hrs=0;
@@ -1041,7 +1081,7 @@ function renderTable(){
       // без цього індикатора рядок виглядав як звичайний активний співробітник
       const isArchivedButShown = emp.is_active === false;
    let row=`<tr data-empid="${emp.id}" data-team="${(emp.team||emp.dept_code).replace(/"/g,'')}" ${isArchivedButShown?'style="opacity:.6"':''}>
-        <td class="name-td ${empIsDir?'director-name':''}" onclick="if(!dragMoved)openMgrCard(${emp.id})" style="cursor:grab;touch-action:none" onmousedown="dragStart(event,${emp.id})" ontouchstart="dragStart(event,${emp.id})">
+        <td class="name-td ${empIsDir?'director-name':''}" onclick="if(!dragMoved)openMgrCard(${emp.id})" style="cursor:grab;touch-action:none${gc?(emp.id===g.leaderId?`;background:${gc.dark};color:${gc.dfg};font-weight:700`:`;background:${gc.light};color:${gc.fg}`):''}" onmousedown="dragStart(event,${emp.id})" ontouchstart="dragStart(event,${emp.id})">
           <div>${emp.name}${empIsDir?'<span style="font-size:.6rem;color:#64b5f6;margin-left:4px">Директ</span>':''}${isArchivedButShown?'<span style="font-size:.6rem;color:#F43313;margin-left:4px;font-weight:700">📦 архів</span>':''}</div>
           ${empPos?`<div style="font-size:.6rem;color:#a09080;margin-top:1px">${empPos}</div>`:''}
         </td>
@@ -3778,17 +3818,41 @@ function openTeamModal(empId){
   sel.innerHTML=opts.map(t=>`<option value="${t}">${t}</option>`).join('');
   sel.value=cur;
   document.getElementById('team-emp-name').textContent=emp.name;
+  // РЗПК: вибір команди старшого менеджера (при переході з «Нові співробітники» — обов'язково)
+  const sqWrap=document.getElementById('team-squad-wrap');
+  if(emp.dept_code==='rzpk'){
+    const leaderIds=new Set(employees.filter(x=>x.squad_leader_id).map(x=>x.squad_leader_id));
+    const leaders=employees.filter(x=>x.dept_code==='rzpk' && x.id!==empId && (['senior','teamlead'].includes(x.role)||leaderIds.has(x.id)));
+    const sq=document.getElementById('team-squad');
+    sq.innerHTML='<option value="">— без команди —</option>'+leaders.map(l=>`<option value="${l.id}">${l.name}</option>`).join('');
+    sq.value=emp.squad_leader_id||'';
+    document.getElementById('team-squad-hint').textContent = emp.team==='Нові співробітники'
+      ? 'Переводиш з «Нові співробітники» — обери команду, в яку він іде.'
+      : (leaders.length?'':'Немає старших менеджерів: призначте роль «Старший менеджер» у мотивації співробітника.');
+    sqWrap.style.display='block';
+  } else sqWrap.style.display='none';
   closeMgrCardForce();
   document.getElementById('team-modal-ov').classList.add('open');
 }
 function closeTeamModal(){ document.getElementById('team-modal-ov').classList.remove('open'); }
 async function saveTeam(){
   const team=document.getElementById('team-select').value;
+  const emp0=employees.find(e=>e.id===teamEmpId);
+  const body={team};
+  if(emp0 && emp0.dept_code==='rzpk'){
+    const sv=document.getElementById('team-squad').value;
+    const hasLeaders=document.getElementById('team-squad').options.length>1;
+    if(hasLeaders && emp0.team==='Нові співробітники' && team!=='Нові співробітники' && team!=='РОП' && !sv){
+      alert('Обери команду старшого менеджера, в яку переходить співробітник.');
+      return;
+    }
+    body.squad_leader_id = sv?parseInt(sv):null;
+  }
   setSave('Збереження...',false);
   try{
-    await api('/api/employees/'+teamEmpId,{method:'PATCH',body:JSON.stringify({team})});
+    await api('/api/employees/'+teamEmpId,{method:'PATCH',body:JSON.stringify(body)});
     const emp=employees.find(e=>e.id===teamEmpId);
-    if(emp) emp.team=team;
+    if(emp){ emp.team=team; if('squad_leader_id' in body) emp.squad_leader_id=body.squad_leader_id; }
     closeTeamModal();
     renderAll();
     setSave('Групу змінено ✓',true);
@@ -5582,6 +5646,11 @@ async function editRole(empId){
     <div id="team-emp-name" style="font-size:.8rem;color:#8a7060;margin-bottom:14px"></div>
     <label>Група / команда</label>
     <select id="team-select" style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:7px 11px;font-size:.88rem;margin-bottom:14px;outline:none"></select>
+    <div id="team-squad-wrap" style="display:none">
+      <label>Команда старшого менеджера</label>
+      <select id="team-squad" style="width:100%;background:#ede8e0;border:1px solid #c8c0b4;color:#2c2218;border-radius:7px;padding:7px 11px;font-size:.88rem;margin-bottom:6px;outline:none"></select>
+      <div id="team-squad-hint" style="font-size:.7rem;color:#8a7060;margin-bottom:14px"></div>
+    </div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeTeamModal()">Скасувати</button>
       <button class="btn-save"   onclick="saveTeam()">Зберегти</button>
