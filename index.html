@@ -851,6 +851,9 @@ function isVisibleThisMonth(emp){
   if(emp.fired_date){
     const firedYm = String(emp.fired_date).slice(0,7);
     if(firedYm < curYm) return false;
+    // звільнений З 1-го числа цього місяця (звіл. на 1-ше) — у графіку цього
+    // місяця вже не показуємо; попередній місяць (де він працював) лишається
+    if(getStatus(emp.id, mStart)==='-') return false;
   }
   // архівний (is_active=false): якщо місяць звільнення вже настав або минув —
   // ховаємо (є в "📦 Архів"); якщо дати звільнення взагалі нема — ховаємо
