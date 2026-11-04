@@ -4009,6 +4009,22 @@ function categorizeSalaryLabel(label, amount){
   if(/Оклад|Ставка|Фікс|Переробка|Недопрацьовано|Упаковка|Фасовка|Вихід|Години × ставка|Аванс/.test(label)) return 'rate';
   return amount < 0 ? 'penalty' : 'bonus';
 }
+// Розбивка ЗП співробітника на 3 колонки: Ставка | % | Премії (премії = доплати,
+// KPI, навчання, корегування МІНУС штрафи) — з тієї ж деталізації r.breakdown
+function splitComp(r){
+  let rate=0, pct=0, prem=0;
+  (r.breakdown||[]).forEach(it=>{
+    const c=categorizeSalaryLabel(it.label,it.amount);
+    if(c==='rate') rate+=it.amount; else if(c==='pct') pct+=it.amount; else prem+=it.amount;
+  });
+  return {rate,pct,prem};
+}
+function compCells(r){
+  if(!(r.breakdown||[]).length) return '<td style="text-align:right;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td>';
+  const s=splitComp(r);
+  const f=(v,col)=>`<td style="text-align:right;color:${v? col:'#6a5040'}">${v?fmtUAH(v):'—'}</td>`;
+  return f(s.rate,'#5a4a38')+f(s.pct,'#2e7d52')+f(s.prem, s.prem<0?'#e06050':'#2e7d52');
+}
 function fundBreakdown(rows){
   let rate=0, pct=0, bonus=0, penalty=0;
   (rows||[]).forEach(r=>{
@@ -4396,7 +4412,7 @@ function financeTable(rows, detailed){
   let h=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
     <thead><tr style="color:#7a6048;text-align:left">
       <th style="padding:7px 5px">Співробітник</th>
-      ${detailed?'<th style="text-align:center">Оклад</th><th style="text-align:center">Змін</th><th style="text-align:center">±дні</th><th style="text-align:right">Корегування</th>':''}
+      ${detailed?'<th style="text-align:center">Оклад</th><th style="text-align:center">Змін</th><th style="text-align:center">±дні</th><th style="text-align:right">Корегування</th><th style="text-align:right" title="Оклад/ставка, переробка, відрядна оплата">💼 Ставка</th><th style="text-align:right" title="Відсоток від обороту/плану">📈 %</th><th style="text-align:right" title="Доплати, KPI, навчання, корегування мінус штрафи">🎁 Премії</th>':''}
       <th style="text-align:right">${firstLabel}</th>
       <th style="text-align:center;width:26px" title="Перевірено керівником">🟡</th>
       <th style="text-align:center;width:26px" title="Виплачено">✓</th>
@@ -4455,7 +4471,7 @@ function financeTable(rows, detailed){
   let lastDeptCode = null;
   rows.forEach(r=>{
     if(isMixedDepts && r.dept_code!==lastDeptCode){
-      h+=`<tr><td colspan="${detailed?10:6}" style="padding:10px 5px 4px;font-size:.7rem;font-weight:700;color:#F43313;border-top:2px solid #e0d8c8">${r.dept_name||''}</td></tr>`;
+      h+=`<tr><td colspan="${detailed?13:6}" style="padding:10px 5px 4px;font-size:.7rem;font-weight:700;color:#F43313;border-top:2px solid #e0d8c8">${r.dept_name||''}</td></tr>`;
       lastDeptCode=r.dept_code;
     }
     const bothPaid = r.paid1 && (r.payout2==null || r.paid2);
@@ -4480,14 +4496,14 @@ function financeTable(rows, detailed){
         const g2 = (firstNo === 1) ? otherGroup : advGroup;
         h+=`<tr style="border-top:1px solid #5a4a38;${rowBg}">
           <td style="padding:8px 5px;color:#5a4a38">${r.name} <span style="font-size:.62rem;color:#c08040">аванс</span></td>
-          ${detailed?`<td style="text-align:center;color:#8a7860">—</td><td style="text-align:center;color:#6a5040">${(r.worked_graph!=null?r.worked_graph:r.worked_days)||0}</td><td style="text-align:center;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td>`:''}
+          ${detailed?`<td style="text-align:center;color:#8a7860">—</td><td style="text-align:center;color:#6a5040">${(r.worked_graph!=null?r.worked_graph:r.worked_days)||0}</td><td style="text-align:center;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td><td style="text-align:right;color:#6a5040">—</td>`:''}
           ${g1}
           ${g2}
           <td style="text-align:right;color:#6a5040">—</td>
         </tr>`;
         return;
       }
-      h+=`<tr style="border-top:1px solid #5a4a38;opacity:.5"><td style="padding:8px 5px;color:#6a5040">${r.name}</td><td colspan="${detailed?8:5}" style="text-align:right;color:#7a6048;font-size:.72rem">${r.note||'—'}</td></tr>`;
+      h+=`<tr style="border-top:1px solid #5a4a38;opacity:.5"><td style="padding:8px 5px;color:#6a5040">${r.name}</td><td colspan="${detailed?11:5}" style="text-align:right;color:#7a6048;font-size:.72rem">${r.note||'—'}</td></tr>`;
       return;
     }
     const diff=r.diff_days||0;
@@ -4521,7 +4537,7 @@ function financeTable(rows, detailed){
     } else {
       adjCol=adj?((adj>0?'+':'')+fmtUAH(adj)):'—';
     }
-    const detailColspan = detailed?10:6;
+    const detailColspan = detailed?13:6;
     const hasBreakdown = (r.breakdown||[]).length>0;
     const pay1val = r.pay1!=null ? parseFloat(r.pay1) : (r.payout1!=null ? parseFloat(r.payout1) : null);
     const pay2val = r.pay2!=null ? parseFloat(r.pay2) : (r.payout2!=null ? parseFloat(r.payout2) : null);
@@ -4535,7 +4551,7 @@ function financeTable(rows, detailed){
       ${detailed?`<td style="text-align:center;color:#8a7860">${baseCol}</td>
       <td style="text-align:center;color:#6a5040">${(()=>{ const hasG=r.worked_graph!=null; const dReal=hasG?r.worked_graph:r.worked_days; const diffs=hasG&&r.worked_days!=null&&r.worked_days!==r.worked_graph; return dReal!=null?`${dReal}${diffs?` <span title="У картці вручну вписано ${r.worked_days} — розходиться з реальним графіком (${r.worked_graph}). Формула ЗП рахує за ручним значенням." style="color:#e06050;cursor:help">⚠</span>`:''}`:'—'; })()}</td>
       <td style="text-align:center;color:${diff>0?'#7ac070':diff<0?'#e06050':'#6a5040'}">${(isPiece||isHrRow||isSales||isOrderRow)?'—':(diff>0?'+'+diff:diff<0?diff:'—')}</td>
-<td style="text-align:right;color:${(isSales||isOrderRow)?'#7ac070':adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjCellTitle}">${adjCol}${(!isSales&&!isOrderRow&&adj)?`<input type="checkbox" ${r.corr_paid?'checked':''} onchange="toggleCorrPaid(${r.employee_id},this.checked)" title="Видано в конверті" style="width:13px;height:13px;margin-left:5px;vertical-align:middle;cursor:pointer;accent-color:#c08040">`:''}</td>`:''}      ${payCell(r,firstNo)}${reviewCell(r,firstNo)}${chkCell(r,firstNo)}
+<td style="text-align:right;color:${(isSales||isOrderRow)?'#7ac070':adj>0?'#7ac070':adj<0?'#e06050':'#6a5040'}" title="${adjCellTitle}">${adjCol}${(!isSales&&!isOrderRow&&adj)?`<input type="checkbox" ${r.corr_paid?'checked':''} onchange="toggleCorrPaid(${r.employee_id},this.checked)" title="Видано в конверті" style="width:13px;height:13px;margin-left:5px;vertical-align:middle;cursor:pointer;accent-color:#c08040">`:''}</td>${compCells(r)}`:''}      ${payCell(r,firstNo)}${reviewCell(r,firstNo)}${chkCell(r,firstNo)}
       ${payCell(r,secondNo)}${reviewCell(r,secondNo)}${chkCell(r,secondNo)}
       <td style="text-align:right;color:#FE8B26;font-weight:700">${fmtUAH2(totalDisplay)}</td>
     </tr>
@@ -4561,7 +4577,7 @@ function financeTable(rows, detailed){
   },0);
   h+=`<tr style="border-top:2px solid #F43313;background:#f5efe4">
     <td style="padding:10px 5px;color:#2c2218;font-weight:800">Разом</td>
-    ${detailed?'<td></td><td></td><td></td><td></td>':''}
+    ${detailed?(()=>{ const t=rows.reduce((a,r)=>{ if(r.total==null||!(r.breakdown||[]).length) return a; const s=splitComp(r); a.rate+=s.rate; a.pct+=s.pct; a.prem+=s.prem; return a; },{rate:0,pct:0,prem:0}); return '<td></td><td></td><td></td><td></td>'+['rate','pct','prem'].map(k=>`<td style="text-align:right;color:#5a4a38;font-weight:700">${t[k]?fmtUAH(t[k]):'—'}</td>`).join(''); })():''}
     <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(tblSum1)}</td><td></td><td></td>
     <td style="text-align:right;color:#F43313;font-weight:800;font-size:1.02rem">${fmtUAH(tblSum2)}</td><td></td><td></td>
     <td style="text-align:right;color:#FE8B26;font-weight:800;font-size:1.05rem">${fmtUAH(tblTotal)}</td>
