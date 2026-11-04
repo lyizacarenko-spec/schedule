@@ -112,6 +112,9 @@ td.rev-td:hover{background:#1a2535}
 td.rev-td.empty{color:#2a3040}
 td.wk{background:#e8e4dc}
 td.nodata{background:#ffe0b2!important;box-shadow:inset 0 0 0 2px #ff9800}
+/* коментар до дня: синій флажок у куті клітинки */
+td.hasnote{position:relative}
+td.hasnote::after{content:'';position:absolute;top:0;right:0;border-style:solid;border-width:0 11px 11px 0;border-color:transparent #1e88e5 transparent transparent}
 td.today-cell{background:#fff3ef;border-left:2px solid #F43313;border-right:2px solid #F43313}
 td.director-cell{background:#f0f5ff}
 .cs-director{background:#d4e4f8;color:#1a5c8a;border:1px solid #a8c4dc}
@@ -288,6 +291,11 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
     <button class="p-close" onclick="closePopupForce()">✕</button>
     <h4 id="popup-title">—</h4>
     <div class="status-grid" id="popup-grid"></div>
+    <div style="margin-top:10px;border-top:1px solid #e0d8c8;padding-top:8px">
+      <div style="font-size:.7rem;font-weight:700;color:#8a6050;margin-bottom:4px">💬 Коментар до дня</div>
+      <textarea id="popup-note" rows="2" placeholder="Напр.: пішов раніше, замінює…" style="width:100%;box-sizing:border-box;border:1px solid #c8c0b4;border-radius:6px;padding:6px 8px;font-size:.78rem;font-family:inherit;resize:vertical"></textarea>
+      <button onclick="saveCellNote()" style="margin-top:4px;width:100%;background:#1e88e5;color:#fff;border:0;border-radius:6px;padding:6px;font-size:.78rem;font-weight:700;cursor:pointer">Зберегти коментар</button>
+    </div>
   </div>
 </div>
 
@@ -1107,7 +1115,9 @@ function renderTable(){
           if(missing) cellCls+=' nodata';
         }
         const chipCls=isDirector&&sc(v)==='cs-work'?'cs-director':sc(v);
-        row+=`<td class="${cellCls}" data-emp="${emp.id}" data-date="${d.date}"
+        const cellNote=(schedMap[`${emp.id}_${d.date}`]?.note)||'';
+        if(cellNote) cellCls+=' hasnote';
+        row+=`<td class="${cellCls}" data-emp="${emp.id}" data-date="${d.date}"${cellNote?` title="💬 ${cellNote.replace(/"/g,'&quot;').replace(/</g,'&lt;')}"`:''}
                onclick="openPopup(event,${emp.id},'${d.date}','${v}',this)">
                <span class="chip ${chipCls}">${sl(v)}</span></td>`;
       });
@@ -1202,6 +1212,7 @@ function openPopup(e,empId,date,cur,nameTd){
     grid+=`<button class="s-btn" style="grid-column:1/3;background:#e4d4f0;color:#6a1a80;font-weight:700" onclick="closePopupForce();openFasModal(${empId},'${date}')">🫙 Фасовка${sum>0?' ('+fmtM(sum)+'₴)':''}</button>`;
   }
   document.getElementById('popup-grid').innerHTML=grid;
+  document.getElementById('popup-note').value=(schedMap[`${empId}_${date}`]?.note)||'';
   const ov=document.getElementById('popup-ov');
   ov.classList.add('open');
   const pop=document.getElementById('status-popup');
@@ -1221,6 +1232,21 @@ function openPopup(e,empId,date,cur,nameTd){
 }
 function closePopup(e){ if(e&&e.target.id!=='popup-ov')return; document.getElementById('popup-ov').classList.remove('open'); }
 function closePopupForce(){ document.getElementById('popup-ov').classList.remove('open'); }
+
+// Коментар до клітинки графіка (статус лишається як є)
+async function saveCellNote(){
+  const note=(document.getElementById('popup-note').value||'').trim();
+  const emp=pEmp, date=pDate, k=`${emp}_${date}`;
+  const status=getStatus(emp,date)||'';
+  closePopupForce();
+  setSave('Збереження...',false);
+  try{
+    await api('/api/schedule',{method:'PUT',body:JSON.stringify({employee_id:emp,entry_date:date,status,note})});
+    schedMap[k]={...(schedMap[k]||{employee_id:emp,entry_date:date}),status,note:note||null};
+    renderTable();
+    setSave(note?'Коментар збережено ✓':'Коментар видалено ✓',true);
+  }catch(e){ setSave('Помилка ✗',false); }
+}
 
 async function applyStatus(v){
   closePopupForce();
@@ -1264,7 +1290,7 @@ async function applyStatus(v){
   try{
     await api('/api/schedule',{method:'PUT',body:JSON.stringify({employee_id:pEmp,entry_date:pDate,status:v})});
     delete pending[k];
-    schedMap[k]={employee_id:pEmp,entry_date:pDate,status:v};
+    schedMap[k]={...(schedMap[k]||{}),employee_id:pEmp,entry_date:pDate,status:v};
     setSave('Збережено ✓',true);
   }catch(e){setSave('Помилка ✗',false);}
 }
