@@ -3868,15 +3868,23 @@ function selLevel(level){
 function closeLevelModal(){ document.getElementById('level-modal-ov').classList.remove('open'); }
 async function saveLevel(){
   if(!levelEmpId||!selectedLevel) return;
+  const emp0=employees.find(e=>e.id===levelEmpId);
+  const LV={top:'Топ',mid:'Мідл',jun:'Джун',new:'Новачок'};
+  if(emp0 && emp0.level===selectedLevel){ closeLevelModal(); return; }
+  const ymSel=Y+'-'+String(M).padStart(2,'0');
+  if(!confirm('⚠️ Змінити грейд?\n\n'+(emp0?emp0.name:'')+': '+(LV[emp0?.level]||emp0?.level)+' → '+(LV[selectedLevel]||selectedLevel)+'\nДіє з місяця '+ymSel+'. Минулі місяці не змінюються.\n\nПідтвердити?')) return;
   setSave('Збереження...',false);
   try{
-    await api('/api/employees/'+levelEmpId,{method:'PATCH',body:JSON.stringify({level:selectedLevel})});
+    await api('/api/employees/'+levelEmpId,{method:'PATCH',body:JSON.stringify({level:selectedLevel,ym:ymSel,confirm:true})});
     const emp=employees.find(e=>e.id===levelEmpId);
     if(emp) emp.level=selectedLevel;
     closeLevelModal();
     await loadMonthData();
     setSave('Рівень змінено ✓',true);
-  }catch(e){alert('Помилка: '+e.message);}
+  }catch(e){
+    let msg=e.message; try{ msg=JSON.parse(msg).error||msg; }catch(_){}
+    alert('🔒 '+msg);
+  }
 }
 
 // ══ ФІНАНСИ (під PIN) ═════════════════════════════════
@@ -4049,6 +4057,8 @@ function disp1shePaid(r){ return isOldRzpkSchemeRow(r) ? real15tePaid(r) : real1
 // Те саме, але окремо для виплати 15-го (p1) і 1-го (p2) — з урахуванням реверсу
 // для pay_schedule='sales'. Для "гарячих" (два незалежні періоди 1-14/15-кінець)
 // беремо мітки напряму (там своя, вже правильна, схема виплат).
+// Лінійні керівники: 15-те = півставки, все решта на 1-ше (дзеркало бекенду)
+const BONUS_ON_FIRST_IDS = [102, 108];   // Романенко Антон, Даніелла
 function fundBreakdownByPayout(rows, all){
   // all=true — рахувати ВСІ суми за розрахунком (не лише ті, де стоїть галочка «виплачено»)
   const p1={rate:0,pct:0,bonus:0,penalty:0}, p2={rate:0,pct:0,bonus:0,penalty:0};
@@ -4077,6 +4087,20 @@ function fundBreakdownByPayout(rows, all){
         else if(cat==='penalty') bucket.penalty+=item.amount;
         else bucket.bonus+=item.amount;
       });
+      return;
+    }
+    // Романенко (102) і Даніелла (108): 15-те = лише півставки (колонка payout2),
+    // 1-ше (payout1) = решта ставки + допки + % + бонуси — тобто навпаки до
+    // стандартної 'sales'-схеми. p1 = плитка «На 15-те», p2 = «На 1-ше».
+    if(BONUS_ON_FIRST_IDS.includes(r.employee_id) && r.pay_schedule==='sales' && r.total!=null){
+      const fbS=fundBreakdown([r]);
+      const a15=(all||r.paid2) ? (r.pay2!=null?r.pay2:(r.payout2||0)) : 0;
+      const a1 =(all||r.paid1) ? (r.pay1!=null?r.pay1:(r.payout1||0)) : 0;
+      p1.rate += a15;
+      const remRate=Math.max(0, fbS.rate-a15);
+      const remC=remRate+fbS.pct+fbS.bonus+fbS.penalty;
+      if(remC){ const k=a1/remC; p2.rate+=remRate*k; p2.pct+=fbS.pct*k; p2.bonus+=fbS.bonus*k; p2.penalty+=fbS.penalty*k; }
+      else p2.rate+=a1;
       return;
     }
     // передаємо в економіку тільки ФАКТИЧНО виплачені суми — якщо галочка
