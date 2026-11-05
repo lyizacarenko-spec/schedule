@@ -3618,6 +3618,68 @@ function calcSalary(empId){
   let rate=0, bonusPct=0, rateLabel='';
   let rows='';
 
+  // ══ РОЗДРІБ РЗПК (картка з галочками KPI): нова грейдова схема, як на сервері ══
+  if(document.getElementById('sal-avgcheck-'+empId)){
+    const planR = parseFloat(document.getElementById('sal-plan-'+empId)?.value)||0;
+    const okA = document.getElementById('sal-avgcheck-'+empId).checked;
+    const okC = document.getElementById('sal-calls-ok-'+empId)?.checked;
+    const okP = document.getElementById('sal-approval-'+empId)?.checked;
+    const cnt = (okA?1:0)+(okC?1:0)+(okP?1:0);
+    const useGrade = (Y*100+M) >= 202610;
+    const T=22;
+    const B1={jun:[0,1500,3000,4500],mid:[0,2000,4000,6000],top:[0,2500,5000,7500]};
+    const B2={jun:[[70,79,1500],[80,89,3500],[90,99,5500],[100,109,7500],[110,120,10500]],
+              mid:[[80,89,3500],[90,99,6500],[100,109,10500],[110,120,15000]],
+              top:[[80,89,3000],[90,99,6000],[100,109,10000],[110,120,18000]]};
+    const B2_121={jun:14500,mid:23000,top:30500};
+    const b2f=(g,pc,pl,fc)=>{
+      if(pc>=121) return (B2_121[g]||0)+Math.max(0,fc-1.21*pl)*0.04;
+      for(const [lo,hi,a] of (B2[g]||[])) if(pc>=lo&&pc<=hi) return a;
+      return 0;
+    };
+    let baseR, b1, b2, planEff=planR, grade, label, prorate=1;
+    const GL={jun:'Джун',mid:'Мідл',top:'Топ'};
+    if(!useGrade){
+      baseR = days>=T ? 20000 : Math.round(20000*days/T);
+      b1 = cnt*2000;
+      const pc0 = planR>0 ? fact/planR*100 : 0;
+      b2 = pc0>=121?10000:pc0>=110?5000:pc0>=100?5000:pc0>=90?4000:pc0>=80?4000:0;
+      label='стара схема (до жовтня 2026)';
+    } else if(isFirst){
+      grade='jun'; prorate=Math.min(1,days/T);
+      baseR = days>=T ? 20000 : Math.round(20000*days/T);
+      planEff = Math.round(planR*prorate*100)/100;
+      const pcN = planEff>0 ? fact/planEff*100 : 0;
+      b1 = Math.round(B1.jun[cnt]*prorate*100)/100;
+      b2 = Math.round(b2f('jun',pcN,planEff,fact)*prorate*100)/100;
+      label='Новачок — 1-й місяць (шкала Джун, пропорційно '+days+'/22)';
+    } else {
+      grade = ['jun','mid','top'].includes(emp?.level)?emp.level:'jun';
+      const gb={jun:15000,mid:20000,top:25000}[grade];
+      baseR = days>=T ? gb : Math.round(gb*days/T);
+      b1 = B1[grade][cnt];
+      const pcG = planR>0 ? fact/planR*100 : 0;
+      b2 = b2f(grade,pcG,planR,fact);
+      label='Грейд '+GL[grade];
+    }
+    const pctR = planEff>0 ? Math.round(fact/planEff*1000)/10 : 0;
+    let retPen = useGrade ? Math.round((b1+b2)*retExcess/100*100)/100 : Math.round(fact*retExcess/100*0.015*100)/100;
+    const otDays = Math.max(0, days-T), otPay = otDays*800;
+    const totalR = baseR + b1 + b2 - retPen - penalty + seniorBonus + otPay;
+    res.innerHTML = `<div class="sal-result">
+      <div class="sal-result-row"><span>Схема</span><span>${label}</span></div>
+      <div class="sal-result-row"><span>Виконання плану</span><span>${pctR}%${isFirst&&useGrade?' (план новачка '+fmtFull(planEff)+')':''}</span></div>
+      <div class="sal-result-row"><span>Ставка</span><span>${fmtFull(baseR)}</span></div>
+      <div class="sal-result-row"><span>Бонус 1 — показники (${cnt} з 3)</span><span>${fmtFull(b1)}</span></div>
+      <div class="sal-result-row"><span>Бонус 2 — план (${pctR}%)</span><span>${fmtFull(b2)}</span></div>
+      ${retPen>0?`<div class="sal-result-row"><span>Штраф за повернення (${retExcess}% понад 6%)</span><span style="color:#ef5350">−${fmtFull(retPen)}</span></div>`:''}
+      ${otDays>0?`<div class="sal-result-row"><span>Переробка ${otDays} дн. × 800 ₴</span><span style="color:#2e7d52">+${fmtFull(otPay)}</span></div>`:''}
+      ${seniorBonus>0?`<div class="sal-result-row"><span>Доплата старш. менеджера</span><span style="color:#2e7d52">+${fmtFull(seniorBonus)}</span></div>`:''}
+      ${penalty>0?`<div class="sal-result-row"><span>Штраф</span><span style="color:#ef5350">−${fmtFull(penalty)}</span></div>`:''}
+      <div class="sal-result-row green"><span>💰 Підсумкова ЗП</span><span>${fmtFull(totalR)}</span></div></div>`;
+    return;
+  }
+
   if(orderMode){
     // ══ РЕАКТИВАЦІЯ: по кількості замовлень ══
     const orders = parseFloat(document.getElementById('sal-plan-'+empId).value)||0;
