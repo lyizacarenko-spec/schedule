@@ -229,6 +229,13 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 #finance-page thead th{background:transparent!important;color:#7a6048!important;box-shadow:none!important;border:none!important;position:static!important}
 #finance-page td{background:transparent!important}
 #finance-page tbody tr:hover{background:#efe6d8!important}
+
+#deco-fish,#deco-leaves{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none}
+#deco-fish{z-index:-1}
+#deco-leaves{z-index:50}
+#deco-toggle{position:fixed;right:12px;bottom:12px;z-index:60;width:34px;height:34px;border-radius:50%;border:1px solid #c8c0b4;background:#fffaf4;cursor:pointer;font-size:1rem;line-height:1;opacity:.75;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+#deco-toggle:hover{opacity:1}
+@media print{#deco-fish,#deco-leaves,#deco-toggle{display:none!important}}
 </style>
 </head>
 <body>
@@ -5991,5 +5998,84 @@ async function editRole(empId){
     </div>
   </div>
 </div>
+
+<canvas id="deco-fish"></canvas><canvas id="deco-leaves"></canvas>
+<button id="deco-toggle" title="Прикраси: листя та рибки" onclick="decoToggle()">🍂</button>
+<script>
+(function(){
+  var fc=document.getElementById('deco-fish'), lc=document.getElementById('deco-leaves');
+  var fx=fc.getContext('2d'), lx=lc.getContext('2d');
+  var W=0,H=0,dpr=1,on=true,raf=null,last=0;
+  try{ if(localStorage.getItem('decoOff')==='1') on=false; }catch(e){}
+  function resize(){
+    dpr=Math.min(window.devicePixelRatio||1,2); W=window.innerWidth; H=window.innerHeight;
+    [fc,lc].forEach(function(c){c.width=W*dpr;c.height=H*dpr;c.getContext('2d').setTransform(dpr,0,0,dpr,0,0);});
+  }
+  function rnd(a,b){return a+Math.random()*(b-a);}
+  var LEAF_COLORS=['#e8742a','#d9482b','#f0a030','#c8601e','#e05a3a','#d9b23a'];
+  var leaves=[],fish=[];
+  function newLeaf(initial){
+    return {x:rnd(0,W),y:initial?rnd(-20,H):rnd(-40,-10),s:rnd(9,18),vy:rnd(0.5,1.3),
+      sway:rnd(0.6,1.6),ph:rnd(0,6.28),rot:rnd(0,6.28),vr:rnd(-0.02,0.02),
+      c:LEAF_COLORS[(Math.random()*LEAF_COLORS.length)|0],a:rnd(0.45,0.8)};
+  }
+  function newFish(){
+    var dir=Math.random()<0.5?1:-1, s=rnd(22,52);
+    return {x:dir>0?rnd(-200,W*0.6):rnd(W*0.4,W+200),y:rnd(H*0.12,H*0.92),s:s,dir:dir,
+      v:rnd(0.25,0.7)*dir,ph:rnd(0,6.28),wob:rnd(8,22),
+      c:['#f2a65a','#f08a4b','#e8734a','#f5c07a','#e98f6b'][(Math.random()*5)|0],a:rnd(0.16,0.28)};
+  }
+  function init(){
+    leaves=[];fish=[];
+    var nl=Math.round(Math.min(26,Math.max(12,W/60))), nf=Math.round(Math.min(9,Math.max(4,W/200)));
+    for(var i=0;i<nl;i++) leaves.push(newLeaf(true));
+    for(var j=0;j<nf;j++) fish.push(newFish());
+  }
+  function drawLeaf(L){
+    lx.save(); lx.translate(L.x,L.y); lx.rotate(L.rot); lx.globalAlpha=L.a; lx.fillStyle=L.c;
+    var s=L.s; lx.beginPath(); lx.moveTo(0,-s);
+    lx.bezierCurveTo(s*0.9,-s*0.5,s*0.7,s*0.6,0,s);
+    lx.bezierCurveTo(-s*0.7,s*0.6,-s*0.9,-s*0.5,0,-s); lx.fill();
+    lx.strokeStyle='rgba(90,40,10,.45)'; lx.lineWidth=1; lx.beginPath(); lx.moveTo(0,-s); lx.lineTo(0,s*1.15); lx.stroke();
+    lx.restore();
+  }
+  function drawFish(F,t){
+    fx.save(); fx.translate(F.x,F.y+Math.sin(t*0.0012+F.ph)*F.wob); fx.scale(F.dir,1); fx.globalAlpha=F.a; fx.fillStyle=F.c;
+    var s=F.s, tail=Math.sin(t*0.008+F.ph)*s*0.18;
+    fx.beginPath(); fx.moveTo(s,0);
+    fx.bezierCurveTo(s*0.6,-s*0.5,-s*0.2,-s*0.5,-s*0.55,0);
+    fx.bezierCurveTo(-s*0.2,s*0.5,s*0.6,s*0.5,s,0); fx.fill();
+    fx.beginPath(); fx.moveTo(-s*0.5,0); fx.lineTo(-s*1.0,-s*0.38+tail); fx.lineTo(-s*0.9,tail*0.3); fx.lineTo(-s*1.0,s*0.38+tail); fx.closePath(); fx.fill();
+    fx.beginPath(); fx.moveTo(s*0.15,-s*0.38); fx.quadraticCurveTo(-s*0.05,-s*0.7,-s*0.3,-s*0.4); fx.fill();
+    fx.globalAlpha=Math.min(1,F.a*3); fx.fillStyle='#5a2a10'; fx.beginPath(); fx.arc(s*0.62,-s*0.08,Math.max(1.5,s*0.06),0,6.28); fx.fill();
+    fx.restore();
+  }
+  function frame(t){
+    raf=requestAnimationFrame(frame);
+    var dt=Math.min(40,t-last)/16.7; last=t;
+    lx.clearRect(0,0,W,H); fx.clearRect(0,0,W,H);
+    fish.forEach(function(F){
+      F.x+=F.v*dt; drawFish(F,t);
+      if((F.dir>0&&F.x>W+F.s*1.5)||(F.dir<0&&F.x<-F.s*1.5)){ var n=newFish(); n.x=n.dir>0?-n.s*1.5:W+n.s*1.5; Object.assign(F,n); }
+    });
+    leaves.forEach(function(L,i){
+      L.y+=L.vy*dt; L.ph+=0.02*dt; L.x+=Math.sin(L.ph)*L.sway*dt*0.6; L.rot+=L.vr*dt+Math.sin(L.ph)*0.01;
+      drawLeaf(L);
+      if(L.y>H+30){ leaves[i]=newLeaf(false); }
+    });
+  }
+  function start(){ if(raf||!on) return; fc.style.display=lc.style.display=''; last=performance.now(); raf=requestAnimationFrame(frame); }
+  function stop(){ if(raf) cancelAnimationFrame(raf); raf=null; fx.clearRect(0,0,W,H); lx.clearRect(0,0,W,H); fc.style.display=lc.style.display='none'; }
+  window.decoToggle=function(){
+    on=!on; try{ localStorage.setItem('decoOff',on?'0':'1'); }catch(e){}
+    document.getElementById('deco-toggle').style.opacity=on?'.75':'.35';
+    on?start():stop();
+  };
+  window.addEventListener('resize',function(){ resize(); init(); });
+  document.addEventListener('visibilitychange',function(){ if(document.hidden){ if(raf){cancelAnimationFrame(raf);raf=null;} } else if(on) start(); });
+  resize(); init();
+  if(!on){ document.getElementById('deco-toggle').style.opacity='.35'; stop(); } else start();
+})();
+</script>
 </body>
 </html>
