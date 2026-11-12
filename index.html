@@ -701,6 +701,7 @@ function defaultStatusFor(deptCode, dow, empName, dateStr){
     return (dow===0||dow===6) ? 'вих' : '9-17';
     if(deptCode==='warehouse') return (dateStr && dateStr>='2026-10-01' && dateStr<'2026-11-01') ? '9:00-18:30' : '9-19';
   if(deptCode==='rzpk') return (dateStr && dateStr>='2026-10-01') ? '10-19' : '10-18';
+  if(deptCode==='vin_op') return (dateStr && dateStr>='2026-11-01') ? '10-19' : '10-18';
   // логісти: з 1 жовтня 2026 — графік 2/2, зміна 9:00-21:00. Для співробітників
   // з відомою фазою циклу (SHIFT22_PHASE) — цикл генерується автоматично;
   // для решти — просто "9-21" щодня, вихідні ставлять собі вручну.
@@ -1133,7 +1134,7 @@ function renderTable(){
           if(missing) cellCls+=' nodata';
         }
         let chipCls=isDirector&&sc(v)==='cs-work'?'cs-director':sc(v);
-        if(emp.dept_code==='rzpk' && !isDirector){
+        if((emp.dept_code==='rzpk'||emp.dept_code==='vin_op') && !isDirector){
           const hh=timeRangeHours(v);
           if(hh!=null){ if(hh<9) chipCls='cs-work-short'; else if(hh>9) chipCls='cs-work-long'; }
         }
