@@ -3662,7 +3662,7 @@ function calcSalary(empId){
     } else if(isFirst){
       grade='jun'; prorate=Math.min(1,days/T);
       baseR = days>=T ? 20000 : Math.round(20000*days/T);
-      planEff = Math.round(planR*prorate*100)/100;
+      planEff = planR;   // план новачка вводиться вже на його дні — вдруге не зменшуємо
       const pcN = planEff>0 ? fact/planEff*100 : 0;
       b1 = Math.round(B1.jun[cnt]*prorate*100)/100;
       b2 = Math.round(b2f('jun',pcN,planEff,fact)*prorate*100)/100;
@@ -3682,7 +3682,7 @@ function calcSalary(empId){
     const totalR = baseR + b1 + b2 - retPen - penalty + seniorBonus + otPay;
     res.innerHTML = `<div class="sal-result">
       <div class="sal-result-row"><span>Схема</span><span>${label}</span></div>
-      <div class="sal-result-row"><span>Виконання плану</span><span>${pctR}%${isFirst&&useGrade?' (план новачка '+fmtFull(planEff)+')':''}</span></div>
+      <div class="sal-result-row"><span>Виконання плану</span><span>${pctR}%${isFirst&&useGrade?' (від плану '+fmtFull(planEff)+')':''}</span></div>
       <div class="sal-result-row"><span>Ставка</span><span>${fmtFull(baseR)}</span></div>
       <div class="sal-result-row"><span>Бонус 1 — показники (${cnt} з 3)</span><span>${fmtFull(b1)}</span></div>
       <div class="sal-result-row"><span>Бонус 2 — план (${pctR}%)</span><span>${fmtFull(b2)}</span></div>
