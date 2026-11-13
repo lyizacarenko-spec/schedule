@@ -3648,7 +3648,7 @@ function calcSalary(empId){
     const B2_121={jun:14500,mid:23000,top:30500};
     const b2f=(g,pc,pl,fc)=>{
       if(pc>=121) return (B2_121[g]||0)+Math.max(0,fc-1.21*pl)*0.04;
-      for(const [lo,hi,a] of (B2[g]||[])) if(pc>=lo&&pc<=hi) return a;
+      for(const [lo,hi,a] of (B2[g]||[])) if(pc>=lo&&pc<hi+1) return a;
       return 0;
     };
     let baseR, b1, b2, planEff=planR, grade, label, prorate=1;
@@ -3664,7 +3664,7 @@ function calcSalary(empId){
       baseR = days>=T ? 20000 : Math.round(20000*days/T);
       planEff = planR;   // план новачка вводиться вже на його дні — вдруге не зменшуємо
       const pcN = planEff>0 ? fact/planEff*100 : 0;
-      b1 = Math.round(B1.jun[cnt]*prorate*100)/100;
+      b1 = Math.round(B1.mid[cnt]*prorate*100)/100;
       b2 = Math.round(b2f('jun',pcN,planEff,fact)*prorate*100)/100;
       label='Новачок — 1-й місяць (шкала Джун, пропорційно '+days+'/22)';
     } else {
