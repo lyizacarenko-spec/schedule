@@ -3680,7 +3680,7 @@ function calcSalary(empId){
     let retPen = useGrade ? Math.round((b1+b2)*retExcess/100*100)/100 : Math.round(fact*retExcess/100*0.015*100)/100;
     const otDays = Math.max(0, days-T), otPay = otDays*800;
     let trainD=0; try{ getDays(Y,M).forEach(d=>{ if(getStatus(empId,d.date)==='навч') trainD++; }); }catch(e){}
-    const trainPay = useGrade ? trainD*100 : 0;
+    const trainPay = useGrade ? trainD*100 : 0;   // 100 грн за день навчання ('навч'), з жовтня 2026
     const totalR = baseR + b1 + b2 - retPen - penalty + seniorBonus + otPay + trainPay;
     res.innerHTML = `<div class="sal-result">
       <div class="sal-result-row"><span>Схема</span><span>${label}</span></div>
@@ -3688,7 +3688,7 @@ function calcSalary(empId){
       <div class="sal-result-row"><span>Ставка</span><span>${fmtFull(baseR)}</span></div>
       <div class="sal-result-row"><span>Бонус 1 — показники (${cnt} з 3)</span><span>${fmtFull(b1)}</span></div>
       <div class="sal-result-row"><span>Бонус 2 — план (${pctR}%)</span><span>${fmtFull(b2)}</span></div>
-      ${retPen>0?`<div class="sal-result-row"><span>Штраф за повернення (${retExcess}% понад 6%)</span><span style="color:#ef5350">−${fmtFull(retPen)}</span></div>`:''}
+      ${retPen>0?`<div class="sal-result-row"><span>Штраф за повернення (${Math.round(retExcess*10)/10}% понад 6%)</span><span style="color:#ef5350">−${fmtFull(retPen)}</span></div>`:''}
       ${otDays>0?`<div class="sal-result-row"><span>Переробка ${otDays} дн. × 800 ₴</span><span style="color:#2e7d52">+${fmtFull(otPay)}</span></div>`:''}
       ${trainPay>0?`<div class="sal-result-row"><span>Навчання ${trainD} дн. × 100 ₴</span><span style="color:#2e7d52">+${fmtFull(trainPay)}</span></div>`:''}
       ${seniorBonus>0?`<div class="sal-result-row"><span>Доплата старш. менеджера</span><span style="color:#2e7d52">+${fmtFull(seniorBonus)}</span></div>`:''}
