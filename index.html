@@ -3664,7 +3664,7 @@ function calcSalary(empId){
     } else if(isFirst){
       grade='jun'; prorate=Math.min(1,days/T);
       baseR = days>=T ? 20000 : Math.round(20000*days/T);
-      planEff = planR;   // план новачка вводиться вже на його дні — вдруге не зменшуємо
+      planEff = (emp.dept_code==='vin_op') ? Math.round(planR*prorate) : planR;   // Вінниця: план на 22 дні → пропорційно дням; Дніпро: вже на фактичні дні
       const pcN = planEff>0 ? fact/planEff*100 : 0;
       b1 = Math.round(B1.mid[cnt]*prorate*100)/100;
       b2 = Math.round(b2f('jun',pcN,planEff,fact)*prorate*100)/100;
