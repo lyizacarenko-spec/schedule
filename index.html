@@ -2713,6 +2713,12 @@ function openMgrCard(empId){
     </div>
   `;
   document.getElementById('mgr-card-ov').classList.add('open');
+  // Список корегувань показуємо в УСІХ картках, де є блок «Корегування» (раніше — лише в частині схем,
+  // через що у менеджерів/тімлідів МО, роздробу тощо старі записи (і дублі) не було видно)
+  if(salaryAllowed){
+    const _adjEl=document.getElementById('frate-adj-list-'+emp.id);
+    if(_adjEl && !_adjEl.innerHTML.trim()) loadAdjustments(emp.id).then(()=>renderAdjList(emp.id));
+  }
   if(salaryAllowed && isFixedRate && ropUnlocked){
     loadAdjustments(emp.id).then(()=>{
       renderAdjList(emp.id);
