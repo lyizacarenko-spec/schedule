@@ -3669,7 +3669,7 @@ function calcSalary(empId){
       baseR = days>=T ? 20000 : Math.round(20000*days/T);
       planEff = (emp.dept_code==='vin_op') ? Math.round(planR*prorate) : planR;   // Вінниця: план на 22 дні → пропорційно дням; Дніпро: вже на фактичні дні
       const pcN = planEff>0 ? fact/planEff*100 : 0;
-      const bonusK = (emp.dept_code==='vin_op') ? 1 : prorate;   // Вінниця: бонус 2 (за план) фіксований, бонус 1 — пропорційно дням
+      const bonusK = prorate;   // обидва бонуси новачка — пропорційно дням   // Вінниця: бонус 2 (за план) фіксований, бонус 1 — пропорційно дням
       const g1 = ['jun','mid','top'].includes(emp?.level)?emp.level:'jun';   // бонус 1 новачка — за його грейдом
       b1 = Math.round(B1[g1][cnt]*prorate*100)/100;   // бонус 1 — пропорційно дням
       b2 = Math.round(b2f('jun',pcN,planEff,fact)*bonusK*100)/100;
