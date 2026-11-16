@@ -2671,7 +2671,10 @@ function openMgrCard(empId){
           // стара формула, завжди +2000 незалежно від грейду
           const gradeCutoverYm='2026-10';
           const useGrade = curYmView >= gradeCutoverYm;
-          const perIndicator = useGrade ? ({jun:1500,mid:2000,top:2500}[emp.level]||1500) : 2000;
+          const _sd0 = emp.start_date ? String(emp.start_date).slice(0,10) : '';
+          const _isFirst0 = !!(_sd0 && parseInt(_sd0.slice(0,4))===Y && parseInt(_sd0.slice(5,7))===M);
+          // новачок 1-го місяця — по 2000 за показник (пропорційно дням); решта — за грейдом
+          const perIndicator = useGrade ? (_isFirst0 ? 2000 : ({jun:1500,mid:2000,top:2500}[emp.level]||1500)) : 2000;
           return `
         <div style="display:flex;gap:14px;margin:8px 0;flex-wrap:wrap">
           <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer">
@@ -3666,8 +3669,9 @@ function calcSalary(empId){
       baseR = days>=T ? 20000 : Math.round(20000*days/T);
       planEff = (emp.dept_code==='vin_op') ? Math.round(planR*prorate) : planR;   // Вінниця: план на 22 дні → пропорційно дням; Дніпро: вже на фактичні дні
       const pcN = planEff>0 ? fact/planEff*100 : 0;
-      b1 = Math.round(B1.mid[cnt]*prorate*100)/100;
-      b2 = Math.round(b2f('jun',pcN,planEff,fact)*prorate*100)/100;
+      const bonusK = (emp.dept_code==='vin_op') ? 1 : prorate;   // Вінниця: бонуси фіксовані
+      b1 = Math.round(B1.mid[cnt]*bonusK*100)/100;
+      b2 = Math.round(b2f('jun',pcN,planEff,fact)*bonusK*100)/100;
       label='Новачок — 1-й місяць (шкала Джун, пропорційно '+days+'/22)';
     } else {
       grade = ['jun','mid','top'].includes(emp?.level)?emp.level:'jun';
