@@ -2245,8 +2245,10 @@ function openMgrCard(empId){
   // (роль, яку людина реально мала до переходу) — за замовчуванням
   // 'manager' (як і було раніше), може бути й 'rop' для конкретної людини
   const effRoleForCard = (emp.dept_code==='rzpk' && emp.role==='teamlead' && !isRzpkNewSchemes) ? (emp.prev_role||'manager') : emp.role;
-  const isRetailV2 = isRzpkNewSchemes && emp.team==='Роздріб' && !NO_PLAN_ROLES.includes(emp.role);
-  const isTeamleadRetail = isRzpkNewSchemes && emp.team==='Роздріб' && emp.role==='teamlead';
+  // Вінниця (vin_op): усі менеджери/тімліди — за схемою Роздрібу незалежно від поля team
+  const cardRetailTeam = (emp.dept_code==='vin_op' && !['rop','head'].includes(emp.role)) ? 'Роздріб' : emp.team;
+  const isRetailV2 = isRzpkNewSchemes && cardRetailTeam==='Роздріб' && !NO_PLAN_ROLES.includes(emp.role);
+  const isTeamleadRetail = isRzpkNewSchemes && cardRetailTeam==='Роздріб' && emp.role==='teamlead';
   const isTeamleadMo = isRzpkNewSchemes && (emp.team==='Малий опт'||emp.team==='Ресейл') && emp.role==='teamlead';
   const isMoManager = isRzpkNewSchemes && emp.team==='Малий опт' && !NO_PLAN_ROLES.includes(emp.role);
   const isB2bManager = isRzpkNewSchemes && emp.team==='Ресейл' && !NO_PLAN_ROLES.includes(emp.role);
