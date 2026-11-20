@@ -605,7 +605,7 @@ function applyPermissions(){
   const btnUsers=document.getElementById('btn-users');
   if(btnUsers) btnUsers.style.display = ME?.role==='owner' ? '' : 'none';
   const btnOdoo=document.getElementById('btn-odoo');
-  if(btnOdoo) btnOdoo.style.display = ME?.role==='owner' ? '' : 'none';
+  if(btnOdoo) btnOdoo.style.display = ['owner','rop','head'].includes(ME?.role) ? '' : 'none';
   const uBox=document.getElementById('user-box');
   if(uBox) uBox.textContent = ME ? ME.full_name : '';
 }
