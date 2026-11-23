@@ -235,7 +235,16 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 #deco-leaves{z-index:50}
 #deco-toggle{position:fixed;right:12px;bottom:12px;z-index:60;width:34px;height:34px;border-radius:50%;border:1px solid #c8c0b4;background:#fffaf4;cursor:pointer;font-size:1rem;line-height:1;opacity:.75;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 #deco-toggle:hover{opacity:1}
-@media print{#deco-fish,#deco-leaves,#deco-toggle{display:none!important}}
+#santa{position:fixed;left:10px;bottom:-14px;z-index:55;width:100px;pointer-events:none}
+#santa svg{display:block;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 3px 6px rgba(0,0,0,.18));animation:santa-bob 3.2s ease-in-out infinite}
+.santa-arm{transform-origin:96px 80px;animation:santa-wave 1s ease-in-out infinite}
+@keyframes santa-wave{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(26deg)}}
+@keyframes santa-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+#santa-bubble{position:absolute;left:68px;bottom:104px;white-space:nowrap;background:#fff;border:2px solid #e13a26;color:#c0281a;font-weight:800;font-size:.85rem;padding:4px 11px;border-radius:14px;opacity:0;transform:translateY(6px) scale(.9);transition:.25s;pointer-events:none}
+#santa-bubble.show{opacity:1;transform:none}
+#santa-bubble:after{content:'';position:absolute;left:10px;bottom:-7px;width:10px;height:10px;background:#fff;border-right:2px solid #e13a26;border-bottom:2px solid #e13a26;transform:rotate(45deg)}
+@media(max-width:700px){#santa{width:70px;left:4px}#santa svg{width:70px;height:81px}#santa-bubble{left:46px;bottom:74px;font-size:.75rem}}
+@media print{#deco-fish,#deco-leaves,#deco-toggle,#santa,#snow-cap{display:none!important}}
 </style>
 </head>
 <body>
@@ -6098,44 +6107,95 @@ async function editRole(empId){
 </div>
 
 <canvas id="deco-fish"></canvas><canvas id="deco-leaves"></canvas>
-<button id="deco-toggle" title="Прикраси: листя та рибки" onclick="decoToggle()">🍂</button>
+<div id="santa" title="Хо-хо-хо!">
+  <div id="santa-bubble">Хо-хо-хо!</div>
+  <svg viewBox="0 0 112 130" width="100" height="116" onclick="santaClick()">
+    <rect x="8" y="78" width="16" height="50" rx="8" fill="#e13a26"/>
+    <circle cx="16" cy="124" r="8" fill="#fff" stroke="#b9c9d8"/>
+    <path d="M18 130 V88 Q18 70 36 68 H74 Q92 70 92 88 V130 Z" fill="#e13a26"/>
+    <rect x="50" y="70" width="10" height="60" fill="#fff" stroke="#b9c9d8" stroke-width="1"/>
+    <rect x="18" y="104" width="74" height="10" fill="#2b2b2b"/>
+    <rect x="48" y="102" width="14" height="14" rx="2" fill="#f4c542"/>
+    <rect x="52" y="106" width="6" height="6" fill="#2b2b2b"/>
+    <g class="santa-arm">
+      <rect x="88" y="36" width="16" height="48" rx="8" fill="#e13a26"/>
+      <rect x="86" y="46" width="20" height="9" rx="4" fill="#fff" stroke="#b9c9d8"/>
+      <circle cx="96" cy="31" r="9" fill="#fff" stroke="#b9c9d8"/>
+    </g>
+    <circle cx="55" cy="46" r="18" fill="#f6cba8"/>
+    <path d="M37 50 Q36 84 55 88 Q74 84 73 50 Q64 62 55 60 Q46 62 37 50Z" fill="#fff" stroke="#b9c9d8"/>
+    <path d="M43 57 Q55 51 67 57 Q60 65 55 61 Q50 65 43 57Z" fill="#fff" stroke="#b9c9d8"/>
+    <circle cx="55" cy="54" r="3.4" fill="#f09a8a"/>
+    <circle cx="48" cy="47" r="2" fill="#2c2218"/><circle cx="62" cy="47" r="2" fill="#2c2218"/>
+    <circle cx="44" cy="52" r="3" fill="#f08a80" opacity=".45"/><circle cx="66" cy="52" r="3" fill="#f08a80" opacity=".45"/>
+    <path d="M36 36 Q36 10 58 8 Q72 8 82 24 Q70 20 74 36 Z" fill="#e13a26"/>
+    <rect x="33" y="31" width="44" height="10" rx="5" fill="#fff" stroke="#b9c9d8"/>
+    <circle cx="82" cy="24" r="6" fill="#fff" stroke="#b9c9d8"/>
+  </svg>
+</div>
+<button id="deco-toggle" title="Прикраси: сніг, ялинки, Дід Мороз" onclick="decoToggle()">❄️</button>
 <script>
 (function(){
   var fc=document.getElementById('deco-fish'), lc=document.getElementById('deco-leaves');
   var fx=fc.getContext('2d'), lx=lc.getContext('2d');
-  var W=0,H=0,dpr=1,on=true,raf=null,last=0;
+  var santa=document.getElementById('santa'), bubble=document.getElementById('santa-bubble');
+  var W=0,H=0,dpr=1,on=true,raf=null,last=0,bubbleT=null;
   try{ if(localStorage.getItem('decoOff')==='1') on=false; }catch(e){}
+
+  // ── накопичення снігу (0..1), зберігається; з часом "тане" ──
+  var level=0.04, lastSave=0;
+  try{
+    var sv=JSON.parse(localStorage.getItem('snowLevel')||'null');
+    if(sv && typeof sv.l==='number'){ level=Math.max(0.04, sv.l-(Date.now()-sv.t)/3600000*0.25); }
+  }catch(e){}
+  var topbar=document.querySelector('.topbar'), cap=null, cx=null, capW=0, capAt=0;
+  if(topbar){
+    if(getComputedStyle(topbar).position==='static') topbar.style.position='relative';
+    cap=document.createElement('canvas'); cap.id='snow-cap';
+    cap.style.cssText='position:absolute;left:0;top:0;width:100%;height:36px;pointer-events:none;z-index:3';
+    topbar.insertBefore(cap, topbar.firstChild); cx=cap.getContext('2d');
+  }
+
   function resize(){
     dpr=Math.min(window.devicePixelRatio||1,2); W=window.innerWidth; H=window.innerHeight;
     [fc,lc].forEach(function(c){c.width=W*dpr;c.height=H*dpr;c.getContext('2d').setTransform(dpr,0,0,dpr,0,0);});
+    capAt=0;
   }
   function rnd(a,b){return a+Math.random()*(b-a);}
-  var LEAF_COLORS=['#e8742a','#d9482b','#f0a030','#c8601e','#e05a3a','#d9b23a'];
-  var leaves=[],fish=[];
-  function newLeaf(initial){
-    return {x:rnd(0,W),y:initial?rnd(-20,H):rnd(-40,-10),s:rnd(9,18),vy:rnd(0.5,1.3),
-      sway:rnd(0.6,1.6),ph:rnd(0,6.28),rot:rnd(0,6.28),vr:rnd(-0.02,0.02),
-      c:LEAF_COLORS[(Math.random()*LEAF_COLORS.length)|0],a:rnd(0.45,0.8)};
+
+  // ── сніжинки ──
+  var flakes=[],trees=[],fish=[];
+  function newFlake(initial){
+    var crystal=Math.random()<0.28;
+    return {x:rnd(0,W),y:initial?rnd(-20,H):rnd(-30,-5),
+      s:crystal?rnd(4,8.5):rnd(1.3,3.3),crystal:crystal,vy:rnd(0.45,1.25)*(crystal?0.8:1),
+      sway:rnd(0.3,1.1),ph:rnd(0,6.28),rot:rnd(0,6.28),vr:rnd(-0.03,0.03),a:rnd(0.6,0.95)};
   }
-  function newFish(){
-    var dir=Math.random()<0.5?1:-1, s=rnd(22,52);
-    return {x:dir>0?rnd(-200,W*0.6):rnd(W*0.4,W+200),y:rnd(H*0.12,H*0.92),s:s,dir:dir,
-      v:rnd(0.25,0.7)*dir,ph:rnd(0,6.28),wob:rnd(8,22),
-      c:['#f2a65a','#f08a4b','#e8734a','#f5c07a','#e98f6b'][(Math.random()*5)|0],a:rnd(0.16,0.28)};
-  }
-  function init(){
-    leaves=[];fish=[];
-    var nl=Math.round(Math.min(26,Math.max(12,W/60))), nf=Math.round(Math.min(9,Math.max(4,W/200)));
-    for(var i=0;i<nl;i++) leaves.push(newLeaf(true));
-    for(var j=0;j<nf;j++) fish.push(newFish());
-  }
-  function drawLeaf(L){
-    lx.save(); lx.translate(L.x,L.y); lx.rotate(L.rot); lx.globalAlpha=L.a; lx.fillStyle=L.c;
-    var s=L.s; lx.beginPath(); lx.moveTo(0,-s);
-    lx.bezierCurveTo(s*0.9,-s*0.5,s*0.7,s*0.6,0,s);
-    lx.bezierCurveTo(-s*0.7,s*0.6,-s*0.9,-s*0.5,0,-s); lx.fill();
-    lx.strokeStyle='rgba(90,40,10,.45)'; lx.lineWidth=1; lx.beginPath(); lx.moveTo(0,-s); lx.lineTo(0,s*1.15); lx.stroke();
+  function drawFlake(F){
+    lx.save(); lx.translate(F.x,F.y); lx.globalAlpha=F.a;
+    if(!F.crystal){
+      lx.fillStyle='#fff'; lx.strokeStyle='rgba(110,160,205,.75)'; lx.lineWidth=1;
+      lx.beginPath(); lx.arc(0,0,F.s,0,6.28); lx.fill(); lx.stroke();
+    } else {
+      lx.rotate(F.rot); lx.strokeStyle='#7fb0dc'; lx.lineWidth=1.3; lx.lineCap='round';
+      var s=F.s; lx.beginPath();
+      for(var k=0;k<3;k++){ var a=k*Math.PI/3, ca=Math.cos(a), sa=Math.sin(a);
+        lx.moveTo(-ca*s,-sa*s); lx.lineTo(ca*s,sa*s);
+        [-0.55,0.55].forEach(function(p){ var px=ca*s*p, py=sa*s*p, bx=-sa*s*0.32, by=ca*s*0.32;
+          lx.moveTo(px,py); lx.lineTo(px+bx+ca*s*0.2*Math.sign(p),py+by+sa*s*0.2*Math.sign(p));
+          lx.moveTo(px,py); lx.lineTo(px-bx+ca*s*0.2*Math.sign(p),py-by+sa*s*0.2*Math.sign(p)); });
+      }
+      lx.stroke();
+    }
     lx.restore();
+  }
+
+  // ── рибки в новорічних шапочках ──
+  function newFish(){
+    var dir=Math.random()<0.5?1:-1, s=rnd(24,54);
+    return {x:dir>0?rnd(-200,W*0.6):rnd(W*0.4,W+200),y:rnd(H*0.12,H*0.9),s:s,dir:dir,
+      v:rnd(0.25,0.7)*dir,ph:rnd(0,6.28),wob:rnd(8,22),
+      c:['#f2a65a','#f08a4b','#e8734a','#f5c07a','#e98f6b'][(Math.random()*5)|0],a:rnd(0.18,0.3)};
   }
   function drawFish(F,t){
     fx.save(); fx.translate(F.x,F.y+Math.sin(t*0.0012+F.ph)*F.wob); fx.scale(F.dir,1); fx.globalAlpha=F.a; fx.fillStyle=F.c;
@@ -6144,26 +6204,119 @@ async function editRole(empId){
     fx.bezierCurveTo(s*0.6,-s*0.5,-s*0.2,-s*0.5,-s*0.55,0);
     fx.bezierCurveTo(-s*0.2,s*0.5,s*0.6,s*0.5,s,0); fx.fill();
     fx.beginPath(); fx.moveTo(-s*0.5,0); fx.lineTo(-s*1.0,-s*0.38+tail); fx.lineTo(-s*0.9,tail*0.3); fx.lineTo(-s*1.0,s*0.38+tail); fx.closePath(); fx.fill();
-    fx.beginPath(); fx.moveTo(s*0.15,-s*0.38); fx.quadraticCurveTo(-s*0.05,-s*0.7,-s*0.3,-s*0.4); fx.fill();
     fx.globalAlpha=Math.min(1,F.a*3); fx.fillStyle='#5a2a10'; fx.beginPath(); fx.arc(s*0.62,-s*0.08,Math.max(1.5,s*0.06),0,6.28); fx.fill();
+    // новорічна шапочка
+    fx.save(); fx.translate(s*0.42,-s*0.36); fx.rotate(0.35); fx.globalAlpha=Math.min(1,F.a*2.6);
+    var hs=s*0.42;
+    fx.fillStyle='#e13a26'; fx.beginPath(); fx.moveTo(-hs*0.6,0); fx.quadraticCurveTo(-hs*0.5,-hs*1.1,hs*0.2,-hs*1.15); fx.quadraticCurveTo(hs*0.55,-hs*1.15,hs*0.75,-hs*0.7); fx.quadraticCurveTo(hs*0.35,-hs*0.8,hs*0.6,0); fx.closePath(); fx.fill();
+    fx.fillStyle='#fff'; fx.beginPath(); fx.ellipse(0,0,hs*0.68,hs*0.2,0,0,6.28); fx.fill();
+    fx.beginPath(); fx.arc(hs*0.75,-hs*0.7,hs*0.2,0,6.28); fx.fill();
+    fx.restore();
     fx.restore();
   }
+
+  // ── ялинки внизу (на задньому плані) ──
+  var LC=['#F43313','#f0b030','#4a90d9','#e05aa0','#ffffff'];
+  function makeTrees(){
+    trees=[]; var n=Math.round(Math.min(12,Math.max(4,W/150)));
+    for(var i=0;i<n;i++){
+      var h=rnd(90,200), x=(i+rnd(0.1,0.9))*(W/n), lights=[], nl=Math.round(h/14);
+      for(var j=0;j<nl;j++) lights.push({k:(Math.random()*3)|0,t:rnd(0.25,0.95),r:rnd(-1,1),c:LC[(Math.random()*LC.length)|0],ph:rnd(0,6.28)});
+      trees.push({x:x,h:h,w:h*0.62,lights:lights});
+    }
+  }
+  var FT=[0,0.22,0.5], FB=[0.42,0.72,1.0], HW=[0.55,0.78,1.0];
+  function drawTree(T,t){
+    var B=H, trunk=T.h*0.1, usable=T.h*0.9, y0=B-T.h;
+    function Y(f){return y0+f*usable;}
+    fx.save(); fx.globalAlpha=0.26;
+    fx.fillStyle='#6b4a2b'; fx.fillRect(T.x-T.w*0.05,B-trunk,T.w*0.1,trunk);
+    for(var k=0;k<3;k++){
+      var hw=HW[k]*T.w/2;
+      fx.fillStyle='#2e7d52'; fx.beginPath(); fx.moveTo(T.x,Y(FT[k])); fx.lineTo(T.x-hw,Y(FB[k])); fx.lineTo(T.x+hw,Y(FB[k])); fx.closePath(); fx.fill();
+      fx.strokeStyle='#ffffff'; fx.lineWidth=2.2; fx.beginPath(); fx.moveTo(T.x-hw*0.18,Y(FT[k])+(Y(FB[k])-Y(FT[k]))*0.18); fx.lineTo(T.x-hw,Y(FB[k])); fx.stroke();
+    }
+    fx.globalAlpha=1;
+    T.lights.forEach(function(L){
+      var hw=HW[L.k]*T.w/2, yy=Y(FT[L.k]+L.t*(FB[L.k]-FT[L.k])), xx=T.x+L.r*hw*L.t*0.8;
+      fx.globalAlpha=0.25+0.45*(0.5+0.5*Math.sin(t*0.003+L.ph)); fx.fillStyle=L.c;
+      fx.beginPath(); fx.arc(xx,yy,2.2,0,6.28); fx.fill();
+    });
+    fx.globalAlpha=0.45; fx.fillStyle='#f4c542'; fx.beginPath(); fx.arc(T.x,y0-1,3.4,0,6.28); fx.fill();
+    fx.restore();
+  }
+
+  function init(){
+    fish=[]; for(var fi=0,nf=Math.round(Math.min(9,Math.max(4,W/200)));fi<nf;fi++) fish.push(newFish());
+    flakes=[]; var n=Math.round(Math.min(110,Math.max(45,W/18)));
+    for(var i=0;i<n;i++) flakes.push(newFlake(true));
+    makeTrees();
+  }
+
+  // ── кучугура внизу екрана ──
+  function edge(x,seed,amp){ return amp*(0.55+0.25*Math.sin(x/53+seed)+0.2*Math.sin(x/17+seed*2.1)+0.2*Math.sin(x/131+seed*0.7)); }
+  function drawDrift(){
+    var D=4+level*42; if(D<5) return;
+    lx.save(); lx.globalAlpha=0.97; lx.beginPath(); lx.moveTo(0,H);
+    for(var x=0;x<=W;x+=6) lx.lineTo(x,H-edge(x,1.7,D));
+    lx.lineTo(W,H); lx.closePath(); lx.fillStyle='#fff'; lx.fill();
+    lx.strokeStyle='rgba(120,165,205,.8)'; lx.lineWidth=1.5; lx.stroke(); lx.restore();
+  }
+
+  // ── шапка снігу на верхній панелі ──
+  function drawCap(){
+    if(!cap||!cx) return;
+    var w=topbar.clientWidth, dp=Math.min(window.devicePixelRatio||1,2);
+    if(cap.width!==Math.round(w*dp)){ cap.width=Math.round(w*dp); cap.height=Math.round(36*dp); }
+    cx.setTransform(dp,0,0,dp,0,0); cx.clearRect(0,0,w,36);
+    var T=3+level*17;
+    cx.beginPath(); cx.moveTo(0,0);
+    for(var x=0;x<=w;x+=5) cx.lineTo(x,edge(x,4.2,T)+1);
+    cx.lineTo(w,0); cx.closePath(); cx.fillStyle='#fff'; cx.fill();
+    cx.strokeStyle='rgba(120,165,205,.85)'; cx.lineWidth=1.3;
+    cx.beginPath(); for(var x2=0;x2<=w;x2+=5){ var y=edge(x2,4.2,T)+1; if(x2===0) cx.moveTo(x2,y); else cx.lineTo(x2,y); } cx.stroke();
+    if(level>0.45){
+      var ih=4+(level-0.45)*22;
+      cx.fillStyle='rgba(235,246,255,.95)'; cx.strokeStyle='rgba(120,165,205,.8)';
+      for(var ix=40;ix<w-20;ix+=97){
+        var ey=edge(ix,4.2,T)+1, hh=ih*(0.6+0.4*Math.sin(ix));
+        cx.beginPath(); cx.moveTo(ix-4,ey-1); cx.lineTo(ix+4,ey-1); cx.lineTo(ix,ey+hh); cx.closePath(); cx.fill(); cx.stroke();
+      }
+    }
+  }
+
   function frame(t){
     raf=requestAnimationFrame(frame);
-    var dt=Math.min(40,t-last)/16.7; last=t;
+    var dtms=Math.min(40,t-last), dt=dtms/16.7; last=t;
     lx.clearRect(0,0,W,H); fx.clearRect(0,0,W,H);
+    trees.forEach(function(T){ drawTree(T,t); });
     fish.forEach(function(F){
       F.x+=F.v*dt; drawFish(F,t);
       if((F.dir>0&&F.x>W+F.s*1.5)||(F.dir<0&&F.x<-F.s*1.5)){ var n=newFish(); n.x=n.dir>0?-n.s*1.5:W+n.s*1.5; Object.assign(F,n); }
     });
-    leaves.forEach(function(L,i){
-      L.y+=L.vy*dt; L.ph+=0.02*dt; L.x+=Math.sin(L.ph)*L.sway*dt*0.6; L.rot+=L.vr*dt+Math.sin(L.ph)*0.01;
-      drawLeaf(L);
-      if(L.y>H+30){ leaves[i]=newLeaf(false); }
+    flakes.forEach(function(F,i){
+      F.y+=F.vy*dt; F.ph+=0.02*dt; F.x+=Math.sin(F.ph)*F.sway*dt*0.7+0.12*dt; F.rot+=F.vr*dt;
+      drawFlake(F);
+      if(F.y>H+10||F.x>W+20){ flakes[i]=newFlake(false); if(level<1) level=Math.min(1,level+0.0012); }
     });
+    level=Math.min(1,level+dtms*0.0000009);
+    drawDrift();
+    if(t-capAt>400){ capAt=t; drawCap(); }
+    if(t-lastSave>5000){ lastSave=t; try{ localStorage.setItem('snowLevel',JSON.stringify({l:level,t:Date.now()})); }catch(e){} }
   }
-  function start(){ if(raf||!on) return; fc.style.display=lc.style.display=''; last=performance.now(); raf=requestAnimationFrame(frame); }
-  function stop(){ if(raf) cancelAnimationFrame(raf); raf=null; fx.clearRect(0,0,W,H); lx.clearRect(0,0,W,H); fc.style.display=lc.style.display='none'; }
+
+  // ── Дід Мороз ──
+  var PHR=['Хо-хо-хо!','Хо-хо-хо! 🎄','З наступаючим! 🎅','Хо-хо-хо! ❄️'], phi=0;
+  function say(txt){
+    bubble.textContent=txt||PHR[(phi++)%PHR.length]; bubble.classList.add('show');
+    clearTimeout(bubbleT); bubbleT=setTimeout(function(){ bubble.classList.remove('show'); },2600);
+  }
+  window.santaClick=function(){ say(); level=Math.max(0.04,level-0.3); capAt=0; };
+  setInterval(function(){ if(on&&!document.hidden) say(); },15000);
+  setTimeout(function(){ if(on) say('Хо-хо-хо!'); },2500);
+
+  function start(){ if(raf||!on) return; fc.style.display=lc.style.display=''; santa.style.display=''; if(cap) cap.style.display=''; last=performance.now(); raf=requestAnimationFrame(frame); }
+  function stop(){ if(raf) cancelAnimationFrame(raf); raf=null; fx.clearRect(0,0,W,H); lx.clearRect(0,0,W,H); fc.style.display=lc.style.display='none'; santa.style.display='none'; if(cap) cap.style.display='none'; }
   window.decoToggle=function(){
     on=!on; try{ localStorage.setItem('decoOff',on?'0':'1'); }catch(e){}
     document.getElementById('deco-toggle').style.opacity=on?'.75':'.35';
