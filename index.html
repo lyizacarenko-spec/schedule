@@ -235,15 +235,18 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 #deco-leaves{z-index:50}
 #deco-toggle{position:fixed;right:12px;bottom:12px;z-index:60;width:34px;height:34px;border-radius:50%;border:1px solid #c8c0b4;background:#fffaf4;cursor:pointer;font-size:1rem;line-height:1;opacity:.75;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 #deco-toggle:hover{opacity:1}
-#santa{position:fixed;left:10px;bottom:-14px;z-index:55;width:100px;pointer-events:none}
-#santa svg{display:block;overflow:visible;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 3px 6px rgba(0,0,0,.18));animation:santa-bob 3.2s ease-in-out infinite}
+#santa{position:fixed;left:0;top:0;width:100px;height:116px;z-index:55;pointer-events:none;visibility:hidden}
+#santa.vis{visibility:visible}
+.santa-in{width:100%;height:100%;transform:translateY(140%);transition:transform .65s cubic-bezier(.2,.9,.3,1.15)}
+.santa-in.in{transform:none}
+#santa svg{display:block;overflow:visible;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 3px 6px rgba(0,0,0,.18))}
 .santa-arm{transform-origin:96px 80px;animation:santa-wave 1s ease-in-out infinite}
 @keyframes santa-wave{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(26deg)}}
-@keyframes santa-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-#santa-bubble{position:absolute;left:68px;bottom:104px;white-space:nowrap;background:#fff;border:2px solid #e13a26;color:#c0281a;font-weight:800;font-size:.85rem;padding:4px 11px;border-radius:14px;opacity:0;transform:translateY(6px) scale(.9);transition:.25s;pointer-events:none}
+#santa-bubble{position:fixed;left:0;top:0;z-index:56;white-space:nowrap;background:#fff;border:2px solid #e13a26;color:#c0281a;font-weight:800;font-size:.88rem;padding:5px 12px;border-radius:14px;opacity:0;transform:translateY(6px) scale(.9);transition:opacity .25s,transform .25s;pointer-events:none}
 #santa-bubble.show{opacity:1;transform:none}
-#santa-bubble:after{content:'';position:absolute;left:10px;bottom:-7px;width:10px;height:10px;background:#fff;border-right:2px solid #e13a26;border-bottom:2px solid #e13a26;transform:rotate(45deg)}
-@media(max-width:700px){#santa{width:70px;left:4px}#santa svg{width:70px;height:81px}#santa-bubble{left:46px;bottom:74px;font-size:.75rem}}
+#santa-bubble:after{content:'';position:absolute;left:12px;bottom:-7px;width:10px;height:10px;background:#fff;border-right:2px solid #e13a26;border-bottom:2px solid #e13a26;transform:rotate(45deg)}
+#santa-bubble.notail:after{display:none}
+@media(max-width:700px){#santa-bubble{font-size:.75rem}}
 @media print{#deco-fish,#deco-leaves,#deco-toggle,#santa,#snow-cap{display:none!important}}
 </style>
 </head>
@@ -6107,8 +6110,7 @@ async function editRole(empId){
 </div>
 
 <canvas id="deco-fish"></canvas><canvas id="deco-leaves"></canvas>
-<div id="santa" title="Хо-хо-хо!">
-  <div id="santa-bubble">Хо-хо-хо!</div>
+<div id="santa"><div class="santa-in" id="santa-in">
   <svg viewBox="0 0 112 130" width="100" height="116" onclick="santaClick()">
     <rect x="8" y="78" width="16" height="50" rx="8" fill="#e13a26"/>
     <circle cx="16" cy="124" r="8" fill="#fff" stroke="#b9c9d8"/>
@@ -6132,7 +6134,8 @@ async function editRole(empId){
     <rect x="33" y="31" width="44" height="10" rx="5" fill="#fff" stroke="#b9c9d8"/>
     <circle cx="82" cy="24" r="6" fill="#fff" stroke="#b9c9d8"/>
   </svg>
-</div>
+</div></div>
+<div id="santa-bubble"></div>
 <button id="deco-toggle" title="Прикраси: сніг, ялинки, Дід Мороз" onclick="decoToggle()">❄️</button>
 <script>
 (function(){
@@ -6355,19 +6358,50 @@ async function editRole(empId){
     if(t-lastSave>5000){ lastSave=t; try{ localStorage.setItem('snowLevel',JSON.stringify({l:level,t:Date.now()})); }catch(e){} }
   }
 
-  // ── Дід Мороз ──
-  var PHR=['Хо-хо-хо!','Хо-хо-хо! 🎄','З наступаючим! 🎅','Хо-хо-хо! ❄️'], phi=0;
-  function say(txt){
-    bubble.textContent=txt||PHR[(phi++)%PHR.length]; bubble.classList.add('show');
-    clearTimeout(bubbleT); bubbleT=setTimeout(function(){ bubble.classList.remove('show'); },2600);
+  // ── Дід Мороз виглядає з випадкових місць ──
+  var PHR=['З наступаючим! 🎄','Хо-хо-хо!','З Новим роком! 🎅','Хо-хо-хо! З наступаючим! ❄️','Щасливого Нового року! ✨','Хо-хо-хо! Подарунки вже готові? 🎁'], phi=Math.floor(Math.random()*PHR.length);
+  var santaIn=document.getElementById('santa-in'), peekTimer=null, santaOut=true, cur=null;
+  function placeBubble(){
+    if(!cur) return;
+    var bw=bubble.offsetWidth, bh=bubble.offsetHeight, x,y;
+    bubble.classList.toggle('notail', cur.edge!=='bottom');
+    if(cur.edge==='bottom'){ x=cur.x0+58; y=cur.y0-bh+8; }
+    else if(cur.edge==='top'){ x=cur.cx-bw/2; y=cur.y1+2; }
+    else if(cur.edge==='left'){ x=cur.x1-10; y=cur.cy-bh/2; }
+    else { x=cur.x0-bw+10; y=cur.cy-bh/2; }
+    x=Math.max(6,Math.min(W-bw-6,x)); y=Math.max(6,Math.min(H-bh-6,y));
+    bubble.style.left=x+'px'; bubble.style.top=y+'px';
   }
+  function say(txt){
+    bubble.textContent=txt||PHR[(phi++)%PHR.length]; placeBubble(); bubble.classList.add('show');
+    clearTimeout(bubbleT); bubbleT=setTimeout(function(){ bubble.classList.remove('show'); },2800);
+  }
+  function peekOnce(){
+    if(!on||document.hidden){ scheduleNext(4000); return; }
+    var sc=W<700?0.72:1, w=100*sc, h=116*sc, r=Math.random(), edge=r<0.4?'bottom':r<0.6?'left':r<0.8?'right':'top', cx,cy,deg;
+    if(edge==='bottom'){ cx=rnd(w*0.8,W-w*1.5); cy=H-(h/2-14*sc); deg=0; }
+    else if(edge==='top'){ cx=rnd(w*0.8,W-w*1.5); cy=h/2-14*sc; deg=180; }
+    else if(edge==='left'){ cy=rnd(h*0.8,H-h*1.2); cx=h/2-14*sc; deg=90; }
+    else { cy=rnd(h*0.8,H-h*1.2); cx=W-(h/2-14*sc); deg=-90; }
+    var sw=(edge==='left'||edge==='right')?h:w, sh=(edge==='left'||edge==='right')?w:h;
+    cur={edge:edge,cx:cx,cy:cy,x0:cx-sw/2,x1:cx+sw/2,y0:cy-sh/2,y1:cy+sh/2};
+    santa.style.left=(cx-50)+'px'; santa.style.top=(cy-58)+'px';
+    santa.style.transform='rotate('+deg+'deg) scale('+sc+')';
+    santa.classList.add('vis'); void santaIn.offsetWidth; santaIn.classList.add('in'); santaOut=false;
+    setTimeout(function(){ if(!santaOut) say(); },750);
+    setTimeout(function(){
+      santaIn.classList.remove('in'); bubble.classList.remove('show');
+      setTimeout(function(){ santaOut=true; santa.classList.remove('vis'); },750);
+      scheduleNext(rnd(7000,16000));
+    },4300);
+  }
+  function scheduleNext(ms){ clearTimeout(peekTimer); peekTimer=setTimeout(peekOnce,ms); }
   window.santaClick=function(){ if(startPlow()) say('Хо-хо-хо! Їде снігоприбирач 🚜'); else say(); };
-  setInterval(function(){ if(on&&!document.hidden) say(); },15000);
-  setTimeout(function(){ if(on) say('Хо-хо-хо!'); },2500);
+  scheduleNext(2500);
 
-  function start(){ if(raf||!on) return; fc.style.display=lc.style.display=''; santa.style.display=''; if(cap) cap.style.display=''; last=performance.now(); raf=requestAnimationFrame(frame); }
+  function start(){ if(raf||!on) return; fc.style.display=lc.style.display=''; if(cap) cap.style.display=''; last=performance.now(); raf=requestAnimationFrame(frame); }
   lastPlow=performance.now()-35000;
-  function stop(){ if(raf) cancelAnimationFrame(raf); raf=null; plow=null; spray=[]; fx.clearRect(0,0,W,H); lx.clearRect(0,0,W,H); fc.style.display=lc.style.display='none'; santa.style.display='none'; if(cap) cap.style.display='none'; }
+  function stop(){ if(raf) cancelAnimationFrame(raf); raf=null; plow=null; spray=[]; fx.clearRect(0,0,W,H); lx.clearRect(0,0,W,H); fc.style.display=lc.style.display='none'; santa.classList.remove('vis'); bubble.classList.remove('show'); if(cap) cap.style.display='none'; }
   window.decoToggle=function(){
     on=!on; try{ localStorage.setItem('decoOff',on?'0':'1'); }catch(e){}
     document.getElementById('deco-toggle').style.opacity=on?'.75':'.35';
