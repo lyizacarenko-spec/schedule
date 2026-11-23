@@ -236,7 +236,7 @@ tr.pct-row td{background:#ddd8d0;cursor:default;padding:4px 3px;border-bottom:2p
 #deco-toggle{position:fixed;right:12px;bottom:12px;z-index:60;width:34px;height:34px;border-radius:50%;border:1px solid #c8c0b4;background:#fffaf4;cursor:pointer;font-size:1rem;line-height:1;opacity:.75;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 #deco-toggle:hover{opacity:1}
 #santa{position:fixed;left:10px;bottom:-14px;z-index:55;width:100px;pointer-events:none}
-#santa svg{display:block;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 3px 6px rgba(0,0,0,.18));animation:santa-bob 3.2s ease-in-out infinite}
+#santa svg{display:block;overflow:visible;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 3px 6px rgba(0,0,0,.18));animation:santa-bob 3.2s ease-in-out infinite}
 .santa-arm{transform-origin:96px 80px;animation:santa-wave 1s ease-in-out infinite}
 @keyframes santa-wave{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(26deg)}}
 @keyframes santa-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
@@ -6164,7 +6164,7 @@ async function editRole(empId){
   function rnd(a,b){return a+Math.random()*(b-a);}
 
   // ── сніжинки ──
-  var flakes=[],trees=[],fish=[];
+  var flakes=[],trees=[],fish=[],mult=[],plow=null,lastPlow=0,spray=[],PS=1.15;
   function newFlake(initial){
     var crystal=Math.random()<0.28;
     return {x:rnd(0,W),y:initial?rnd(-20,H):rnd(-30,-5),
@@ -6247,6 +6247,7 @@ async function editRole(empId){
   }
 
   function init(){
+    mult=[]; for(var mi=0;mi<Math.ceil(W/6)+3;mi++) mult.push(1);
     fish=[]; for(var fi=0,nf=Math.round(Math.min(9,Math.max(4,W/200)));fi<nf;fi++) fish.push(newFish());
     flakes=[]; var n=Math.round(Math.min(110,Math.max(45,W/18)));
     for(var i=0;i<n;i++) flakes.push(newFlake(true));
@@ -6256,11 +6257,40 @@ async function editRole(empId){
   // ── кучугура внизу екрана ──
   function edge(x,seed,amp){ return amp*(0.55+0.25*Math.sin(x/53+seed)+0.2*Math.sin(x/17+seed*2.1)+0.2*Math.sin(x/131+seed*0.7)); }
   function drawDrift(){
-    var D=4+level*42; if(D<5) return;
+    var D=4+level*42;
     lx.save(); lx.globalAlpha=0.97; lx.beginPath(); lx.moveTo(0,H);
-    for(var x=0;x<=W;x+=6) lx.lineTo(x,H-edge(x,1.7,D));
+    for(var x=0,i=0;x<=W;x+=6,i++){ var m=mult[i]; lx.lineTo(x,H-edge(x,1.7,D)*(m===undefined?1:m)); }
     lx.lineTo(W,H); lx.closePath(); lx.fillStyle='#fff'; lx.fill();
     lx.strokeStyle='rgba(120,165,205,.8)'; lx.lineWidth=1.5; lx.stroke(); lx.restore();
+  }
+
+  // ── снігоприбиральна машина ──
+  function startPlow(){ if(plow) return false; plow={x:-90}; return true; }
+  function drawPlow(t){
+    lx.save(); lx.translate(plow.x,H); lx.scale(PS,PS); lx.lineJoin='round';
+    // коробка + шасі
+    lx.fillStyle='#f59a1b'; lx.strokeStyle='#8a4f06'; lx.lineWidth=1;
+    lx.fillRect(-36,-17,56,9); lx.strokeRect(-36,-17,56,9);
+    lx.fillRect(-36,-29,26,12); lx.strokeRect(-36,-29,26,12);
+    // кабіна
+    lx.beginPath(); lx.moveTo(-10,-17); lx.lineTo(-10,-32); lx.lineTo(6,-32); lx.lineTo(13,-21); lx.lineTo(20,-17); lx.closePath(); lx.fill(); lx.stroke();
+    lx.fillStyle='#bfe3f7'; lx.beginPath(); lx.moveTo(-6,-29); lx.lineTo(4,-29); lx.lineTo(9,-22); lx.lineTo(-6,-22); lx.closePath(); lx.fill(); lx.stroke();
+    // мигалка
+    var blink=Math.sin(t/110)>0;
+    lx.fillStyle=blink?'#ff3b2f':'#7a2a22'; lx.beginPath(); lx.arc(-2,-35,3,0,6.28); lx.fill();
+    if(blink){ lx.globalAlpha=.25; lx.fillStyle='#ff3b2f'; lx.beginPath(); lx.arc(-2,-35,9,0,6.28); lx.fill(); lx.globalAlpha=1; }
+    // фара
+    lx.fillStyle='#ffe27a'; lx.beginPath(); lx.arc(17,-19,2.4,0,6.28); lx.fill();
+    // лопата
+    lx.fillStyle='#8fa6ba'; lx.strokeStyle='#3c4f60'; lx.lineWidth=1.2;
+    lx.beginPath(); lx.moveTo(21,-26); lx.lineTo(37,-20); lx.lineTo(37,-1); lx.lineTo(21,-6); lx.closePath(); lx.fill(); lx.stroke();
+    lx.beginPath(); lx.moveTo(18,-14); lx.lineTo(24,-14); lx.stroke();
+    // колеса
+    [[-24,-6],[8,-6]].forEach(function(w){
+      lx.fillStyle='#2b2b2b'; lx.beginPath(); lx.arc(w[0],w[1],6.5,0,6.28); lx.fill();
+      lx.fillStyle='#c9cfd6'; lx.beginPath(); lx.arc(w[0],w[1],2.6,0,6.28); lx.fill();
+    });
+    lx.restore();
   }
 
   // ── шапка снігу на верхній панелі ──
@@ -6300,7 +6330,27 @@ async function editRole(empId){
       if(F.y>H+10||F.x>W+20){ flakes[i]=newFlake(false); if(level<1) level=Math.min(1,level+0.0012); }
     });
     level=Math.min(1,level+dtms*0.0000009);
+    // регенерація кучугури за колонками
+    for(var mi=0;mi<mult.length;mi++){ if(mult[mi]<1) mult[mi]=Math.min(1,mult[mi]+dtms*0.00004); }
+    if(!plow && level>0.55 && t-lastPlow>45000){ if(startPlow()) say('Їде снігоприбирач! 🚜'); }
+    if(plow){
+      var step=1.7*dt; plow.x+=step;
+      var front=plow.x+37*PS;
+      for(var ci=0;ci<mult.length;ci++){ if(ci*6<=front) mult[ci]=0; }
+      level=Math.max(0.04,level-0.5*step/(W+160));
+      if(plow.x>-20&&plow.x<W) for(var q=0;q<2;q++) spray.push({x:front,y:H-8-Math.random()*10,vx:1+Math.random()*2.4,vy:-(1+Math.random()*2.6),l:1});
+    }
     drawDrift();
+    if(plow){
+      drawPlow(t);
+      if(plow.x>W+100){ plow=null; lastPlow=t; capAt=0; }
+    }
+    for(var si=spray.length-1;si>=0;si--){
+      var P=spray[si]; P.x+=P.vx*dt; P.y+=P.vy*dt; P.vy+=0.16*dt; P.l-=0.02*dt;
+      if(P.l<=0||P.y>H){ spray.splice(si,1); continue; }
+      lx.globalAlpha=Math.min(1,P.l*1.3); lx.fillStyle='#fff'; lx.strokeStyle='rgba(120,165,205,.7)'; lx.lineWidth=1;
+      lx.beginPath(); lx.arc(P.x,P.y,2.3,0,6.28); lx.fill(); lx.stroke(); lx.globalAlpha=1;
+    }
     if(t-capAt>400){ capAt=t; drawCap(); }
     if(t-lastSave>5000){ lastSave=t; try{ localStorage.setItem('snowLevel',JSON.stringify({l:level,t:Date.now()})); }catch(e){} }
   }
@@ -6311,12 +6361,13 @@ async function editRole(empId){
     bubble.textContent=txt||PHR[(phi++)%PHR.length]; bubble.classList.add('show');
     clearTimeout(bubbleT); bubbleT=setTimeout(function(){ bubble.classList.remove('show'); },2600);
   }
-  window.santaClick=function(){ say(); level=Math.max(0.04,level-0.3); capAt=0; };
+  window.santaClick=function(){ if(startPlow()) say('Хо-хо-хо! Їде снігоприбирач 🚜'); else say(); };
   setInterval(function(){ if(on&&!document.hidden) say(); },15000);
   setTimeout(function(){ if(on) say('Хо-хо-хо!'); },2500);
 
   function start(){ if(raf||!on) return; fc.style.display=lc.style.display=''; santa.style.display=''; if(cap) cap.style.display=''; last=performance.now(); raf=requestAnimationFrame(frame); }
-  function stop(){ if(raf) cancelAnimationFrame(raf); raf=null; fx.clearRect(0,0,W,H); lx.clearRect(0,0,W,H); fc.style.display=lc.style.display='none'; santa.style.display='none'; if(cap) cap.style.display='none'; }
+  lastPlow=performance.now()-35000;
+  function stop(){ if(raf) cancelAnimationFrame(raf); raf=null; plow=null; spray=[]; fx.clearRect(0,0,W,H); lx.clearRect(0,0,W,H); fc.style.display=lc.style.display='none'; santa.style.display='none'; if(cap) cap.style.display='none'; }
   window.decoToggle=function(){
     on=!on; try{ localStorage.setItem('decoOff',on?'0':'1'); }catch(e){}
     document.getElementById('deco-toggle').style.opacity=on?'.75':'.35';
