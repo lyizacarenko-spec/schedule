@@ -714,6 +714,7 @@ function defaultStatusFor(deptCode, dow, empName, dateStr){
     if(deptCode==='warehouse') return (dateStr && dateStr>='2026-10-01' && dateStr<'2026-11-01') ? '9:00-18:30' : '9-19';
   if(deptCode==='rzpk') return (dateStr && dateStr>='2026-10-01') ? '10-19' : '10-18';
   if(deptCode==='vin_op') return (dateStr && dateStr>='2026-11-01') ? '10-19' : '10-18';
+  if(deptCode==='hot') return (dateStr && dateStr>='2026-11-26') ? '10-19' : '10-18';
   // логісти: з 1 жовтня 2026 — графік 2/2, зміна 9:00-21:00. Для співробітників
   // з відомою фазою циклу (SHIFT22_PHASE) — цикл генерується автоматично;
   // для решти — просто "9-21" щодня, вихідні ставлять собі вручну.
@@ -2452,6 +2453,9 @@ function openMgrCard(empId){
             <div class="sal-field"><label>Акція 230</label><input type="number" id="hot-action-${emp.id}-${no}" placeholder="0"></div>
           </div>
           <div class="sal-row">
+            <div class="sal-field"><label>🤖 ШІ виплата — замовлення (1,5%)</label><input type="number" id="hot-ai-${emp.id}-${no}" placeholder="0"></div>
+          </div>
+          <div class="sal-row">
             <div class="sal-field"><label>СРЧ акції (≥1000 → 2.5%)</label><input type="number" id="hot-srch-${emp.id}-${no}" placeholder="0"></div>
             <div class="sal-field"><label>Доплата</label><input type="number" id="hot-bonus-${emp.id}-${no}" placeholder="0"></div>
             <div class="sal-field"><label>Штраф</label><input type="number" id="hot-penalty-${emp.id}-${no}" placeholder="0"></div>
@@ -2813,6 +2817,7 @@ function openMgrCard(empId){
           set(`hot-a1149-${emp.id}-${no}`,p.sum_a1149);
           set(`hot-office2-${emp.id}-${no}`,p.sum_office2);
           set(`hot-action-${emp.id}-${no}`,p.sum_action);
+          set(`hot-ai-${emp.id}-${no}`,p.sum_ai);
           set(`hot-srch-${emp.id}-${no}`,p.srch_action);
           set(`hot-bonus-${emp.id}-${no}`,p.bonus);
           set(`hot-penalty-${emp.id}-${no}`,p.penalty);
@@ -5507,6 +5512,7 @@ async function saveHotPeriod(empId,no){
       sum_a1149:g(`hot-a1149-${empId}-${no}`),
       sum_office2:g(`hot-office2-${empId}-${no}`),
       sum_action:g(`hot-action-${empId}-${no}`),
+      sum_ai:g(`hot-ai-${empId}-${no}`),
       srch_action:g(`hot-srch-${empId}-${no}`),
       bonus:g(`hot-bonus-${empId}-${no}`),
       penalty:g(`hot-penalty-${empId}-${no}`)
@@ -5534,6 +5540,7 @@ async function showHotResult(empId,no){
       ${c.sum_a1149>0?`<div class="sal-result-row"><span>Акція 1149 · 2% від ${fmtM(c.sum_a1149)}</span><span style="color:#2e7d52">+${fmtFull(c.pay_a1149)}</span></div>`:''}
       ${c.sum_office2>0?`<div class="sal-result-row"><span>ОФІС 2 · 5% від ${fmtM(c.sum_office2)}</span><span style="color:#2e7d52">+${fmtFull(c.pay_office2)}</span></div>`:''}
       ${c.sum_action>0?`<div class="sal-result-row"><span>Акція 230 · ${c.action_pct}% (СРЧ ${c.srch_action})</span><span style="color:#2e7d52">+${fmtFull(c.pay_action)}</span></div>`:''}
+      ${c.sum_ai>0?`<div class="sal-result-row"><span>🤖 ШІ виплата · 1,5% від ${fmtM(c.sum_ai)}</span><span style="color:#2e7d52">+${fmtFull(c.pay_ai)}</span></div>`:''}
       ${c.bonus>0?`<div class="sal-result-row"><span>Доплата</span><span style="color:#2e7d52">+${fmtFull(c.bonus)}</span></div>`:''}
       ${c.penalty>0?`<div class="sal-result-row"><span>Штраф</span><span style="color:#ef5350">−${fmtFull(c.penalty)}</span></div>`:''}
       <div class="sal-result-row green"><span>💰 До виплати ${no===1?'15-го':'1-го наст.'}</span><span>${fmtFull(c.total)}</span></div>
